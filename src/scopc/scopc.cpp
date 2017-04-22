@@ -1,4 +1,3 @@
-#include <llvm/Support/raw_ostream.h>
 #include <stdexcept>
 #include <iostream>
 #include <memory>
@@ -9,23 +8,6 @@
 #include "AST/AST.h"
 #include "Parser/Parser.h"
 #include "Assembly/Assembly.h"
-
-#include <boost/spirit/include/qi.hpp>
-
-std::vector< std::string > read_file(char const* filename)
-{
-    std::ifstream ifs( filename, std::ios::binary );
-    if( ifs.fail() ) {
-        return {};
-    }
-
-    std::vector< std::string > result;
-    for( std::string line; std::getline( ifs, line ); ) {
-        result.push_back( line );
-    }
-
-    return result;
-}
 
 int main(int argc, char* argv[])
 {
