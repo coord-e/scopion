@@ -140,7 +140,7 @@ namespace parser{
     int line = 0;
     bool err = false;
     for( auto const& i : result ) {
-        scopion::ast::expr tree;
+        ast::expr tree;
 
         ++line;
         if( !qi::phrase_parse( i.begin(), i.end(), grammar, qi::ascii::space, tree ) ) {

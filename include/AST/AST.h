@@ -69,10 +69,10 @@ namespace ast {
         binary_op(expr const& lhs_, expr const& rhs_) :
             lhs( lhs_ ), rhs( rhs_ )
         {
-          if(lhs_.which() == 0 && rhs_.which() == 0){
-            std::cout << "/** Hello from binop ctor **/" << std::endl;
-            std::cout << "lhs = " << boost::get<int>(lhs_) << ", rhs = " << boost::get<int>(rhs_) << std::endl;
-          }
+          // if(lhs_.which() == 0 && rhs_.which() == 0){
+          //   std::cout << "/** Hello from binop ctor **/" << std::endl;
+          //   std::cout << "lhs = " << boost::get<int>(lhs_) << ", rhs = " << boost::get<int>(rhs_) << std::endl;
+          // }
         }
     };
 
