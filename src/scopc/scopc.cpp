@@ -36,37 +36,22 @@ int main(int argc, char* argv[])
 
         const std::string outbin(argv[2]);
 
-        auto const code = read_file( argv[1] );
-        if( code.empty() ) {
-            throw std::runtime_error( "cannot read the file" );
+        std::ifstream ifs(argv[1]);
+        if (ifs.fail())
+        {
+            std::cerr << "Failed to open: " << argv[1] << std::endl;
+            throw std::runtime_error( "Failed to start parsing." );
         }
 
-        scopion::parser::grammar< std::string::const_iterator > grammar;
-        std::vector< scopion::ast::expr > asts;
+        std::string code((std::istreambuf_iterator<char>(ifs)),
+            std::istreambuf_iterator<char>());
 
-        int line = 0;
-        bool err = false;
-        for( auto const& i : code ) {
-            scopion::ast::expr tree;
-
-            ++line;
-            if( !boost::spirit::qi::phrase_parse( i.begin(), i.end(), grammar, boost::spirit::qi::ascii::space, tree ) ) {
-                std::cerr << argv[1] << ":" << line << ": parse error" << std::endl;
-                err = true;
-                continue;
-            }
-
-            asts.push_back( tree );
-        }
-
-        if( err ) {
-            throw std::runtime_error( "detected errors" );
-        }
+        auto asts = scopion::parser::parse(code);
 
         scopion::assembly asmb( outbin );
         asmb.IRGen(asts);
 
-        char *tmpname = strdup("/tmp/tmpfileXXXXXX");
+        char* tmpname = strdup("/tmp/tmpfileXXXXXX");
         mkstemp(tmpname);
         std::string tmpstr(tmpname);
         std::ofstream f(tmpstr);
