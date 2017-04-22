@@ -4,6 +4,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "AST/AST.h"
 #include <iostream>
@@ -13,10 +14,13 @@ namespace scopion{
 class assembly :
     public boost::static_visitor< llvm::Value* >
 {
-    llvm::IRBuilder<>& builder_;
+    llvm::LLVMContext context_;
+    llvm::IRBuilder<> builder_;
+    std::unique_ptr< llvm::Module > module_;
+    std::map< std::string, llvm::Constant* > globals_;
 
 public:
-    assembly(llvm::IRBuilder<>& builder);
+    assembly(std::string const& name);
 
     llvm::Value* operator()(int value);
     llvm::Value* operator()(bool value);
@@ -30,6 +34,9 @@ public:
 
         return apply_op( op, lhs, rhs );
     }
+
+    void IRGen(std::vector< ast::expr > const& asts);
+    std::string getIR();
 
 private:
     llvm::Value* apply_op(ast::binary_op< ast::add > const&, llvm::Value* lhs, llvm::Value* rhs);

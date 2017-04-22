@@ -3,10 +3,30 @@
 
 namespace scopion{
 
-assembly::assembly(llvm::IRBuilder<>& builder) :
+assembly::assembly(std::string const& name) :
       boost::static_visitor< llvm::Value* >(),
-      builder_( builder )
-{ }
+      module_( new llvm::Module( name, context_ ) ),
+      builder_( context_ )
+{
+  auto* main_func = llvm::Function::Create(
+      llvm::FunctionType::get( builder_.getInt32Ty(), false ),
+      llvm::Function::ExternalLinkage,
+      "main",
+      module_.get()
+  );
+
+  builder_.SetInsertPoint( llvm::BasicBlock::Create( context_, "entry", main_func ) );
+
+  std::vector< llvm::Type* > args = {
+      builder_.getInt8Ty()->getPointerTo()
+  };
+
+  globals_["printf"] = module_->getOrInsertFunction(
+      "printf",
+      llvm::FunctionType::get( builder_.getInt32Ty(), llvm::ArrayRef< llvm::Type* >( args ), true )
+  );
+
+}
 
 llvm::Value* assembly::operator()(int value)
 {
@@ -21,6 +41,27 @@ llvm::Value* assembly::operator()(bool value)
 llvm::Value* assembly::operator()(std::string value)
 {
     return builder_.CreateGlobalStringPtr(value);
+}
+
+void assembly::IRGen(std::vector< ast::expr > const& asts)
+{
+  for( auto const& i : asts ) {
+      std::vector< llvm::Value* > args = {
+          builder_.CreateGlobalStringPtr( "%d\n" ), boost::apply_visitor( *this, i )
+      };
+      builder_.CreateCall( globals_["printf"], llvm::ArrayRef< llvm::Value* >( args ) );
+  }
+
+  builder_.CreateRet( llvm::ConstantInt::get( builder_.getInt32Ty(), 0 ) );
+}
+
+std::string assembly::getIR()
+{
+  std::string result;
+  llvm::raw_string_ostream stream( result );
+
+  module_->print( stream, nullptr );
+  return result;
 }
 
 llvm::Value* assembly::apply_op(ast::binary_op< ast::add > const& op, llvm::Value* lhs, llvm::Value* rhs)
