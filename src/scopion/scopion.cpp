@@ -1,119 +1,42 @@
-#include <llvm/Support/raw_ostream.h>
 #include <stdexcept>
 #include <iostream>
 #include <memory>
+#include <cstdio>
 #include <fstream>
 #include <functional>
-
-#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
-#define BOOST_MPL_LIMIT_LIST_SIZE 50
-#include <boost/spirit/include/qi.hpp>
 
 #include "AST/AST.h"
 #include "Parser/Parser.h"
 #include "Assembly/Assembly.h"
 
-
-std::vector< std::string > read_file(char const* filename)
-{
-    std::ifstream ifs( filename, std::ios::binary );
-    if( ifs.fail() ) {
-        return {};
-    }
-
-    std::vector< std::string > result;
-    for( std::string line; std::getline( ifs, line ); ) {
-        result.push_back( line );
-    }
-
-    return result;
-}
-
-std::string print_llvm_lang(std::unique_ptr< llvm::Module > const& module)
-{
-    std::string result;
-    llvm::raw_string_ostream stream( result );
-
-    module->print( stream, nullptr );
-
-    return result;
-}
-
-llvm::Constant* make_printf(std::unique_ptr< llvm::Module >& module, llvm::IRBuilder<>& builder)
-{
-    std::vector< llvm::Type* > args = {
-        builder.getInt8Ty()->getPointerTo()
-    };
-
-    return module->getOrInsertFunction(
-        "printf",
-        llvm::FunctionType::get( builder.getInt32Ty(), llvm::ArrayRef< llvm::Type* >( args ), true )
-    );
-}
+#define SCOPION_VERSION "0.0.1-beta"
 
 int main(int argc, char* argv[])
 {
-    try {
-        if( argc != 2 ) {
-            throw std::runtime_error( "invalid arguments" );
-        }
-
-        auto const code = read_file( argv[1] );
-        if( code.empty() ) {
-            throw std::runtime_error( "cannot read the file" );
-        }
-
-        scopion::parser::grammar< std::string::const_iterator > grammar;
-        std::vector< scopion::ast::expr > asts;
-
-        int line = 0;
-        bool err = false;
-        for( auto const& i : code ) {
-            scopion::ast::expr tree;
-
-            ++line;
-            if( !boost::spirit::qi::phrase_parse( i.begin(), i.end(), grammar, boost::spirit::qi::ascii::space, tree ) ) {
-                std::cerr << argv[1] << ":" << line << ": parse error" << std::endl;
-                err = true;
-                continue;
-            }
-
-            asts.push_back( tree );
-        }
-
-        if( err ) {
-            throw std::runtime_error( "detected errors" );
-        }
-
-        llvm::LLVMContext context;
-        std::unique_ptr< llvm::Module > module( new llvm::Module( "arith", context ) );
-        llvm::IRBuilder<> builder( context );
-
-        auto* main_func = llvm::Function::Create(
-            llvm::FunctionType::get( builder.getInt32Ty(), false ),
-            llvm::Function::ExternalLinkage,
-            "main",
-            module.get()
-        );
-
-        builder.SetInsertPoint( llvm::BasicBlock::Create( context, "entry", main_func ) );
-
-        auto* printf_func = make_printf( module, builder );
-        auto* format = builder.CreateGlobalStringPtr( "%d\n" );
-
-        scopion::assembly asm_obj( builder );
-        for( auto const& i : asts ) {
-            std::vector< llvm::Value* > args = {
-                format, boost::apply_visitor( asm_obj, i )
-            };
-            builder.CreateCall( printf_func, llvm::ArrayRef< llvm::Value* >( args ) );
-        }
-
-        builder.CreateRet( llvm::ConstantInt::get( builder.getInt32Ty(), 0 ) );
-
-        std::cout << print_llvm_lang( module );
-    }
-    catch( std::exception const& e ) {
-        std::cerr << e.what() << std::endl;
-    }
+  std::cerr << "Welcome to scopion (" << SCOPION_VERSION << ")" << std::endl;
+  std::string line;
+  while(1){
+      try {
+        std::cout << "> ";
+        std::getline(std::cin, line);
+        scopion::assembly asmb( "scopion_interpreter" );
+        auto ast = scopion::parser::parse_line(line);
+        asmb.IRGen({ast});
+        char* tmpname = strdup("/tmp/tmpfileXXXXXX");
+        mkstemp(tmpname);
+        std::string tmpstr(tmpname);
+        std::ofstream f(tmpstr);
+        f << asmb.getIR();
+        f.close();
+        if(system(("llc " + tmpstr).c_str()) != 0)
+          throw std::runtime_error( "Error occured while compiling IR" );
+        if(system(("gcc " + tmpstr + ".s -o " + tmpstr + "exec").c_str()) != 0)
+          throw std::runtime_error( "Error occured while compiling assembly" );
+        if(system((tmpstr + "exec").c_str()) != 0)
+          throw std::runtime_error( "Error occured while executing" );
+      }
+      catch( std::exception const& e ) {
+          std::cerr << "\033[1;31m[ERROR]\033[0m: " << e.what() << std::endl;
+      }
+  }
 }

@@ -7,6 +7,7 @@ namespace scopion{
 namespace parser {
 
     std::vector< ast::expr > parse(std::string const& code);
+    ast::expr parse_line(std::string const& line);
 
 }; // namespace parser
 }; //namespace scopion

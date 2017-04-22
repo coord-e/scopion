@@ -159,5 +159,18 @@ namespace parser{
     return asts;
   }
 
+  ast::expr parse_line(std::string const& line)
+  {
+    grammar< std::string::const_iterator > grammar;
+    ast::expr tree;
+
+    if( !qi::phrase_parse( line.begin(), line.end(), grammar, qi::ascii::space, tree ) ) {
+        std::cerr << "parse error" << std::endl;
+        throw std::runtime_error( "detected errors" );
+    }
+
+    return tree;
+  }
+
 };//namespace parser
 };//namespace scopion
