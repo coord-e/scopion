@@ -22,9 +22,7 @@ class assembly :
 public:
     assembly(std::string const& name);
 
-    llvm::Value* operator()(int value);
-    llvm::Value* operator()(bool value);
-    llvm::Value* operator()(std::string value);
+    llvm::Value* operator()(ast::value value);
 
     template <class Op>
     llvm::Value* operator()(ast::binary_op< Op > const& op)

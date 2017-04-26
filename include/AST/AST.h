@@ -35,10 +35,14 @@ namespace ast {
     template <class Op>
     struct binary_op;
 
-    using expr = boost::variant<
+    using value = boost::variant<
         int,
         bool,
-        boost::recursive_wrapper< std::string >, //TODO: figure out why std::string needs wrapper to work
+        boost::recursive_wrapper< std::string > //TODO: figure out why std::string needs wrapper to work
+    >;
+
+    using expr = boost::variant<
+        value,
         boost::recursive_wrapper< binary_op< add > >,
         boost::recursive_wrapper< binary_op< sub > >,
         boost::recursive_wrapper< binary_op< mul > >,

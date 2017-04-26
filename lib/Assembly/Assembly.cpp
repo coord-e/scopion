@@ -28,20 +28,21 @@ assembly::assembly(std::string const& name) :
 
 }
 
-llvm::Value* assembly::operator()(int value)
+llvm::Value* assembly::operator()(ast::value value)
 {
-    return llvm::ConstantInt::get( builder_.getInt32Ty(), value );
+  switch(value.which()){
+    case 0://int
+      return llvm::ConstantInt::get( builder_.getInt32Ty(), boost::get<int>(value) );
+    case 1://bool
+      return llvm::ConstantInt::get( builder_.getInt1Ty(), boost::get<bool>(value) );
+    case 2://string
+      return builder_.CreateGlobalStringPtr(boost::get<std::string>(value));
+    default:
+      assert( false );
+  }
 }
 
-llvm::Value* assembly::operator()(bool value)
 {
-    return llvm::ConstantInt::get( builder_.getInt1Ty(), value );
-}
-
-llvm::Value* assembly::operator()(std::string value)
-{
-    return builder_.CreateGlobalStringPtr(value);
-}
 
 void assembly::IRGen(std::vector< ast::expr > const& asts)
 {
