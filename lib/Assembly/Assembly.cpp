@@ -42,8 +42,6 @@ llvm::Value* assembly::operator()(ast::value value)
   }
 }
 
-{
-
 void assembly::IRGen(std::vector< ast::expr > const& asts)
 {
   for( auto const& i : asts ) {
