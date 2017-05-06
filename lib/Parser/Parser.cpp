@@ -1,8 +1,6 @@
 #include "Parser/Parser.h"
 
-#define BOOST_SPIRIT_USE_PHOENIX_V3 1
-#include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/phoenix.hpp>
+#include <boost/spirit/home/x3.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -10,167 +8,178 @@
 
 #include "AST/AST.h"
 
-namespace scopion{
-namespace parser{
+namespace scopion {
+namespace parser {
 
-  namespace qi = boost::spirit::qi;
+namespace x3 = boost::spirit::x3;
 
-  template <class Iterator>
-  struct grammar :
-      qi::grammar< Iterator, ast::expr(), qi::ascii::space_type >
-  {
-      template <class T>
-      using rule_t = qi::rule< Iterator, T, qi::ascii::space_type>;
+namespace grammar {
 
-      std::array< rule_t< ast::expr() >, 13> rules;
+namespace detail {
 
-      grammar() :
-          grammar::base_type( rules.back() )
-      {
-          namespace phx = boost::phoenix;
+decltype(auto) assign() {
+  return [](auto &&ctx) { x3::_val(ctx) = x3::_attr(ctx); };
+}
 
-          int i=-1;
+decltype(auto) assign_str() {
+  return [](auto &&ctx) {
+    auto &&v = x3::_attr(ctx);
+    x3::_val(ctx) = std::string(v.begin(), v.end());
+  };
+}
 
-          rules[i+1] %= qi::int_
-                        | qi::bool_
-                        | qi::as_string[ '"' >> *(qi::char_ - '"') >> '"' ][qi::_val = qi::_1]
-                        | ( '(' >> rules.back() >> ')' )[qi::_val = qi::_1];
+template <typename Op> decltype(auto) assign_binop() {
+  return [](auto &&ctx) {
+    x3::_val(ctx) = ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx));
+  };
+}
 
-          i++;
-          rules[i+1] %=    ( rules[i][qi::_val = phx::construct< ast::binary_op< ast::add > >( qi::_1, 1 )] >> "++" )
-                        |  ( rules[i][qi::_val = phx::construct< ast::binary_op< ast::sub > >( qi::_1, 1 )] >> "--" )
-                        //|  ( *(qi::char_)[qi::_val = qi::_1] >> '(' >> *( rules[i] % qi::char_(',') )[qi::_val = phx::construct< ast::binary_op< ast::call > >( qi::_val, qi::_1 )] >> ')' )
-                        |  rules[i][qi::_val = qi::_1];
+template <typename Op> decltype(auto) assign_sinop(ast::expr rv) {
+  return [rv](auto &&ctx) {
+    x3::_val(ctx) = ast::binary_op<Op>(x3::_attr(ctx), rv);
+  };
+}
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-                        | ( '!' >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::ixor > >( qi::_1, 1 )] )
-                        | ( '~' >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::ixor > >( qi::_1, 1 )] )
-                        | ( "++" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::add > >( qi::_1, 1 )] )
-                        | ( "--" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::sub > >( qi::_1, 1 )] )
-                        | ( ( qi::lit("+") - qi::lit("++") ) >> rules[i][qi::_val = qi::_1] )
-                        | ( ( qi::lit("-") - qi::lit("--") ) >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::sub > >( 0, qi::_1 )] );
+} // namespace detail
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( '*' >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::mul > >( qi::_val, qi::_1 )] )
-                  | ( '/' >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::div > >( qi::_val, qi::_1 )] )
-                  | ( '%' >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::rem > >( qi::_val, qi::_1 )] )
-              );
+struct primary;
+struct pre_sinop_expr;
+struct post_sinop_expr;
+struct mul_expr;
+struct add_expr;
+struct shift_expr;
+struct cmp_expr;
+struct iand_expr;
+struct ixor_expr;
+struct ior_expr;
+struct land_expr;
+struct lor_expr;
+struct expression;
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( '+' >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::add > >( qi::_val, qi::_1 )] )
-                  | ( '-' >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::sub > >( qi::_val, qi::_1 )] )
-              );
+x3::rule<primary, ast::expr> const primary;
+x3::rule<pre_sinop_expr, ast::expr> const pre_sinop_expr;
+x3::rule<post_sinop_expr, ast::expr> const post_sinop_expr;
+x3::rule<mul_expr, ast::expr> const mul_expr;
+x3::rule<add_expr, ast::expr> const add_expr;
+x3::rule<shift_expr, ast::expr> const shift_expr;
+x3::rule<cmp_expr, ast::expr> const cmp_expr;
+x3::rule<iand_expr, ast::expr> const iand_expr;
+x3::rule<ixor_expr, ast::expr> const ixor_expr;
+x3::rule<ior_expr, ast::expr> const ior_expr;
+x3::rule<land_expr, ast::expr> const land_expr;
+x3::rule<lor_expr, ast::expr> const lor_expr;
+x3::rule<expression, ast::expr> const expression;
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( ">>" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::shr > >( qi::_val, qi::_1 )] )
-                  | ( "<<" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::shl > >( qi::_val, qi::_1 )] )
-              );
+auto const primary_def =
+    x3::int_[detail::assign()] | x3::bool_[detail::assign()] |
+    ('"' >> *(x3::char_ - '"') >> '"')[detail::assign_str()] |
+    ("(" > expression > ")")[detail::assign()];
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( ">" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::gt > >( qi::_val, qi::_1 )] )
-                  | ( "<" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::lt > >( qi::_val, qi::_1 )] )
-                  | ( ">=" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::gtq > >( qi::_val, qi::_1 )] )
-                  | ( "<=" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::ltq > >( qi::_val, qi::_1 )] )
-              );
+auto const post_sinop_expr_def =
+    primary[detail::assign()] |
+    (primary > "++")[detail::assign_sinop<ast::add>(1)] |
+    (primary > "--")[detail::assign_sinop<ast::sub>(1)];
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( "==" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::eeq > >( qi::_val, qi::_1 )] )
-                  | ( "!=" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::neq > >( qi::_val, qi::_1 )] )
-              );
+auto const pre_sinop_expr_def =
+    post_sinop_expr[detail::assign()] |
+    ("!" > post_sinop_expr)[detail::assign_sinop<ast::ixor>(1)] |
+    ("~" > post_sinop_expr)[detail::assign_sinop<ast::ixor>(1)] |
+    ("++" > post_sinop_expr)[detail::assign_sinop<ast::add>(1)] |
+    ("--" > post_sinop_expr)[detail::assign_sinop<ast::sub>(1)];
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( ( qi::lit("&") - qi::lit("&&") ) >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::iand > >( qi::_val, qi::_1 )] )
-              );
+auto const
+    mul_expr_def = pre_sinop_expr[detail::assign()] >>
+                   *(("*" > pre_sinop_expr)[detail::assign_binop<ast::mul>()] |
+                     ("/" > pre_sinop_expr)[detail::assign_binop<ast::div>()]);
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( "^" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::ixor > >( qi::_val, qi::_1 )] )
-              );
+auto const add_expr_def = mul_expr[detail::assign()] >>
+                          *(("+" > mul_expr)[detail::assign_binop<ast::add>()] |
+                            ("-" > mul_expr)[detail::assign_binop<ast::sub>()] |
+                            ("%" > mul_expr)[detail::assign_binop<ast::rem>()]);
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( ( qi::lit("|") - qi::lit("||") ) >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::ior > >( qi::_val, qi::_1 )] )
-              );
+auto const
+    shift_expr_def = add_expr[detail::assign()] >>
+                     *((">>" > add_expr)[detail::assign_binop<ast::shr>()] |
+                       ("<<" > add_expr)[detail::assign_binop<ast::shl>()]);
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( "&&" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::land > >( qi::_val, qi::_1 )] )
-              );
+auto const
+    cmp_expr_def = shift_expr[detail::assign()] >>
+                   *((">" > shift_expr)[detail::assign_binop<ast::gt>()] |
+                     ("<" > shift_expr)[detail::assign_binop<ast::lt>()] |
+                     (">=" > shift_expr)[detail::assign_binop<ast::gtq>()] |
+                     ("<=" > shift_expr)[detail::assign_binop<ast::ltq>()] |
+                     ("==" > shift_expr)[detail::assign_binop<ast::eeq>()] |
+                     ("!=" > shift_expr)[detail::assign_binop<ast::neq>()]);
 
-          i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( "||" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::lor > >( qi::_val, qi::_1 )] )
-              );
+auto const iand_expr_def = cmp_expr[detail::assign()] >>
+                           *(((x3::lit("&") - "&&") >
+                              cmp_expr)[detail::assign_binop<ast::iand>()]);
 
-          /*i++;
-          rules[i+1] %= rules[i][qi::_val = qi::_1]
-              >> *(
-                  ( "=" >> rules[i][qi::_val = phx::construct< ast::binary_op< ast::assign > >( qi::_val, qi::_1 )] )
-              );*/
-          assert(i+2 == rules.size());
-      }
-  }; //struct grammar
+auto const ixor_expr_def = iand_expr[detail::assign()] >>
+                           *(("^" >
+                              iand_expr)[detail::assign_binop<ast::ixor>()]);
 
-  std::vector< ast::expr > parse(std::string const& code)
-  {
-    std::vector<std::string> result;
-    boost::split(result, code, boost::is_any_of("\n;"));
-    result.pop_back();
+auto const ior_expr_def = ixor_expr[detail::assign()] >>
+                          *(((x3::lit("|") - "||") >
+                             ixor_expr)[detail::assign_binop<ast::ior>()]);
 
-    grammar< std::string::const_iterator > grammar;
-    std::vector< ast::expr > asts;
+auto const land_expr_def = ior_expr[detail::assign()] >>
+                           *(("&&" >
+                              ior_expr)[detail::assign_binop<ast::land>()]);
 
-    int line = 0;
-    bool err = false;
-    for( auto const& i : result ) {
-        ast::expr tree;
+auto const lor_expr_def = land_expr[detail::assign()] >>
+                          *(("||" >
+                             land_expr)[detail::assign_binop<ast::lor>()]);
 
-        ++line;
-        if( !qi::phrase_parse( i.begin(), i.end(), grammar, qi::ascii::space, tree ) ) {
-            std::cerr << "@" << line << ": parse error" << std::endl;
-            err = true;
-            continue;
-        }
+auto const expression_def = lor_expr[detail::assign()];
 
-        asts.push_back( tree );
-    }
+BOOST_SPIRIT_DEFINE(primary, pre_sinop_expr, post_sinop_expr, mul_expr,
+                    shift_expr, cmp_expr, add_expr, iand_expr, ixor_expr,
+                    ior_expr, land_expr, lor_expr, expression);
 
-    if( err ) {
-        throw std::runtime_error( "detected errors" );
-    }
+} // namespace grammar
 
-    return asts;
-  }
+std::vector<ast::expr> parse(std::string const &code) {
+  std::vector<std::string> result;
+  boost::split(result, code, boost::is_any_of("\n;"));
+  result.pop_back();
 
-  ast::expr parse_line(std::string const& line)
-  {
-    grammar< std::string::const_iterator > grammar;
+  std::vector<ast::expr> asts;
+
+  int line = 0;
+  bool err = false;
+  for (auto const &i : result) {
     ast::expr tree;
 
-    if( !qi::phrase_parse( line.begin(), line.end(), grammar, qi::ascii::space, tree ) ) {
-        std::cerr << "parse error" << std::endl;
-        throw std::runtime_error( "detected errors" );
+    ++line;
+    if (!x3::phrase_parse(i.begin(), i.end(), grammar::expression,
+                          x3::ascii::space, tree)) {
+      std::cerr << "@" << line << ": parse error" << std::endl;
+      err = true;
+      continue;
     }
 
-    return tree;
+    asts.push_back(tree);
   }
 
-};//namespace parser
-};//namespace scopion
+  if (err) {
+    throw std::runtime_error("detected errors");
+  }
+
+  return asts;
+}
+
+ast::expr parse_line(std::string const &line) {
+  ast::expr tree;
+
+  if (!x3::phrase_parse(line.begin(), line.end(), grammar::expression,
+                        x3::ascii::space, tree)) {
+    std::cerr << "parse error" << std::endl;
+    throw std::runtime_error("detected errors");
+  }
+
+  return tree;
+}
+
+}; // namespace parser
+}; // namespace scopion
