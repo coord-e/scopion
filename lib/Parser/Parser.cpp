@@ -23,9 +23,8 @@ decltype(auto) assign() {
 
 decltype(auto) assign_str() {
   return [](auto &&ctx) {
-    auto v = x3::_attr(ctx);
-    std::string str(v.begin(), v.end());
-    x3::_val(ctx) = str;
+    auto &&v = x3::_attr(ctx);
+    x3::_val(ctx) = std::string(v.begin(), v.end());
   };
 }
 
