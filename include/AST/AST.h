@@ -67,13 +67,7 @@ template <class Op> struct binary_op {
   expr lhs;
   expr rhs;
 
-  binary_op(expr const &lhs_, expr const &rhs_) : lhs(lhs_), rhs(rhs_) {
-    // if(lhs_.which() == 0 && rhs_.which() == 0){
-    //   std::cout << "/** Hello from binop ctor **/" << std::endl;
-    //   std::cout << "lhs = " << boost::get<int>(lhs_) << ", rhs = " <<
-    //   boost::get<int>(rhs_) << std::endl;
-    // }
-  }
+  binary_op(expr const &lhs_, expr const &rhs_) : lhs(lhs_), rhs(rhs_) {}
 };
 
 class printer : boost::static_visitor<void> {
