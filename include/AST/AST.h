@@ -3,12 +3,9 @@
 
 #define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
 #define BOOST_MPL_LIMIT_LIST_SIZE 50
-#define BOOST_SPIRIT_USE_PHOENIX_V3 1
 
 #include <boost/variant.hpp>
-#include <iomanip>
 #include <iostream>
-#include <limits>
 #include <string>
 #include <vector>
 
