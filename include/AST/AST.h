@@ -31,16 +31,24 @@ struct gt;
 struct lt;
 struct gtq;
 struct ltq;
-// struct assign;
+struct assign;
 
 template <class Op> struct binary_op;
+class variable;
 
-using value =
-    boost::variant<int, bool,
-                   boost::recursive_wrapper<std::string> // TODO: figure out why
-                                                         // std::string needs
-                                                         // wrapper to work
-                   >;
+using value = boost::variant<
+    int, bool,
+    boost::recursive_wrapper<std::string>, // TODO: figure out why
+                                           // std::string needs
+                                           // wrapper to work
+    boost::recursive_wrapper<variable>>;
+
+class variable {
+public:
+  std::string name;
+  bool rl;
+  variable(std::string const &n, bool rorl) : name(n), rl(rorl) {}
+};
 
 using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
                             boost::recursive_wrapper<binary_op<sub>>,
@@ -59,9 +67,8 @@ using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
                             boost::recursive_wrapper<binary_op<gt>>,
                             boost::recursive_wrapper<binary_op<lt>>,
                             boost::recursive_wrapper<binary_op<gtq>>,
-                            boost::recursive_wrapper<binary_op<ltq>>
-                            // boost::recursive_wrapper< binary_op< assign > >
-                            >;
+                            boost::recursive_wrapper<binary_op<ltq>>,
+                            boost::recursive_wrapper<binary_op<assign>>>;
 
 template <class Op> struct binary_op {
   expr lhs;
@@ -86,7 +93,10 @@ public:
       std::cout << std::boolalpha << boost::get<bool>(v);
       break;
     case 2: // string
-      std::cout << boost::get<std::string>(v);
+      std::cout << "\"" << boost::get<std::string>(v) << "\"";
+      break;
+    case 3: // variable
+      std::cout << boost::get<ast::variable>(v).name;
       break;
     }
     _s << "]";
@@ -119,6 +129,7 @@ private:
   std::string op_to_str(binary_op<lt> const &) const { return "<"; }
   std::string op_to_str(binary_op<gtq> const &) const { return ">="; }
   std::string op_to_str(binary_op<ltq> const &) const { return "<="; }
+  std::string op_to_str(binary_op<assign> const &) const { return "="; }
 }; // class printer
 
 }; // namespace ast

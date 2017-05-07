@@ -28,9 +28,29 @@ decltype(auto) assign_str() {
   };
 }
 
+decltype(auto) assign_var(bool rl = true) {
+  return [rl](auto &&ctx) {
+    auto &&v = x3::_attr(ctx);
+    x3::_val(ctx) = ast::variable(std::string(v.begin(), v.end()), rl);
+  };
+}
+
 template <typename Op> decltype(auto) assign_binop() {
   return [](auto &&ctx) {
     x3::_val(ctx) = ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx));
+  };
+}
+
+template <> decltype(auto) assign_binop<ast::assign>() {
+  return [](auto &&ctx) {
+    if (x3::_val(ctx).which() != 0)
+      throw std::runtime_error("Exprs can't be lvalue");
+    auto &&v = boost::get<ast::value>(x3::_val(ctx));
+    if (v.which() != 3)
+      throw std::runtime_error("lvalue have to be a variable");
+    auto &&n = boost::get<ast::variable>(v).name;
+    x3::_val(ctx) =
+        ast::binary_op<ast::assign>(ast::variable(n, false), x3::_attr(ctx));
   };
 }
 
@@ -54,6 +74,7 @@ struct ixor_expr;
 struct ior_expr;
 struct land_expr;
 struct lor_expr;
+struct assign_expr;
 struct expression;
 
 x3::rule<primary, ast::expr> const primary;
@@ -68,12 +89,14 @@ x3::rule<ixor_expr, ast::expr> const ixor_expr;
 x3::rule<ior_expr, ast::expr> const ior_expr;
 x3::rule<land_expr, ast::expr> const land_expr;
 x3::rule<lor_expr, ast::expr> const lor_expr;
+x3::rule<assign_expr, ast::expr> const assign_expr;
 x3::rule<expression, ast::expr> const expression;
 
 auto const primary_def =
     x3::int_[detail::assign()] | x3::bool_[detail::assign()] |
-    ('"' >> *(x3::char_ - '"') >> '"')[detail::assign_str()] |
-    ("(" > expression > ")")[detail::assign()];
+    ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str()] |
+    ("(" > expression > ")")[detail::assign()] |
+    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()];
 
 auto const post_sinop_expr_def =
     primary[detail::assign()] |
@@ -131,11 +154,15 @@ auto const lor_expr_def = land_expr[detail::assign()] >>
                           *(("||" >
                              land_expr)[detail::assign_binop<ast::lor>()]);
 
-auto const expression_def = lor_expr[detail::assign()];
+auto const assign_expr_def = lor_expr[detail::assign()] >>
+                             *(("=" >
+                                lor_expr)[detail::assign_binop<ast::assign>()]);
+
+auto const expression_def = assign_expr[detail::assign()];
 
 BOOST_SPIRIT_DEFINE(primary, pre_sinop_expr, post_sinop_expr, mul_expr,
                     shift_expr, cmp_expr, add_expr, iand_expr, ixor_expr,
-                    ior_expr, land_expr, lor_expr, expression);
+                    ior_expr, land_expr, lor_expr, assign_expr, expression);
 
 } // namespace grammar
 
