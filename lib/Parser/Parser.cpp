@@ -31,7 +31,7 @@ decltype(auto) assign_str() {
 decltype(auto) assign_var(bool rl = true) {
   return [rl](auto &&ctx) {
     auto &&v = x3::_attr(ctx);
-    x3::_val(ctx) = ast::variable(std::string(v.begin(), v.end()), rl);
+    x3::_val(ctx) = ast::variable(std::string(v.begin(), v.end()), rl, false);
   };
 }
 
@@ -49,8 +49,21 @@ template <> decltype(auto) assign_binop<ast::assign>() {
     if (v.which() != 3)
       throw std::runtime_error("lvalue have to be a variable");
     auto &&n = boost::get<ast::variable>(v).name;
-    x3::_val(ctx) =
-        ast::binary_op<ast::assign>(ast::variable(n, false), x3::_attr(ctx));
+    x3::_val(ctx) = ast::binary_op<ast::assign>(ast::variable(n, false, false),
+                                                x3::_attr(ctx));
+  };
+}
+
+template <> decltype(auto) assign_binop<ast::call>() {
+  return [](auto &&ctx) {
+    if (x3::_val(ctx).which() != 0)
+      throw std::runtime_error("Exprs can't be lvalue");
+    auto &&v = boost::get<ast::value>(x3::_val(ctx));
+    if (v.which() != 3)
+      throw std::runtime_error("lvalue have to be a variable");
+    auto &&n = boost::get<ast::variable>(v).name;
+    x3::_val(ctx) = ast::binary_op<ast::call>(ast::variable(n, false, true),
+                                              x3::_attr(ctx));
   };
 }
 
@@ -63,6 +76,7 @@ template <typename Op> decltype(auto) assign_sinop(ast::expr rv) {
 } // namespace detail
 
 struct primary;
+struct call_expr;
 struct pre_sinop_expr;
 struct post_sinop_expr;
 struct mul_expr;
@@ -78,6 +92,7 @@ struct assign_expr;
 struct expression;
 
 x3::rule<primary, ast::expr> const primary;
+x3::rule<call_expr, ast::expr> const call_expr;
 x3::rule<pre_sinop_expr, ast::expr> const pre_sinop_expr;
 x3::rule<post_sinop_expr, ast::expr> const post_sinop_expr;
 x3::rule<mul_expr, ast::expr> const mul_expr;
@@ -98,10 +113,14 @@ auto const primary_def =
     ("(" > expression > ")")[detail::assign()] |
     x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()];
 
+auto const call_expr_def = primary[detail::assign()] >>
+                           *(("(" > expression >
+                              ")")[detail::assign_binop<ast::call>()]);
+
 auto const post_sinop_expr_def =
-    primary[detail::assign()] |
-    (primary > "++")[detail::assign_sinop<ast::add>(1)] |
-    (primary > "--")[detail::assign_sinop<ast::sub>(1)];
+    call_expr[detail::assign()] |
+    (call_expr > "++")[detail::assign_sinop<ast::add>(1)] |
+    (call_expr > "--")[detail::assign_sinop<ast::sub>(1)];
 
 auto const pre_sinop_expr_def =
     post_sinop_expr[detail::assign()] |
@@ -160,9 +179,10 @@ auto const assign_expr_def = lor_expr[detail::assign()] >>
 
 auto const expression_def = assign_expr[detail::assign()];
 
-BOOST_SPIRIT_DEFINE(primary, pre_sinop_expr, post_sinop_expr, mul_expr,
-                    shift_expr, cmp_expr, add_expr, iand_expr, ixor_expr,
-                    ior_expr, land_expr, lor_expr, assign_expr, expression);
+BOOST_SPIRIT_DEFINE(primary, call_expr, pre_sinop_expr, post_sinop_expr,
+                    mul_expr, shift_expr, cmp_expr, add_expr, iand_expr,
+                    ixor_expr, ior_expr, land_expr, lor_expr, assign_expr,
+                    expression);
 
 } // namespace grammar
 

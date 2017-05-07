@@ -15,7 +15,6 @@ class assembly : public boost::static_visitor<llvm::Value *> {
   llvm::LLVMContext context_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::Module> module_;
-  std::map<std::string, llvm::Constant *> globals_;
   std::map<std::string, llvm::Value *> variables_;
 
 public:
@@ -71,6 +70,8 @@ private:
   llvm::Value *apply_op(ast::binary_op<ast::ltq> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
   llvm::Value *apply_op(ast::binary_op<ast::assign> const &, llvm::Value *lhs,
+                        llvm::Value *rhs);
+  llvm::Value *apply_op(ast::binary_op<ast::call> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
 };
 }; // namespace scopion

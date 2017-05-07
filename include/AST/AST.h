@@ -32,6 +32,7 @@ struct lt;
 struct gtq;
 struct ltq;
 struct assign;
+struct call;
 
 template <class Op> struct binary_op;
 class variable;
@@ -47,7 +48,9 @@ class variable {
 public:
   std::string name;
   bool rl;
-  variable(std::string const &n, bool rorl) : name(n), rl(rorl) {}
+  bool isFunc;
+  variable(std::string const &n, bool rorl, bool isfunc)
+      : name(n), rl(rorl), isFunc(isfunc) {}
 };
 
 using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
@@ -68,7 +71,8 @@ using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
                             boost::recursive_wrapper<binary_op<lt>>,
                             boost::recursive_wrapper<binary_op<gtq>>,
                             boost::recursive_wrapper<binary_op<ltq>>,
-                            boost::recursive_wrapper<binary_op<assign>>>;
+                            boost::recursive_wrapper<binary_op<assign>>,
+                            boost::recursive_wrapper<binary_op<call>>>;
 
 template <class Op> struct binary_op {
   expr lhs;
@@ -96,8 +100,13 @@ public:
       std::cout << "\"" << boost::get<std::string>(v) << "\"";
       break;
     case 3: // variable
-      std::cout << boost::get<ast::variable>(v).name;
+    {
+      auto &&var = boost::get<ast::variable>(v);
+      std::cout << var.name;
+      if (var.isFunc)
+        std::cout << "{}";
       break;
+    }
     }
     _s << "]";
   }
@@ -130,6 +139,7 @@ private:
   std::string op_to_str(binary_op<gtq> const &) const { return ">="; }
   std::string op_to_str(binary_op<ltq> const &) const { return "<="; }
   std::string op_to_str(binary_op<assign> const &) const { return "="; }
+  std::string op_to_str(binary_op<call> const &) const { return "()"; }
 }; // class printer
 
 }; // namespace ast

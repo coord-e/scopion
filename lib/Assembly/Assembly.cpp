@@ -6,20 +6,42 @@ namespace scopion {
 assembly::assembly(std::string const &name)
     : boost::static_visitor<llvm::Value *>(),
       module_(new llvm::Module(name, context_)), builder_(context_) {
-  auto *main_func = llvm::Function::Create(
-      llvm::FunctionType::get(builder_.getInt32Ty(), false),
-      llvm::Function::ExternalLinkage, "main", module_.get());
+  {
+    std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
 
-  builder_.SetInsertPoint(
-      llvm::BasicBlock::Create(context_, "entry", main_func));
+    variables_["printf"] = module_->getOrInsertFunction(
+        "printf",
+        llvm::FunctionType::get(builder_.getInt32Ty(),
+                                llvm::ArrayRef<llvm::Type *>(args), true));
+    variables_["puts"] = module_->getOrInsertFunction(
+        "puts",
+        llvm::FunctionType::get(builder_.getInt32Ty(),
+                                llvm::ArrayRef<llvm::Type *>(args), true));
+  }
+  {
+    std::vector<llvm::Type *> func_args_type;
+    func_args_type.push_back(builder_.getInt32Ty());
 
-  std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
+    llvm::FunctionType *llvm_func_type = llvm::FunctionType::get(
+        builder_.getInt32Ty(), func_args_type, /*可変長引数=*/false);
+    llvm::Function *llvm_func =
+        llvm::Function::Create(llvm_func_type, llvm::Function::ExternalLinkage,
+                               "printn", module_.get());
 
-  globals_["printf"] = module_->getOrInsertFunction(
-      "printf",
-      llvm::FunctionType::get(builder_.getInt32Ty(),
-                              llvm::ArrayRef<llvm::Type *>(args), true));
-}
+    llvm::BasicBlock *entry =
+        llvm::BasicBlock::Create(context_,
+                                 "entry_printn", // BasicBlockの名前
+                                 llvm_func);
+    builder_.SetInsertPoint(entry); // entryの開始
+    std::vector<llvm::Value *> args = {
+        builder_.CreateGlobalStringPtr("%d\n"),
+        &(*(llvm_func->getArgumentList().begin()))};
+    builder_.CreateCall(variables_["printf"], args);
+    builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0, true));
+
+    variables_["printn"] = llvm_func;
+  }
+} // namespace scopion
 
 llvm::Value *assembly::operator()(ast::value value) {
   switch (value.which()) {
@@ -34,12 +56,19 @@ llvm::Value *assembly::operator()(ast::value value) {
   case 3: // variable
   {
     auto &v = boost::get<ast::variable>(value);
-    if (v.rl) { // true - rval. load and return
+    if (v.isFunc) {
       if (variables_.count(v.name) == 0)
-        throw std::runtime_error(v.name + " has not declared");
-      return builder_.CreateLoad(variables_[v.name], v.name);
-    } else // false - lval to declare. nothing to return
+        throw std::runtime_error("Function \"" + v.name +
+                                 "\" has not declared");
       return nullptr;
+    } else {
+      if (v.rl) { // true - rval. load and return
+        if (variables_.count(v.name) == 0)
+          throw std::runtime_error("\"" + v.name + "\" has not declared");
+        return builder_.CreateLoad(variables_[v.name], v.name);
+      } else // false - lval to declare. nothing to return
+        return nullptr;
+    }
   }
   default:
     assert(false);
@@ -47,11 +76,19 @@ llvm::Value *assembly::operator()(ast::value value) {
 }
 
 void assembly::IRGen(std::vector<ast::expr> const &asts) {
+  auto *main_func = llvm::Function::Create(
+      llvm::FunctionType::get(builder_.getInt32Ty(), false),
+      llvm::Function::ExternalLinkage, "main", module_.get());
+
+  builder_.SetInsertPoint(
+      llvm::BasicBlock::Create(context_, "entry", main_func));
+
   for (auto const &i : asts) {
-    std::vector<llvm::Value *> args = {builder_.CreateGlobalStringPtr("%d\n"),
+    /*std::vector<llvm::Value *> args = {builder_.CreateGlobalStringPtr("%d\n"),
                                        boost::apply_visitor(*this, i)};
-    builder_.CreateCall(globals_["printf"],
-                        llvm::ArrayRef<llvm::Value *>(args));
+    builder_.CreateCall(variables_["printf"],
+                        llvm::ArrayRef<llvm::Value *>(args));*/
+    boost::apply_visitor(*this, i);
   }
 
   builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0));
@@ -173,4 +210,11 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
   return rhs;
 }
 
+llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
+                                llvm::Value *lhs, llvm::Value *rhs) {
+  auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
+  std::vector<llvm::Value *> args = {rhs};
+  return builder_.CreateCall(variables_[lvar.name],
+                             llvm::ArrayRef<llvm::Value *>(args));
+}
 }; // namespace scopion
