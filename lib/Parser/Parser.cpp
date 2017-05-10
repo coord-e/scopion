@@ -114,13 +114,14 @@ x3::rule<expression, ast::expr> const expression;
 auto const primary_def =
     x3::int_[detail::assign()] | x3::bool_[detail::assign()] |
     ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str()] |
+    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()] |
     ("[" > expression % "," > "]")[detail::assign_as<ast::array>()] |
-    ("(" > expression > ")")[detail::assign()] |
-    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()];
+    ("(" > expression > ")")[detail::assign()];
 
-auto const call_expr_def = primary[detail::assign()] >>
-                           *(("(" > expression >
-                              ")")[detail::assign_binop<ast::call>()]);
+auto const call_expr_def =
+    primary[detail::assign()] >>
+    *(("(" > expression > ")")[detail::assign_binop<ast::call>()] |
+      ("[" > expression > "]")[detail::assign_binop<ast::at>()]);
 
 auto const post_sinop_expr_def =
     call_expr[detail::assign()] |

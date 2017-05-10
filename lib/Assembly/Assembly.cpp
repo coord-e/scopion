@@ -130,6 +130,13 @@ std::string assembly::getIR() {
   return result;
 }
 
+std::string assembly::getTypeStr(llvm::Type *t) {
+  std::string type_string;
+  llvm::raw_string_ostream stream(type_string);
+  t->print(stream);
+  return stream.str();
+}
+
 llvm::Value *assembly::apply_op(ast::binary_op<ast::add> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateAdd(lhs, rhs);
@@ -248,5 +255,29 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
   std::vector<llvm::Value *> args = {rhs};
   return builder_.CreateCall(variables_[lvar.name],
                              llvm::ArrayRef<llvm::Value *>(args));
+}
+
+llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
+                                llvm::Value *lhs, llvm::Value *rhs) {
+  if (!rhs->getType()->isIntegerTy()) {
+    throw std::runtime_error("Array's index must be integer, not " +
+                             getTypeStr(rhs->getType()));
+  }
+
+  if (!lhs->getType()->isPointerTy()) {
+    throw std::runtime_error("You cannot get element from non-pointer type " +
+                             getTypeStr(lhs->getType()));
+  }
+
+  if (!lhs->getType()->getPointerElementType()->isArrayTy()) {
+    throw std::runtime_error(
+        "You cannot get element from non-array pointer type " +
+        getTypeStr(lhs->getType()->getPointerElementType()));
+  }
+
+  std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rhs};
+  return builder_.CreateInBoundsGEP(lhs->getType()->getPointerElementType(),
+                                    lhs,
+                                    llvm::ArrayRef<llvm::Value *>(idxList));
 }
 }; // namespace scopion
