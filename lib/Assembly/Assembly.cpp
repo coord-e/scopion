@@ -96,7 +96,7 @@ llvm::Value *assembly::operator()(ast::value value) {
 
       builder_.CreateStore(v.value(), p);
     }
-    return aryPtr;
+    return builder_.CreateLoad(aryPtr);
   }
   default:
     assert(false);
@@ -264,20 +264,16 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
                              getTypeStr(rhs->getType()));
   }
 
-  if (!lhs->getType()->isPointerTy()) {
-    throw std::runtime_error("You cannot get element from non-pointer type " +
+  if (!lhs->getType()->isArrayTy()) {
+    throw std::runtime_error("You cannot get element from non-array type " +
                              getTypeStr(lhs->getType()));
   }
 
-  if (!lhs->getType()->getPointerElementType()->isArrayTy()) {
-    throw std::runtime_error(
-        "You cannot get element from non-array pointer type " +
-        getTypeStr(lhs->getType()->getPointerElementType()));
-  }
-
+  auto ptr = builder_.CreateAlloca(lhs->getType());
+  builder_.CreateStore(lhs, ptr);
   std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rhs};
-  return builder_.CreateInBoundsGEP(lhs->getType()->getPointerElementType(),
-                                    lhs,
-                                    llvm::ArrayRef<llvm::Value *>(idxList));
+  return builder_.CreateLoad(
+      builder_.CreateInBoundsGEP(ptr->getType()->getPointerElementType(), ptr,
+                                 llvm::ArrayRef<llvm::Value *>(idxList)));
 }
 }; // namespace scopion
