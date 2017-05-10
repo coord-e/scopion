@@ -1,4 +1,5 @@
 #include "Assembly/Assembly.h"
+#include <algorithm>
 #include <boost/range/adaptor/indexed.hpp>
 #include <iostream>
 
@@ -73,15 +74,27 @@ llvm::Value *assembly::operator()(ast::value value) {
   case 4: // array
   {
     auto &ary = boost::get<ast::array>(value).elements;
-    auto aryType = llvm::ArrayType::get(builder_.getInt32Ty(), ary.size());
-    auto aryPtr = builder_.CreateAlloca(aryType);
-    for (auto const &v : ary | boost::adaptors::indexed()) {
+    std::vector<llvm::Value *> values;
+    for (auto const &elm : ary) {
+      // Convert exprs to llvm::Value* and store it into new vector
+      values.push_back(boost::apply_visitor(*this, elm));
+    }
+
+    auto t = values[0]->getType();
+    // check if the type of all elements of array is same
+    if (!std::all_of(values.begin(), values.end(),
+                     [&t](auto v) { return t == v->getType(); }))
+      throw std::runtime_error("all elements of array must have the same type");
+
+    auto aryType = llvm::ArrayType::get(t, ary.size());
+    auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
+    for (auto const &v : values | boost::adaptors::indexed()) {
       std::vector<llvm::Value *> idxList = {builder_.getInt32(0),
                                             builder_.getInt32(v.index())};
       auto p = builder_.CreateInBoundsGEP(
           aryType, aryPtr, llvm::ArrayRef<llvm::Value *>(idxList));
 
-      builder_.CreateStore(boost::apply_visitor(*this, v.value()), p);
+      builder_.CreateStore(v.value(), p);
     }
     return aryPtr;
   }
@@ -218,10 +231,14 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &,
 llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-  auto var_pointer =
-      builder_.CreateAlloca(builder_.getInt32Ty(), nullptr, lvar.name);
-  builder_.CreateStore(rhs, var_pointer);
-  variables_[lvar.name] = var_pointer;
+  if (rhs->getType()->isPointerTy()) {
+    variables_[lvar.name] = rhs;
+  } else {
+    auto var_pointer =
+        builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
+    builder_.CreateStore(rhs, var_pointer);
+    variables_[lvar.name] = var_pointer;
+  }
   return rhs;
 }
 
