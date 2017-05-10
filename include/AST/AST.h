@@ -36,13 +36,14 @@ struct call;
 
 template <class Op> struct binary_op;
 class variable;
+class array;
 
 using value = boost::variant<
     int, bool,
     boost::recursive_wrapper<std::string>, // TODO: figure out why
                                            // std::string needs
                                            // wrapper to work
-    boost::recursive_wrapper<variable>>;
+    boost::recursive_wrapper<variable>, boost::recursive_wrapper<array>>;
 
 class variable {
 public:
@@ -74,6 +75,12 @@ using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
                             boost::recursive_wrapper<binary_op<assign>>,
                             boost::recursive_wrapper<binary_op<call>>>;
 
+class array {
+public:
+  std::vector<expr> elements;
+  array(std::vector<expr> const &elms_) : elements(elms_) {}
+};
+
 template <class Op> struct binary_op {
   expr lhs;
   expr rhs;
@@ -88,7 +95,7 @@ public:
   explicit printer(std::ostream &s) : _s(s) {}
 
   auto operator()(const value &v) const -> void {
-    _s << "[";
+    _s << "(";
     switch (v.which()) {
     case 0: // int
       std::cout << boost::get<int>(v);
@@ -107,8 +114,18 @@ public:
         std::cout << "{}";
       break;
     }
+    case 4: // array
+    {
+      auto &&ary = boost::get<ast::array>(v).elements;
+      std::cout << "[ ";
+      for (auto const &i : ary) {
+        boost::apply_visitor(printer(_s), i);
+        std::cout << ", ";
+      }
+      std::cout << "]";
     }
-    _s << "]";
+    }
+    _s << ")";
   }
 
   template <typename T> auto operator()(const binary_op<T> &o) const -> void {

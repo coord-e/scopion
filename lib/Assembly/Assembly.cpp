@@ -1,8 +1,8 @@
 #include "Assembly/Assembly.h"
+#include <boost/range/adaptor/indexed.hpp>
 #include <iostream>
 
 namespace scopion {
-
 assembly::assembly(std::string const &name)
     : boost::static_visitor<llvm::Value *>(),
       module_(new llvm::Module(name, context_)), builder_(context_) {
@@ -70,10 +70,25 @@ llvm::Value *assembly::operator()(ast::value value) {
         return nullptr;
     }
   }
+  case 4: // array
+  {
+    auto &ary = boost::get<ast::array>(value).elements;
+    auto aryType = llvm::ArrayType::get(builder_.getInt32Ty(), ary.size());
+    auto aryPtr = builder_.CreateAlloca(aryType);
+    for (auto const &v : ary | boost::adaptors::indexed()) {
+      std::vector<llvm::Value *> idxList = {builder_.getInt32(0),
+                                            builder_.getInt32(v.index())};
+      auto p = builder_.CreateInBoundsGEP(
+          aryType, aryPtr, llvm::ArrayRef<llvm::Value *>(idxList));
+
+      builder_.CreateStore(boost::apply_visitor(*this, v.value()), p);
+    }
+    return aryPtr;
+  }
   default:
     assert(false);
   }
-}
+} // namespace scopion
 
 void assembly::IRGen(std::vector<ast::expr> const &asts) {
   auto *main_func = llvm::Function::Create(
