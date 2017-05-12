@@ -1,10 +1,20 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(scopion)
+project(scopion CXX)
 
-set(ENV{LLVM_DIR} /usr/local/Cellar/llvm/4.0.0/)
+if(NOT ENV{LLVM_DIR})
+    set(ENV{LLVM_DIR} /usr/local/Cellar/llvm/4.0.0/)
+endif(NOT ENV{LLVM_DIR})
 
-add_definitions(-std=c++14)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif(NOT CMAKE_BUILD_TYPE)
+
+set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Wextra -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
+set(CCMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native")
+
 include_directories(include)
 
 find_package(LLVM REQUIRED CONFIG)
