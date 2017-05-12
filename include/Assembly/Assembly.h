@@ -13,8 +13,8 @@ namespace scopion {
 
 class assembly : public boost::static_visitor<llvm::Value *> {
   llvm::LLVMContext context_;
-  llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::Module> module_;
+  llvm::IRBuilder<> builder_;
   std::map<std::string, llvm::Value *> variables_;
 
 public:
