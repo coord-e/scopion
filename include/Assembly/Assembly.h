@@ -33,6 +33,7 @@ public:
   std::string getIR();
 
 private:
+  std::string getTypeStr(llvm::Type *t);
   llvm::Value *apply_op(ast::binary_op<ast::add> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
   llvm::Value *apply_op(ast::binary_op<ast::sub> const &, llvm::Value *lhs,
@@ -72,6 +73,8 @@ private:
   llvm::Value *apply_op(ast::binary_op<ast::assign> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
   llvm::Value *apply_op(ast::binary_op<ast::call> const &, llvm::Value *lhs,
+                        llvm::Value *rhs);
+  llvm::Value *apply_op(ast::binary_op<ast::at> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
 };
 }; // namespace scopion

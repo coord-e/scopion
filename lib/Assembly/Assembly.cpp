@@ -1,8 +1,9 @@
 #include "Assembly/Assembly.h"
+#include <algorithm>
+#include <boost/range/adaptor/indexed.hpp>
 #include <iostream>
 
 namespace scopion {
-
 assembly::assembly(std::string const &name)
     : boost::static_visitor<llvm::Value *>(),
       module_(new llvm::Module(name, context_)), builder_(context_) {
@@ -70,10 +71,37 @@ llvm::Value *assembly::operator()(ast::value value) {
         return nullptr;
     }
   }
+  case 4: // array
+  {
+    auto &ary = boost::get<ast::array>(value).elements;
+    std::vector<llvm::Value *> values;
+    for (auto const &elm : ary) {
+      // Convert exprs to llvm::Value* and store it into new vector
+      values.push_back(boost::apply_visitor(*this, elm));
+    }
+
+    auto t = values[0]->getType();
+    // check if the type of all elements of array is same
+    if (!std::all_of(values.begin(), values.end(),
+                     [&t](auto v) { return t == v->getType(); }))
+      throw std::runtime_error("all elements of array must have the same type");
+
+    auto aryType = llvm::ArrayType::get(t, ary.size());
+    auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
+    for (auto const &v : values | boost::adaptors::indexed()) {
+      std::vector<llvm::Value *> idxList = {builder_.getInt32(0),
+                                            builder_.getInt32(v.index())};
+      auto p = builder_.CreateInBoundsGEP(
+          aryType, aryPtr, llvm::ArrayRef<llvm::Value *>(idxList));
+
+      builder_.CreateStore(v.value(), p);
+    }
+    return builder_.CreateLoad(aryPtr);
+  }
   default:
     assert(false);
   }
-}
+} // namespace scopion
 
 void assembly::IRGen(std::vector<ast::expr> const &asts) {
   auto *main_func = llvm::Function::Create(
@@ -100,6 +128,13 @@ std::string assembly::getIR() {
 
   module_->print(stream, nullptr);
   return result;
+}
+
+std::string assembly::getTypeStr(llvm::Type *t) {
+  std::string type_string;
+  llvm::raw_string_ostream stream(type_string);
+  t->print(stream);
+  return stream.str();
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::add> const &op,
@@ -203,10 +238,14 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &,
 llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-  auto var_pointer =
-      builder_.CreateAlloca(builder_.getInt32Ty(), nullptr, lvar.name);
-  builder_.CreateStore(rhs, var_pointer);
-  variables_[lvar.name] = var_pointer;
+  if (rhs->getType()->isPointerTy()) {
+    variables_[lvar.name] = rhs;
+  } else {
+    auto var_pointer =
+        builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
+    builder_.CreateStore(rhs, var_pointer);
+    variables_[lvar.name] = var_pointer;
+  }
   return rhs;
 }
 
@@ -216,5 +255,25 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
   std::vector<llvm::Value *> args = {rhs};
   return builder_.CreateCall(variables_[lvar.name],
                              llvm::ArrayRef<llvm::Value *>(args));
+}
+
+llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
+                                llvm::Value *lhs, llvm::Value *rhs) {
+  if (!rhs->getType()->isIntegerTy()) {
+    throw std::runtime_error("Array's index must be integer, not " +
+                             getTypeStr(rhs->getType()));
+  }
+
+  if (!lhs->getType()->isArrayTy()) {
+    throw std::runtime_error("You cannot get element from non-array type " +
+                             getTypeStr(lhs->getType()));
+  }
+
+  auto ptr = builder_.CreateAlloca(lhs->getType());
+  builder_.CreateStore(lhs, ptr);
+  std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rhs};
+  return builder_.CreateLoad(
+      builder_.CreateInBoundsGEP(ptr->getType()->getPointerElementType(), ptr,
+                                 llvm::ArrayRef<llvm::Value *>(idxList)));
 }
 }; // namespace scopion
