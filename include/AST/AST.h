@@ -38,13 +38,15 @@ struct at;
 template <class Op> struct binary_op;
 class variable;
 class array;
+class function;
 
 using value = boost::variant<
     int, bool,
     boost::recursive_wrapper<std::string>, // TODO: figure out why
                                            // std::string needs
                                            // wrapper to work
-    boost::recursive_wrapper<variable>, boost::recursive_wrapper<array>>;
+    boost::recursive_wrapper<variable>, boost::recursive_wrapper<array>,
+    boost::recursive_wrapper<function>>;
 
 class variable {
 public:
@@ -81,6 +83,12 @@ class array {
 public:
   std::vector<expr> elements;
   array(std::vector<expr> const &elms_) : elements(elms_) {}
+};
+
+class function {
+public:
+  std::vector<expr> lines;
+  function(std::vector<expr> const &lines_) : lines(lines_) {}
 };
 
 template <class Op> struct binary_op {
@@ -125,6 +133,19 @@ public:
         std::cout << ", ";
       }
       std::cout << "]";
+      break;
+    }
+    case 5: // function
+    {
+      auto &&lines = boost::get<ast::function>(v).lines;
+      _s << "{ ";
+
+      for (auto const &line : lines) {
+        boost::apply_visitor(printer(_s), line);
+        _s << "; ";
+      }
+      _s << "} ";
+      break;
     }
     }
     _s << ")";

@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
       std::cout << "> ";
       std::getline(std::cin, line);
       scopion::assembly asmb("scopion_interpreter");
-      auto ast = scopion::parser::parse_line(line);
+      auto ast = scopion::parser::parse("{" + line + "}");
 
       std::cout << "AST: ";
       boost::apply_visitor(scopion::ast::printer(std::cout), ast);

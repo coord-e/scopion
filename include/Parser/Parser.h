@@ -3,13 +3,12 @@
 
 #include "AST/AST.h"
 
-namespace scopion{
+namespace scopion {
 namespace parser {
 
-    std::vector< ast::expr > parse(std::string const& code);
-    ast::expr parse_line(std::string const& line);
+ast::expr parse(std::string const &code);
 
 }; // namespace parser
-}; //namespace scopion
+}; // namespace scopion
 
-#endif //SCOPION_PARSER_H_
+#endif // SCOPION_PARSER_H_

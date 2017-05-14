@@ -60,14 +60,24 @@ template <> decltype(auto) assign_binop<ast::assign>() {
 
 template <> decltype(auto) assign_binop<ast::call>() {
   return [](auto &&ctx) {
-    if (x3::_val(ctx).which() != 0)
-      throw std::runtime_error("Exprs can't be lvalue");
+    if (x3::_val(ctx).which() != 0) {
+      x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx));
+      return;
+    }
     auto &&v = boost::get<ast::value>(x3::_val(ctx));
-    if (v.which() != 3)
-      throw std::runtime_error("lvalue have to be a variable");
-    auto &&n = boost::get<ast::variable>(v).name;
-    x3::_val(ctx) = ast::binary_op<ast::call>(ast::variable(n, false, true),
-                                              x3::_attr(ctx));
+    switch (v.which()) {
+    case 3: {
+      auto &&n = boost::get<ast::variable>(v).name;
+      x3::_val(ctx) = ast::binary_op<ast::call>(ast::variable(n, false, true),
+                                                x3::_attr(ctx));
+      break;
+    }
+    case 5:
+      x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx));
+      break;
+    default:
+      throw std::runtime_error("lvalue have to be a variable or a function");
+    }
   };
 }
 
@@ -116,6 +126,8 @@ auto const primary_def =
     ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str()] |
     x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()] |
     ("[" > expression % "," > "]")[detail::assign_as<ast::array>()] |
+    ("{" > expression[detail::assign()] % x3::char_(";") > x3::lit(";") >
+     "}")[detail::assign_as<ast::function>()] |
     ("(" > expression > ")")[detail::assign()];
 
 auto const call_expr_def =
@@ -192,43 +204,12 @@ BOOST_SPIRIT_DEFINE(primary, call_expr, pre_sinop_expr, post_sinop_expr,
 
 } // namespace grammar
 
-std::vector<ast::expr> parse(std::string const &code) {
-  std::vector<std::string> result;
-  boost::split(result, code, boost::is_any_of("\n;"));
-  result.pop_back();
-
-  std::vector<ast::expr> asts;
-
-  int line = 0;
-  bool err = false;
-  for (auto const &i : result) {
-    ast::expr tree;
-
-    ++line;
-    if (!x3::phrase_parse(i.begin(), i.end(), grammar::expression,
-                          x3::ascii::space, tree)) {
-      std::cerr << "@" << line << ": parse error" << std::endl;
-      err = true;
-      continue;
-    }
-
-    asts.push_back(tree);
-  }
-
-  if (err) {
-    throw std::runtime_error("detected errors");
-  }
-
-  return asts;
-}
-
-ast::expr parse_line(std::string const &line) {
+ast::expr parse(std::string const &code) {
   ast::expr tree;
 
-  if (!x3::phrase_parse(line.begin(), line.end(), grammar::expression,
+  if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression,
                         x3::ascii::space, tree)) {
-    std::cerr << "parse error" << std::endl;
-    throw std::runtime_error("detected errors");
+    throw std::runtime_error("detected error");
   }
 
   return tree;

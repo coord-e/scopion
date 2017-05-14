@@ -29,10 +29,11 @@ public:
     return apply_op(op, lhs, rhs);
   }
 
-  void IRGen(std::vector<ast::expr> const &asts);
+  void IRGen(ast::expr const &asts);
   std::string getIR();
 
 private:
+  llvm::Value *loadIfValIsVar(ast::expr const &valex, llvm::Value *val);
   std::string getTypeStr(llvm::Type *t);
   llvm::Value *apply_op(ast::binary_op<ast::add> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
