@@ -95,21 +95,21 @@ struct lor_expr;
 struct assign_expr;
 struct expression;
 
-x3::rule<primary, ast::expr> const primary;
-x3::rule<call_expr, ast::expr> const call_expr;
-x3::rule<pre_sinop_expr, ast::expr> const pre_sinop_expr;
-x3::rule<post_sinop_expr, ast::expr> const post_sinop_expr;
-x3::rule<mul_expr, ast::expr> const mul_expr;
-x3::rule<add_expr, ast::expr> const add_expr;
-x3::rule<shift_expr, ast::expr> const shift_expr;
-x3::rule<cmp_expr, ast::expr> const cmp_expr;
-x3::rule<iand_expr, ast::expr> const iand_expr;
-x3::rule<ixor_expr, ast::expr> const ixor_expr;
-x3::rule<ior_expr, ast::expr> const ior_expr;
-x3::rule<land_expr, ast::expr> const land_expr;
-x3::rule<lor_expr, ast::expr> const lor_expr;
-x3::rule<assign_expr, ast::expr> const assign_expr;
-x3::rule<expression, ast::expr> const expression;
+x3::rule<primary, ast::expr> const primary("literal");
+x3::rule<call_expr, ast::expr> const call_expr("expression");
+x3::rule<pre_sinop_expr, ast::expr> const pre_sinop_expr("expression");
+x3::rule<post_sinop_expr, ast::expr> const post_sinop_expr("expression");
+x3::rule<mul_expr, ast::expr> const mul_expr("expression");
+x3::rule<add_expr, ast::expr> const add_expr("expression");
+x3::rule<shift_expr, ast::expr> const shift_expr("expression");
+x3::rule<cmp_expr, ast::expr> const cmp_expr("expression");
+x3::rule<iand_expr, ast::expr> const iand_expr("expression");
+x3::rule<ixor_expr, ast::expr> const ixor_expr("expression");
+x3::rule<ior_expr, ast::expr> const ior_expr("expression");
+x3::rule<land_expr, ast::expr> const land_expr("expression");
+x3::rule<lor_expr, ast::expr> const lor_expr("expression");
+x3::rule<assign_expr, ast::expr> const assign_expr("expression");
+x3::rule<expression, ast::expr> const expression("expression");
 
 auto const primary_def =
     x3::int_[detail::assign()] | x3::bool_[detail::assign()] |
@@ -190,6 +190,20 @@ BOOST_SPIRIT_DEFINE(primary, call_expr, pre_sinop_expr, post_sinop_expr,
                     ixor_expr, ior_expr, land_expr, lor_expr, assign_expr,
                     expression);
 
+struct expression {
+  //  Our error handler
+  template <typename Iterator, typename Exception, typename Context>
+  x3::error_handler_result on_error(Iterator const &first, Iterator const &last,
+                                    Exception const &x,
+                                    Context const &context) {
+    throw std::runtime_error(
+        x.which() + " is expected but there is " +
+        (x.where() == last ? "nothing" : std::string(x.where(), last)) + "\n" +
+        std::string(first, x.where()) + "\033[1;33m" +
+        std::string(x.where(), last) + "\033[1;0m");
+    return x3::error_handler_result::fail;
+  }
+};
 } // namespace grammar
 
 std::vector<ast::expr> parse(std::string const &code) {
