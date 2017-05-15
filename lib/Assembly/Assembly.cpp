@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <boost/range/adaptor/indexed.hpp>
 #include <iostream>
+#include <llvm/IR/ValueSymbolTable.h>
+#include <llvm/Support/raw_ostream.h>
 
 namespace scopion {
 assembly::assembly(std::string const &name)
@@ -10,11 +12,11 @@ assembly::assembly(std::string const &name)
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
 
-    variables_["printf"] = module_->getOrInsertFunction(
+    module_->getOrInsertFunction(
         "printf",
         llvm::FunctionType::get(builder_.getInt32Ty(),
                                 llvm::ArrayRef<llvm::Type *>(args), true));
-    variables_["puts"] = module_->getOrInsertFunction(
+    module_->getOrInsertFunction(
         "puts",
         llvm::FunctionType::get(builder_.getInt32Ty(),
                                 llvm::ArrayRef<llvm::Type *>(args), true));
@@ -37,10 +39,8 @@ assembly::assembly(std::string const &name)
     std::vector<llvm::Value *> args = {
         builder_.CreateGlobalStringPtr("%d\n"),
         &(*(llvm_func->getArgumentList().begin()))};
-    builder_.CreateCall(variables_["printf"], args);
+    builder_.CreateCall(module_->getFunction("printf"), args);
     builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0, true));
-
-    variables_["printn"] = llvm_func;
   }
 }
 
@@ -57,19 +57,45 @@ llvm::Value *assembly::operator()(ast::value value) {
   case 3: // variable
   {
     auto &v = boost::get<ast::variable>(value);
+
     if (v.isFunc) {
-      if (variables_.count(v.name) == 0)
-        throw std::runtime_error("Function \"" + v.name +
-                                 "\" has not declared");
-      return nullptr;
+      auto *valp = module_->getFunction(v.name);
+      if (valp != nullptr) {
+        return valp;
+      } else {
+        auto *varp =
+            builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
+        if (varp != nullptr) {
+          if (varp->getType()->getPointerElementType()->isPointerTy()) {
+            if (varp->getType()
+                    ->getPointerElementType()
+                    ->getPointerElementType()
+                    ->isFunctionTy()) {
+              return builder_.CreateLoad(varp);
+            }
+          }
+          throw std::runtime_error(
+              "Variable \"" + v.name + "\" is not a function but " +
+              getTypeStr(varp->getType()->getPointerElementType()));
+        } else {
+          throw std::runtime_error("Function \"" + v.name +
+                                   "\" has not declared in this scope");
+        }
+      }
     } else {
-      if (v.rl) { // true - rval. return the pointer
-        if (variables_.count(v.name) == 0)
+      if (v.rl) {
+        auto *valp =
+            builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
+        if (valp != nullptr) {
+          return valp;
+        } else {
           throw std::runtime_error("\"" + v.name + "\" has not declared");
-        return variables_[v.name];
-      } else // false - lval to declare. nothing to return
+        }
+      } else {
         return nullptr;
+      }
     }
+    assert(false);
   }
   case 4: // array
   {
@@ -289,30 +315,28 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &op,
 llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-  if (rhs->getType()->isPointerTy()) {
-    variables_[lvar.name] = rhs;
-  } else {
-    auto var_pointer =
-        builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
-    builder_.CreateStore(rhs, var_pointer);
-    variables_[lvar.name] = var_pointer;
-  }
+  auto var_pointer = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
+  builder_.CreateStore(rhs, var_pointer);
   return rhs;
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   // If lhs is variable, use pointer that variable points
-  auto *funcptr = op.lhs.which() == 0
-                      ? (boost::get<ast::value>(op.lhs).which() == 3
-                             ? variables_[boost::get<ast::variable>(
-                                              boost::get<ast::value>(op.lhs))
-                                              .name]
-                             : lhs)
-                      : lhs;
+  /*if (op.lhs.which() == 0) {
+    if (oost::get<ast::value>(op.lhs).which() == 3) {
+      auto &name =
+          boost::get<ast::variable>(boost::get<ast::value>(op.lhs)).name;
+      if (module_->getFunction(name) == nullptr) {
+        if (builder_.GetInsertBlock()->getValueSymbolTable()->lookup(name) ==
+            nullptr) {
+        }
+      }
+    }
+  }*/
   auto *rval = loadIfValIsVar(op.rhs, rhs);
   std::vector<llvm::Value *> args = {rval};
-  return builder_.CreateCall(funcptr, llvm::ArrayRef<llvm::Value *>(args));
+  return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,

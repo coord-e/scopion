@@ -4,7 +4,6 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/raw_ostream.h>
 
 #include "AST/AST.h"
 #include <iostream>
@@ -15,7 +14,6 @@ class assembly : public boost::static_visitor<llvm::Value *> {
   llvm::LLVMContext context_;
   std::unique_ptr<llvm::Module> module_;
   llvm::IRBuilder<> builder_;
-  std::map<std::string, llvm::Value *> variables_;
 
 public:
   assembly(std::string const &name);
