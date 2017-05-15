@@ -315,25 +315,16 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &op,
 llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-  auto var_pointer = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
-  builder_.CreateStore(rhs, var_pointer);
+  auto *lvarp =
+      builder_.GetInsertBlock()->getValueSymbolTable()->lookup(lvar.name);
+  if (lvarp == nullptr)
+    lvarp = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
+  builder_.CreateStore(rhs, lvarp);
   return rhs;
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  // If lhs is variable, use pointer that variable points
-  /*if (op.lhs.which() == 0) {
-    if (oost::get<ast::value>(op.lhs).which() == 3) {
-      auto &name =
-          boost::get<ast::variable>(boost::get<ast::value>(op.lhs)).name;
-      if (module_->getFunction(name) == nullptr) {
-        if (builder_.GetInsertBlock()->getValueSymbolTable()->lookup(name) ==
-            nullptr) {
-        }
-      }
-    }
-  }*/
   auto *rval = loadIfValIsVar(op.rhs, rhs);
   std::vector<llvm::Value *> args = {rval};
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
