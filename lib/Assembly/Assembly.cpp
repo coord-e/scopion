@@ -87,7 +87,7 @@ llvm::Value *assembly::operator()(ast::value value) {
         auto *valp =
             builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
         if (valp != nullptr) {
-          return valp;
+          return builder_.CreateLoad(valp);
         } else {
           throw std::runtime_error("\"" + v.name + "\" has not declared");
         }
@@ -180,15 +180,6 @@ std::string assembly::getIR() {
   return result;
 }
 
-llvm::Value *assembly::loadIfValIsVar(ast::expr const &valex,
-                                      llvm::Value *val) {
-  return valex.which() == 0
-             ? (boost::get<ast::value>(valex).which() == 3
-                    ? builder_.CreateLoad(val) // if rhs is variable, load it
-                    : val)
-             : val;
-}
-
 std::string assembly::getTypeStr(llvm::Type *t) {
   std::string type_string;
   llvm::raw_string_ostream stream(type_string);
@@ -198,118 +189,100 @@ std::string assembly::getTypeStr(llvm::Type *t) {
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::add> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateAdd(loadIfValIsVar(op.lhs, lhs),
-                            loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateAdd(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::sub> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSub(loadIfValIsVar(op.lhs, lhs),
-                            loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateSub(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::mul> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateMul(loadIfValIsVar(op.lhs, lhs),
-                            loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateMul(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::div> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSDiv(loadIfValIsVar(op.lhs, lhs),
-                             loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateSDiv(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::rem> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSRem(loadIfValIsVar(op.lhs, lhs),
-                             loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateSRem(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::shl> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateShl(loadIfValIsVar(op.lhs, lhs),
-                            loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateShl(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::shr> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateLShr(loadIfValIsVar(op.lhs, lhs),
-                             loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateLShr(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::iand> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateAnd(loadIfValIsVar(op.lhs, lhs),
-                            loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateAnd(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::ior> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateOr(loadIfValIsVar(op.lhs, lhs),
-                           loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateOr(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::ixor> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateXor(loadIfValIsVar(op.lhs, lhs),
-                            loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateXor(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::land> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateAnd(
-      builder_.CreateICmpNE(loadIfValIsVar(op.lhs, lhs),
+      builder_.CreateICmpNE(lhs,
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.CreateICmpNE(
-          loadIfValIsVar(op.rhs, rhs),
-          llvm::Constant::getNullValue(builder_.getInt1Ty())));
+          rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::lor> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateOr(
-      builder_.CreateICmpNE(loadIfValIsVar(op.lhs, lhs),
+      builder_.CreateICmpNE(lhs,
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.CreateICmpNE(
-          loadIfValIsVar(op.rhs, rhs),
-          llvm::Constant::getNullValue(builder_.getInt1Ty())));
+          rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::eeq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpEQ(loadIfValIsVar(op.lhs, lhs),
-                               loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateICmpEQ(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::neq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpNE(loadIfValIsVar(op.lhs, lhs),
-                               loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateICmpNE(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::gt> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSGT(loadIfValIsVar(op.lhs, lhs),
-                                loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateICmpSGT(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::lt> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSLT(loadIfValIsVar(op.lhs, lhs),
-                                loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateICmpSLT(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::gtq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSGE(loadIfValIsVar(op.lhs, lhs),
-                                loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateICmpSGE(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSLE(loadIfValIsVar(op.lhs, lhs),
-                                loadIfValIsVar(op.rhs, rhs));
+  return builder_.CreateICmpSLE(lhs, rhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
@@ -325,8 +298,7 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  auto *rval = loadIfValIsVar(op.rhs, rhs);
-  std::vector<llvm::Value *> args = {rval};
+  std::vector<llvm::Value *> args = {rhs};
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
 }
 
