@@ -4,7 +4,6 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/raw_ostream.h>
 
 #include "AST/AST.h"
 #include <iostream>
@@ -15,7 +14,6 @@ class assembly : public boost::static_visitor<llvm::Value *> {
   llvm::LLVMContext context_;
   std::unique_ptr<llvm::Module> module_;
   llvm::IRBuilder<> builder_;
-  std::map<std::string, llvm::Value *> variables_;
 
 public:
   assembly(std::string const &name);
@@ -29,10 +27,11 @@ public:
     return apply_op(op, lhs, rhs);
   }
 
-  void IRGen(std::vector<ast::expr> const &asts);
+  void IRGen(ast::expr const &asts);
   std::string getIR();
 
 private:
+  llvm::Value *loadIfValIsVar(ast::expr const &valex, llvm::Value *val);
   std::string getTypeStr(llvm::Type *t);
   llvm::Value *apply_op(ast::binary_op<ast::add> const &, llvm::Value *lhs,
                         llvm::Value *rhs);

@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <boost/range/adaptor/indexed.hpp>
 #include <iostream>
+#include <llvm/IR/ValueSymbolTable.h>
+#include <llvm/Support/raw_ostream.h>
 
 namespace scopion {
 assembly::assembly(std::string const &name)
@@ -10,11 +12,11 @@ assembly::assembly(std::string const &name)
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
 
-    variables_["printf"] = module_->getOrInsertFunction(
+    module_->getOrInsertFunction(
         "printf",
         llvm::FunctionType::get(builder_.getInt32Ty(),
                                 llvm::ArrayRef<llvm::Type *>(args), true));
-    variables_["puts"] = module_->getOrInsertFunction(
+    module_->getOrInsertFunction(
         "puts",
         llvm::FunctionType::get(builder_.getInt32Ty(),
                                 llvm::ArrayRef<llvm::Type *>(args), true));
@@ -37,12 +39,10 @@ assembly::assembly(std::string const &name)
     std::vector<llvm::Value *> args = {
         builder_.CreateGlobalStringPtr("%d\n"),
         &(*(llvm_func->getArgumentList().begin()))};
-    builder_.CreateCall(variables_["printf"], args);
+    builder_.CreateCall(module_->getFunction("printf"), args);
     builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0, true));
-
-    variables_["printn"] = llvm_func;
   }
-} // namespace scopion
+}
 
 llvm::Value *assembly::operator()(ast::value value) {
   switch (value.which()) {
@@ -57,19 +57,45 @@ llvm::Value *assembly::operator()(ast::value value) {
   case 3: // variable
   {
     auto &v = boost::get<ast::variable>(value);
+
     if (v.isFunc) {
-      if (variables_.count(v.name) == 0)
-        throw std::runtime_error("Function \"" + v.name +
-                                 "\" has not declared");
-      return nullptr;
+      auto *valp = module_->getFunction(v.name);
+      if (valp != nullptr) {
+        return valp;
+      } else {
+        auto *varp =
+            builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
+        if (varp != nullptr) {
+          if (varp->getType()->getPointerElementType()->isPointerTy()) {
+            if (varp->getType()
+                    ->getPointerElementType()
+                    ->getPointerElementType()
+                    ->isFunctionTy()) {
+              return builder_.CreateLoad(varp);
+            }
+          }
+          throw std::runtime_error(
+              "Variable \"" + v.name + "\" is not a function but " +
+              getTypeStr(varp->getType()->getPointerElementType()));
+        } else {
+          throw std::runtime_error("Function \"" + v.name +
+                                   "\" has not declared in this scope");
+        }
+      }
     } else {
-      if (v.rl) { // true - rval. load and return
-        if (variables_.count(v.name) == 0)
+      if (v.rl) {
+        auto *valp =
+            builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
+        if (valp != nullptr) {
+          return valp;
+        } else {
           throw std::runtime_error("\"" + v.name + "\" has not declared");
-        return builder_.CreateLoad(variables_[v.name], v.name);
-      } else // false - lval to declare. nothing to return
+        }
+      } else {
         return nullptr;
+      }
     }
+    assert(false);
   }
   case 4: // array
   {
@@ -98,26 +124,50 @@ llvm::Value *assembly::operator()(ast::value value) {
     }
     return builder_.CreateLoad(aryPtr);
   }
+  case 5: // function
+  {
+    auto &lines = boost::get<ast::function>(value).lines;
+    // 戻り値の型
+    llvm::Type *func_ret_type = builder_.getVoidTy();
+    // 引数の型
+    std::vector<llvm::Type *> func_args_type;
+    func_args_type.push_back(builder_.getInt32Ty());
+
+    llvm::FunctionType *func_type =
+        llvm::FunctionType::get(func_ret_type, func_args_type, false);
+    llvm::Function *func = llvm::Function::Create(
+        func_type, llvm::Function::ExternalLinkage, "", module_.get());
+    llvm::BasicBlock *entry =
+        llvm::BasicBlock::Create(context_,
+                                 "entry", // BasicBlockの名前
+                                 func);
+    auto *pb = builder_.GetInsertBlock();
+    auto pp = builder_.GetInsertPoint();
+
+    builder_.SetInsertPoint(entry); // entryの開始
+    for (auto const &line : lines) {
+      boost::apply_visitor(*this, line);
+    }
+    builder_.CreateRetVoid();
+    builder_.SetInsertPoint(pb, pp); // entryを抜ける
+    return func;
+  }
   default:
     assert(false);
   }
 } // namespace scopion
 
-void assembly::IRGen(std::vector<ast::expr> const &asts) {
+void assembly::IRGen(ast::expr const &tree) {
   auto *main_func = llvm::Function::Create(
       llvm::FunctionType::get(builder_.getInt32Ty(), false),
       llvm::Function::ExternalLinkage, "main", module_.get());
 
   builder_.SetInsertPoint(
-      llvm::BasicBlock::Create(context_, "entry", main_func));
+      llvm::BasicBlock::Create(context_, "main_entry", main_func));
 
-  for (auto const &i : asts) {
-    /*std::vector<llvm::Value *> args = {builder_.CreateGlobalStringPtr("%d\n"),
-                                       boost::apply_visitor(*this, i)};
-    builder_.CreateCall(variables_["printf"],
-                        llvm::ArrayRef<llvm::Value *>(args));*/
-    boost::apply_visitor(*this, i);
-  }
+  std::vector<llvm::Value *> args = {builder_.getInt32(0)};
+  builder_.CreateCall(boost::apply_visitor(*this, tree),
+                      llvm::ArrayRef<llvm::Value *>(args));
 
   builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0));
 }
@@ -130,6 +180,15 @@ std::string assembly::getIR() {
   return result;
 }
 
+llvm::Value *assembly::loadIfValIsVar(ast::expr const &valex,
+                                      llvm::Value *val) {
+  return valex.which() == 0
+             ? (boost::get<ast::value>(valex).which() == 3
+                    ? builder_.CreateLoad(val) // if rhs is variable, load it
+                    : val)
+             : val;
+}
+
 std::string assembly::getTypeStr(llvm::Type *t) {
   std::string type_string;
   llvm::raw_string_ostream stream(type_string);
@@ -139,139 +198,161 @@ std::string assembly::getTypeStr(llvm::Type *t) {
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::add> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateAdd(lhs, rhs);
+  return builder_.CreateAdd(loadIfValIsVar(op.lhs, lhs),
+                            loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::sub> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::sub> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSub(lhs, rhs);
+  return builder_.CreateSub(loadIfValIsVar(op.lhs, lhs),
+                            loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::mul> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::mul> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateMul(lhs, rhs);
+  return builder_.CreateMul(loadIfValIsVar(op.lhs, lhs),
+                            loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::div> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::div> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSDiv(lhs, rhs);
+  return builder_.CreateSDiv(loadIfValIsVar(op.lhs, lhs),
+                             loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::rem> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::rem> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSRem(lhs, rhs);
+  return builder_.CreateSRem(loadIfValIsVar(op.lhs, lhs),
+                             loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::shl> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::shl> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateShl(lhs, rhs);
+  return builder_.CreateShl(loadIfValIsVar(op.lhs, lhs),
+                            loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::shr> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::shr> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateLShr(lhs, rhs);
+  return builder_.CreateLShr(loadIfValIsVar(op.lhs, lhs),
+                             loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::iand> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::iand> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateAnd(lhs, rhs);
+  return builder_.CreateAnd(loadIfValIsVar(op.lhs, lhs),
+                            loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::ior> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::ior> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateOr(lhs, rhs);
+  return builder_.CreateOr(loadIfValIsVar(op.lhs, lhs),
+                           loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::ixor> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::ixor> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateXor(lhs, rhs);
+  return builder_.CreateXor(loadIfValIsVar(op.lhs, lhs),
+                            loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::land> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::land> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateAnd(
-      builder_.CreateICmpNE(lhs,
+      builder_.CreateICmpNE(loadIfValIsVar(op.lhs, lhs),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.CreateICmpNE(
-          rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
+          loadIfValIsVar(op.rhs, rhs),
+          llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::lor> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::lor> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateOr(
-      builder_.CreateICmpNE(lhs,
+      builder_.CreateICmpNE(loadIfValIsVar(op.lhs, lhs),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.CreateICmpNE(
-          rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
+          loadIfValIsVar(op.rhs, rhs),
+          llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::eeq> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::eeq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpEQ(lhs, rhs);
+  return builder_.CreateICmpEQ(loadIfValIsVar(op.lhs, lhs),
+                               loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::neq> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::neq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpNE(lhs, rhs);
+  return builder_.CreateICmpNE(loadIfValIsVar(op.lhs, lhs),
+                               loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::gt> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::gt> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSGT(lhs, rhs);
+  return builder_.CreateICmpSGT(loadIfValIsVar(op.lhs, lhs),
+                                loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::lt> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::lt> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSLT(lhs, rhs);
+  return builder_.CreateICmpSLT(loadIfValIsVar(op.lhs, lhs),
+                                loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::gtq> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::gtq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSGE(lhs, rhs);
+  return builder_.CreateICmpSGE(loadIfValIsVar(op.lhs, lhs),
+                                loadIfValIsVar(op.rhs, rhs));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &,
+llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSLE(lhs, rhs);
+  return builder_.CreateICmpSLE(loadIfValIsVar(op.lhs, lhs),
+                                loadIfValIsVar(op.rhs, rhs));
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-  if (rhs->getType()->isPointerTy()) {
-    variables_[lvar.name] = rhs;
-  } else {
-    auto var_pointer =
-        builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
-    builder_.CreateStore(rhs, var_pointer);
-    variables_[lvar.name] = var_pointer;
-  }
+  auto *lvarp =
+      builder_.GetInsertBlock()->getValueSymbolTable()->lookup(lvar.name);
+  if (lvarp == nullptr)
+    lvarp = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
+  builder_.CreateStore(rhs, lvarp);
   return rhs;
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-  std::vector<llvm::Value *> args = {rhs};
-  return builder_.CreateCall(variables_[lvar.name],
-                             llvm::ArrayRef<llvm::Value *>(args));
+  auto *rval = loadIfValIsVar(op.rhs, rhs);
+  std::vector<llvm::Value *> args = {rval};
+  return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  if (!rhs->getType()->isIntegerTy()) {
+  auto *rval = rhs->getType()->isPointerTy() ? builder_.CreateLoad(rhs) : rhs;
+  if (!rval->getType()->isIntegerTy()) {
     throw std::runtime_error("Array's index must be integer, not " +
-                             getTypeStr(rhs->getType()));
+                             getTypeStr(rval->getType()));
   }
 
-  if (!lhs->getType()->isArrayTy()) {
+  auto *lval = lhs->getType()->isPointerTy() ? builder_.CreateLoad(lhs) : lhs;
+  if (!lval->getType()->isArrayTy()) {
     throw std::runtime_error("You cannot get element from non-array type " +
-                             getTypeStr(lhs->getType()));
+                             getTypeStr(lval->getType()));
   }
 
-  auto ptr = builder_.CreateAlloca(lhs->getType());
-  builder_.CreateStore(lhs, ptr);
-  std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rhs};
+  llvm::Value *ptr;
+  if (!lhs->getType()->isPointerTy()) {
+    ptr = builder_.CreateAlloca(lval->getType());
+    builder_.CreateStore(lval, ptr);
+  } else {
+    ptr = lhs;
+  }
+
+  std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rval};
   return builder_.CreateLoad(
       builder_.CreateInBoundsGEP(ptr->getType()->getPointerElementType(), ptr,
                                  llvm::ArrayRef<llvm::Value *>(idxList)));
