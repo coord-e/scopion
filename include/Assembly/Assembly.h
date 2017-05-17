@@ -74,6 +74,8 @@ private:
                         llvm::Value *rhs);
   llvm::Value *apply_op(ast::binary_op<ast::at> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
+  llvm::Value *apply_op(ast::binary_op<ast::load> const &, llvm::Value *lhs,
+                        llvm::Value *rhs);
 };
 }; // namespace scopion
 

@@ -71,7 +71,7 @@ llvm::Value *assembly::operator()(ast::value value) {
                     ->getPointerElementType()
                     ->getPointerElementType()
                     ->isFunctionTy()) {
-              return builder_.CreateLoad(varp);
+              return varp;
             }
           }
           throw std::runtime_error(
@@ -83,16 +83,16 @@ llvm::Value *assembly::operator()(ast::value value) {
         }
       }
     } else {
+      auto *valp =
+          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
       if (v.rl) {
-        auto *valp =
-            builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
         if (valp != nullptr) {
-          return builder_.CreateLoad(valp);
+          return valp;
         } else {
           throw std::runtime_error("\"" + v.name + "\" has not declared");
         }
       } else {
-        return nullptr;
+        return valp;
       }
     }
     assert(false);
@@ -122,7 +122,7 @@ llvm::Value *assembly::operator()(ast::value value) {
 
       builder_.CreateStore(v.value(), p);
     }
-    return builder_.CreateLoad(aryPtr);
+    return aryPtr;
   }
   case 5: // function
   {
@@ -287,17 +287,32 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &op,
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
-  auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-  auto *lvarp =
-      builder_.GetInsertBlock()->getValueSymbolTable()->lookup(lvar.name);
-  if (lvarp == nullptr)
-    lvarp = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
-  builder_.CreateStore(rhs, lvarp);
-  return rhs;
+  if (lhs == nullptr) { // first appear in the block (only variable)
+    auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
+    builder_.CreateStore(
+        rhs, builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name));
+  } else {
+    if (lhs->getType()->isPointerTy()) {
+      builder_.CreateStore(rhs, lhs);
+    } else {
+      throw std::runtime_error("Cannot assign to non-pointer value (" +
+                               getTypeStr(lhs->getType()) + ")");
+    }
+  }
+  return lhs;
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
+  if (!lhs->getType()->isPointerTy())
+    throw std::runtime_error("Cannot call function from non-pointer type " +
+                             getTypeStr(lhs->getType()));
+
+  if (!lhs->getType()->getPointerElementType()->isFunctionTy())
+    throw std::runtime_error(
+        "Cannot call function from non-function pointer type " +
+        getTypeStr(lhs->getType()));
+
   std::vector<llvm::Value *> args = {rhs};
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
 }
@@ -309,24 +324,34 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
     throw std::runtime_error("Array's index must be integer, not " +
                              getTypeStr(rval->getType()));
   }
-
-  auto *lval = lhs->getType()->isPointerTy() ? builder_.CreateLoad(lhs) : lhs;
-  if (!lval->getType()->isArrayTy()) {
-    throw std::runtime_error("You cannot get element from non-array type " +
-                             getTypeStr(lval->getType()));
-  }
-
-  llvm::Value *ptr;
   if (!lhs->getType()->isPointerTy()) {
-    ptr = builder_.CreateAlloca(lval->getType());
-    builder_.CreateStore(lval, ptr);
-  } else {
-    ptr = lhs;
+    throw std::runtime_error("Cannot get element from non-pointer type " +
+                             getTypeStr(lhs->getType()));
   }
+
+  auto *lval = lhs;
+
+  if (!lhs->getType()->getPointerElementType()->isArrayTy()) {
+    lval = builder_.CreateLoad(lhs);
+
+    if (!lval->getType()->getPointerElementType()->isArrayTy()) {
+      throw std::runtime_error("Cannot get element from non-array type " +
+                               getTypeStr(lhs->getType()));
+    }
+  }
+  // Now lval's type is pointer to array
 
   std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rval};
-  return builder_.CreateLoad(
-      builder_.CreateInBoundsGEP(ptr->getType()->getPointerElementType(), ptr,
-                                 llvm::ArrayRef<llvm::Value *>(idxList)));
+  return builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(),
+                                    lval,
+                                    llvm::ArrayRef<llvm::Value *>(idxList));
+}
+
+llvm::Value *assembly::apply_op(ast::binary_op<ast::load> const &op,
+                                llvm::Value *lhs, llvm::Value *rhs) {
+  if (!lhs->getType()->isPointerTy())
+    throw std::runtime_error("Cannot load from non-pointer type " +
+                             getTypeStr(lhs->getType()));
+  return builder_.CreateLoad(lhs);
 }
 }; // namespace scopion

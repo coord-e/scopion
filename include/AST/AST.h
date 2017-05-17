@@ -34,6 +34,7 @@ struct ltq;
 struct assign;
 struct call;
 struct at;
+struct load;
 
 template <class Op> struct binary_op;
 class variable;
@@ -77,7 +78,8 @@ using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
                             boost::recursive_wrapper<binary_op<ltq>>,
                             boost::recursive_wrapper<binary_op<assign>>,
                             boost::recursive_wrapper<binary_op<call>>,
-                            boost::recursive_wrapper<binary_op<at>>>;
+                            boost::recursive_wrapper<binary_op<at>>,
+                            boost::recursive_wrapper<binary_op<load>>>;
 
 class array {
 public:
@@ -181,6 +183,7 @@ private:
   std::string op_to_str(binary_op<assign> const &) const { return "="; }
   std::string op_to_str(binary_op<call> const &) const { return "()"; }
   std::string op_to_str(binary_op<at> const &) const { return "[]"; }
+  std::string op_to_str(binary_op<load> const &) const { return "load"; }
 }; // class printer
 
 }; // namespace ast

@@ -47,14 +47,16 @@ template <typename Op> decltype(auto) assign_binop() {
 
 template <> decltype(auto) assign_binop<ast::assign>() {
   return [](auto &&ctx) {
-    if (x3::_val(ctx).which() != 0)
-      throw std::runtime_error("Exprs can't be lvalue");
-    auto &&v = boost::get<ast::value>(x3::_val(ctx));
-    if (v.which() != 3)
-      throw std::runtime_error("lvalue have to be a variable");
-    auto &&n = boost::get<ast::variable>(v).name;
-    x3::_val(ctx) = ast::binary_op<ast::assign>(ast::variable(n, false, false),
-                                                x3::_attr(ctx));
+    if (x3::_val(ctx).which() == 0) {
+      auto &&v = boost::get<ast::value>(x3::_val(ctx));
+      if (v.which() == 3) {
+        auto &&n = boost::get<ast::variable>(v).name;
+        x3::_val(ctx) = ast::binary_op<ast::assign>(
+            ast::variable(n, false, false), x3::_attr(ctx));
+        return;
+      }
+    }
+    x3::_val(ctx) = ast::binary_op<ast::assign>(x3::_val(ctx), x3::_attr(ctx));
   };
 }
 
@@ -145,7 +147,8 @@ auto const pre_sinop_expr_def =
     ("!" > post_sinop_expr)[detail::assign_sinop<ast::ixor>(1)] |
     ("~" > post_sinop_expr)[detail::assign_sinop<ast::ixor>(1)] |
     ("++" > post_sinop_expr)[detail::assign_sinop<ast::add>(1)] |
-    ("--" > post_sinop_expr)[detail::assign_sinop<ast::sub>(1)];
+    ("--" > post_sinop_expr)[detail::assign_sinop<ast::sub>(1)] |
+    ("*" > post_sinop_expr)[detail::assign_sinop<ast::load>(1)];
 
 auto const
     mul_expr_def = pre_sinop_expr[detail::assign()] >>
