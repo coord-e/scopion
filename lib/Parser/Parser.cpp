@@ -194,9 +194,10 @@ auto const lor_expr_def = land_expr[detail::assign()] >>
                           *(("||" >
                              land_expr)[detail::assign_binop<ast::lor>()]);
 
-auto const assign_expr_def = lor_expr[detail::assign()] >>
-                             *(("=" >
-                                lor_expr)[detail::assign_binop<ast::assign>()]);
+auto const assign_expr_def =
+    lor_expr[detail::assign()] >> "=" >>
+        assign_expr[detail::assign_binop<ast::assign>()] |
+    lor_expr[detail::assign()];
 
 auto const expression_def = assign_expr[detail::assign()];
 

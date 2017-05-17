@@ -289,8 +289,8 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   if (lhs == nullptr) { // first appear in the block (only variable)
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-    builder_.CreateStore(
-        rhs, builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name));
+    lhs = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
+    builder_.CreateStore(rhs, lhs);
   } else {
     if (lhs->getType()->isPointerTy()) {
       builder_.CreateStore(rhs, lhs);
