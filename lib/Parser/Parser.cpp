@@ -47,9 +47,9 @@ template <typename Op> decltype(auto) assign_binop() {
 
 template <> decltype(auto) assign_binop<ast::assign>() {
   return [](auto &&ctx) {
-    if (x3::_val(ctx).which() == 0) {
+    if (x3::_val(ctx).type() == typeid(ast::value)) {
       auto &&v = boost::get<ast::value>(x3::_val(ctx));
-      if (v.which() == 3) {
+      if (v.type() == typeid(ast::variable)) {
         auto &&n = boost::get<ast::variable>(v).name;
         x3::_val(ctx) = ast::binary_op<ast::assign>(
             ast::variable(n, false, false), x3::_attr(ctx));
@@ -62,22 +62,18 @@ template <> decltype(auto) assign_binop<ast::assign>() {
 
 template <> decltype(auto) assign_binop<ast::call>() {
   return [](auto &&ctx) {
-    if (x3::_val(ctx).which() != 0) {
+    if (x3::_val(ctx).type() != typeid(ast::value)) {
       x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx));
       return;
     }
     auto &&v = boost::get<ast::value>(x3::_val(ctx));
-    switch (v.which()) {
-    case 3: {
+    if (v.type() == typeid(ast::variable)) {
       auto &&n = boost::get<ast::variable>(v).name;
       x3::_val(ctx) = ast::binary_op<ast::call>(ast::variable(n, false, true),
                                                 x3::_attr(ctx));
-      break;
-    }
-    case 5:
+    } else if (v.type() == typeid(ast::function)) {
       x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx));
-      break;
-    default:
+    } else {
       throw std::runtime_error("lvalue have to be a variable or a function");
     }
   };

@@ -108,49 +108,45 @@ public:
 
   auto operator()(const value &v) const -> void {
     _s << "(";
-    switch (v.which()) {
-    case 0: // int
-      std::cout << boost::get<int>(v);
-      break;
-    case 1: // bool
-      std::cout << std::boolalpha << boost::get<bool>(v);
-      break;
-    case 2: // string
-      std::cout << "\"" << boost::get<std::string>(v) << "\"";
-      break;
-    case 3: // variable
-    {
-      auto &&var = boost::get<ast::variable>(v);
-      std::cout << var.name;
-      if (var.isFunc)
-        std::cout << "{}";
-      break;
-    }
-    case 4: // array
-    {
-      auto &&ary = boost::get<ast::array>(v).elements;
-      std::cout << "[ ";
-      for (auto const &i : ary) {
-        boost::apply_visitor(printer(_s), i);
-        std::cout << ", ";
-      }
-      std::cout << "]";
-      break;
-    }
-    case 5: // function
-    {
-      auto &&lines = boost::get<ast::function>(v).lines;
-      _s << "{ ";
-
-      for (auto const &line : lines) {
-        boost::apply_visitor(printer(_s), line);
-        _s << "; ";
-      }
-      _s << "} ";
-      break;
-    }
-    }
+    boost::apply_visitor(printer(_s), v);
     _s << ")";
+  }
+
+  auto operator()(int value) const -> void { std::cout << value; }
+
+  auto operator()(bool value) const -> void {
+    std::cout << std::boolalpha << value;
+  }
+
+  auto operator()(std::string const &value) const -> void {
+    std::cout << "\"" << value << "\"";
+  }
+
+  auto operator()(ast::variable const &value) const -> void {
+    std::cout << value.name;
+    if (value.isFunc)
+      std::cout << "{}";
+  }
+
+  auto operator()(ast::array const &value) const -> void {
+    auto &&ary = value.elements;
+    std::cout << "[ ";
+    for (auto const &i : ary) {
+      boost::apply_visitor(printer(_s), i);
+      std::cout << ", ";
+    }
+    std::cout << "]";
+  }
+
+  auto operator()(ast::function const &value) const -> void {
+    auto &&lines = value.lines;
+    _s << "{ ";
+
+    for (auto const &line : lines) {
+      boost::apply_visitor(printer(_s), line);
+      _s << "; ";
+    }
+    _s << "} ";
   }
 
   template <typename T> auto operator()(const binary_op<T> &o) const -> void {

@@ -20,6 +20,13 @@ public:
 
   llvm::Value *operator()(ast::value value);
 
+  llvm::Value *operator()(int value);
+  llvm::Value *operator()(bool value);
+  llvm::Value *operator()(std::string const &value);
+  llvm::Value *operator()(ast::variable const &value);
+  llvm::Value *operator()(ast::array const &value);
+  llvm::Value *operator()(ast::function const &value);
+
   template <class Op> llvm::Value *operator()(ast::binary_op<Op> const &op) {
     llvm::Value *lhs = boost::apply_visitor(*this, op.lhs);
     llvm::Value *rhs = boost::apply_visitor(*this, op.rhs);

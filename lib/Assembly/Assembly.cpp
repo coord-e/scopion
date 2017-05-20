@@ -45,117 +45,114 @@ assembly::assembly(std::string const &name)
 }
 
 llvm::Value *assembly::operator()(ast::value value) {
-  switch (value.which()) {
-  case 0: // int
-    return llvm::ConstantInt::get(builder_.getInt32Ty(),
-                                  boost::get<int>(value));
-  case 1: // bool
-    return llvm::ConstantInt::get(builder_.getInt1Ty(),
-                                  boost::get<bool>(value));
-  case 2: // string
-    return builder_.CreateGlobalStringPtr(boost::get<std::string>(value));
-  case 3: // variable
-  {
-    auto &v = boost::get<ast::variable>(value);
+  return boost::apply_visitor(*this, value);
+}
 
-    if (v.isFunc) {
-      auto *valp = module_->getFunction(v.name);
+llvm::Value *assembly::operator()(int value) {
+  return llvm::ConstantInt::get(builder_.getInt32Ty(), value);
+}
+
+llvm::Value *assembly::operator()(bool value) {
+  return llvm::ConstantInt::get(builder_.getInt1Ty(), value);
+}
+
+llvm::Value *assembly::operator()(std::string const &value) {
+  return builder_.CreateGlobalStringPtr(value);
+}
+
+llvm::Value *assembly::operator()(ast::variable const &value) {
+  if (value.isFunc) {
+    auto *valp = module_->getFunction(value.name);
+    if (valp != nullptr) {
+      return valp;
+    } else {
+      auto *varp =
+          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.name);
+      if (varp != nullptr) {
+        if (varp->getType()->getPointerElementType()->isPointerTy()) {
+          if (varp->getType()
+                  ->getPointerElementType()
+                  ->getPointerElementType()
+                  ->isFunctionTy()) {
+            return varp;
+          }
+        }
+        throw std::runtime_error(
+            "Variable \"" + value.name + "\" is not a function but " +
+            getTypeStr(varp->getType()->getPointerElementType()));
+      } else {
+        throw std::runtime_error("Function \"" + value.name +
+                                 "\" has not declared in this scope");
+      }
+    }
+  } else {
+    auto *valp =
+        builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.name);
+    if (value.rl) {
       if (valp != nullptr) {
         return valp;
       } else {
-        auto *varp =
-            builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
-        if (varp != nullptr) {
-          if (varp->getType()->getPointerElementType()->isPointerTy()) {
-            if (varp->getType()
-                    ->getPointerElementType()
-                    ->getPointerElementType()
-                    ->isFunctionTy()) {
-              return varp;
-            }
-          }
-          throw std::runtime_error(
-              "Variable \"" + v.name + "\" is not a function but " +
-              getTypeStr(varp->getType()->getPointerElementType()));
-        } else {
-          throw std::runtime_error("Function \"" + v.name +
-                                   "\" has not declared in this scope");
-        }
+        throw std::runtime_error("\"" + value.name + "\" has not declared");
       }
     } else {
-      auto *valp =
-          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(v.name);
-      if (v.rl) {
-        if (valp != nullptr) {
-          return valp;
-        } else {
-          throw std::runtime_error("\"" + v.name + "\" has not declared");
-        }
-      } else {
-        return valp;
-      }
+      return valp;
     }
-    assert(false);
   }
-  case 4: // array
-  {
-    auto &ary = boost::get<ast::array>(value).elements;
-    std::vector<llvm::Value *> values;
-    for (auto const &elm : ary) {
-      // Convert exprs to llvm::Value* and store it into new vector
-      values.push_back(boost::apply_visitor(*this, elm));
-    }
-
-    auto t = values[0]->getType();
-    // check if the type of all elements of array is same
-    if (!std::all_of(values.begin(), values.end(),
-                     [&t](auto v) { return t == v->getType(); }))
-      throw std::runtime_error("all elements of array must have the same type");
-
-    auto aryType = llvm::ArrayType::get(t, ary.size());
-    auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
-    for (auto const &v : values | boost::adaptors::indexed()) {
-      std::vector<llvm::Value *> idxList = {builder_.getInt32(0),
-                                            builder_.getInt32(v.index())};
-      auto p = builder_.CreateInBoundsGEP(
-          aryType, aryPtr, llvm::ArrayRef<llvm::Value *>(idxList));
-
-      builder_.CreateStore(v.value(), p);
-    }
-    return aryPtr;
+  assert(false);
+}
+llvm::Value *assembly::operator()(ast::array const &value) {
+  auto &ary = value.elements;
+  std::vector<llvm::Value *> values;
+  for (auto const &elm : ary) {
+    // Convert exprs to llvm::Value* and store it into new vector
+    values.push_back(boost::apply_visitor(*this, elm));
   }
-  case 5: // function
-  {
-    auto &lines = boost::get<ast::function>(value).lines;
-    // 戻り値の型
-    llvm::Type *func_ret_type = builder_.getVoidTy();
-    // 引数の型
-    std::vector<llvm::Type *> func_args_type;
-    func_args_type.push_back(builder_.getInt32Ty());
 
-    llvm::FunctionType *func_type =
-        llvm::FunctionType::get(func_ret_type, func_args_type, false);
-    llvm::Function *func = llvm::Function::Create(
-        func_type, llvm::Function::ExternalLinkage, "", module_.get());
-    llvm::BasicBlock *entry =
-        llvm::BasicBlock::Create(context_,
-                                 "entry", // BasicBlockの名前
-                                 func);
-    auto *pb = builder_.GetInsertBlock();
-    auto pp = builder_.GetInsertPoint();
+  auto t = values[0]->getType();
+  // check if the type of all elements of array is same
+  if (!std::all_of(values.begin(), values.end(),
+                   [&t](auto v) { return t == v->getType(); }))
+    throw std::runtime_error("all elements of array must have the same type");
 
-    builder_.SetInsertPoint(entry); // entryの開始
-    for (auto const &line : lines) {
-      boost::apply_visitor(*this, line);
-    }
-    builder_.CreateRetVoid();
-    builder_.SetInsertPoint(pb, pp); // entryを抜ける
-    return func;
+  auto aryType = llvm::ArrayType::get(t, ary.size());
+  auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
+  for (auto const &v : values | boost::adaptors::indexed()) {
+    std::vector<llvm::Value *> idxList = {builder_.getInt32(0),
+                                          builder_.getInt32(v.index())};
+    auto p = builder_.CreateInBoundsGEP(aryType, aryPtr,
+                                        llvm::ArrayRef<llvm::Value *>(idxList));
+
+    builder_.CreateStore(v.value(), p);
   }
-  default:
-    assert(false);
+  return aryPtr;
+}
+llvm::Value *assembly::operator()(ast::function const &value) {
+  auto &lines = value.lines;
+  // 戻り値の型
+  llvm::Type *func_ret_type = builder_.getVoidTy();
+  // 引数の型
+  std::vector<llvm::Type *> func_args_type;
+  func_args_type.push_back(builder_.getInt32Ty());
+
+  llvm::FunctionType *func_type =
+      llvm::FunctionType::get(func_ret_type, func_args_type, false);
+  llvm::Function *func = llvm::Function::Create(
+      func_type, llvm::Function::ExternalLinkage, "", module_.get());
+  llvm::BasicBlock *entry =
+      llvm::BasicBlock::Create(context_,
+                               "entry", // BasicBlockの名前
+                               func);
+  auto *pb = builder_.GetInsertBlock();
+  auto pp = builder_.GetInsertPoint();
+
+  builder_.SetInsertPoint(entry); // entryの開始
+  for (auto const &line : lines) {
+    boost::apply_visitor(*this, line);
   }
-} // namespace scopion
+  builder_.CreateRetVoid();
+  builder_.SetInsertPoint(pb, pp); // entryを抜ける
+  return func;
+}
 
 void assembly::IRGen(ast::expr const &tree) {
   auto *main_func = llvm::Function::Create(
