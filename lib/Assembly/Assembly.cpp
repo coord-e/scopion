@@ -6,7 +6,6 @@
 #include <llvm/ExecutionEngine/Interpreter.h>
 #include <llvm/IR/ValueSymbolTable.h>
 #include <llvm/Support/TargetSelect.h>
-#include <llvm/Support/raw_ostream.h>
 
 namespace scopion {
 assembly::assembly(std::string const &name)
@@ -84,7 +83,7 @@ llvm::Value *assembly::operator()(ast::variable const &value) {
         }
         throw std::runtime_error(
             "Variable \"" + value.name + "\" is not a function but " +
-            getTypeStr(varp->getType()->getPointerElementType()));
+            getNameString(varp->getType()->getPointerElementType()));
       } else {
         throw std::runtime_error("Function \"" + value.name +
                                  "\" has not declared in this scope");
@@ -196,13 +195,6 @@ llvm::GenericValue assembly::run(ast::expr const &asts) {
   return res;
 }
 
-std::string assembly::getTypeStr(llvm::Type *t) {
-  std::string type_string;
-  llvm::raw_string_ostream stream(type_string);
-  t->print(stream);
-  return stream.str();
-}
-
 llvm::Value *assembly::apply_op(ast::binary_op<ast::add> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateAdd(lhs, rhs);
@@ -312,7 +304,7 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
       builder_.CreateStore(rhs, lhs);
     } else {
       throw std::runtime_error("Cannot assign to non-pointer value (" +
-                               getTypeStr(lhs->getType()) + ")");
+                               getNameString(lhs->getType()) + ")");
     }
   }
   return builder_.CreateLoad(lhs);
@@ -322,12 +314,12 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   if (!lhs->getType()->isPointerTy())
     throw std::runtime_error("Cannot call function from non-pointer type " +
-                             getTypeStr(lhs->getType()));
+                             getNameString(lhs->getType()));
 
   if (!lhs->getType()->getPointerElementType()->isFunctionTy())
     throw std::runtime_error(
         "Cannot call function from non-function pointer type " +
-        getTypeStr(lhs->getType()));
+        getNameString(lhs->getType()));
 
   std::vector<llvm::Value *> args = {rhs};
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
@@ -338,11 +330,11 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
   auto *rval = rhs->getType()->isPointerTy() ? builder_.CreateLoad(rhs) : rhs;
   if (!rval->getType()->isIntegerTy()) {
     throw std::runtime_error("Array's index must be integer, not " +
-                             getTypeStr(rval->getType()));
+                             getNameString(rval->getType()));
   }
   if (!lhs->getType()->isPointerTy()) {
     throw std::runtime_error("Cannot get element from non-pointer type " +
-                             getTypeStr(lhs->getType()));
+                             getNameString(lhs->getType()));
   }
 
   auto *lval = lhs;
@@ -352,7 +344,7 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
 
     if (!lval->getType()->getPointerElementType()->isArrayTy()) {
       throw std::runtime_error("Cannot get element from non-array type " +
-                               getTypeStr(lhs->getType()));
+                               getNameString(lhs->getType()));
     }
   }
   // Now lval's type is pointer to array
@@ -371,7 +363,7 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::load> const &op,
                                 llvm::Value *lhs, llvm::Value *rhs) {
   if (!lhs->getType()->isPointerTy())
     throw std::runtime_error("Cannot load from non-pointer type " +
-                             getTypeStr(lhs->getType()));
+                             getNameString(lhs->getType()));
   return builder_.CreateLoad(lhs);
 }
 }; // namespace scopion

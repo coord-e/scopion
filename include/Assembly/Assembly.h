@@ -5,6 +5,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "AST/AST.h"
 #include <iostream>
@@ -40,7 +41,12 @@ public:
   std::string getIR();
 
 private:
-  std::string getTypeStr(llvm::Type *t);
+  template <typename T> std::string getNameString(T *v) {
+    std::string type_string;
+    llvm::raw_string_ostream stream(type_string);
+    v->print(stream);
+    return stream.str();
+  }
   llvm::Value *apply_op(ast::binary_op<ast::add> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
   llvm::Value *apply_op(ast::binary_op<ast::sub> const &, llvm::Value *lhs,
