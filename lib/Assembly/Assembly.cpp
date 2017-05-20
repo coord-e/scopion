@@ -74,7 +74,7 @@ llvm::Value *assembly::operator()(ast::variable const &value) {
                   ->getPointerElementType()
                   ->getPointerElementType()
                   ->isFunctionTy()) {
-            return varp;
+            return builder_.CreateLoad(varp);
           }
         }
         throw std::runtime_error(
@@ -88,9 +88,9 @@ llvm::Value *assembly::operator()(ast::variable const &value) {
   } else {
     auto *valp =
         builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.name);
-    if (value.rl) {
+    if (value.lval) {
       if (valp != nullptr) {
-        return valp;
+        return builder_.CreateLoad(valp);
       } else {
         throw std::runtime_error("\"" + value.name + "\" has not declared");
       }
@@ -296,7 +296,7 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
                                getTypeStr(lhs->getType()) + ")");
     }
   }
-  return lhs;
+  return builder_.CreateLoad(lhs);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
@@ -339,9 +339,13 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
   // Now lval's type is pointer to array
 
   std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rval};
-  return builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(),
-                                    lval,
-                                    llvm::ArrayRef<llvm::Value *>(idxList));
+  auto *ep =
+      builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                 llvm::ArrayRef<llvm::Value *>(idxList));
+  if (op.lval)
+    return ep;
+  else
+    return builder_.CreateLoad(ep);
 }
 
 llvm::Value *assembly::apply_op(ast::binary_op<ast::load> const &op,

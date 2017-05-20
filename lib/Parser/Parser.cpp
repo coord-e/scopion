@@ -45,6 +45,18 @@ template <typename Op> decltype(auto) assign_binop() {
   };
 }
 
+struct make_op_lval : boost::static_visitor<ast::expr> {
+  template <typename Op> ast::expr operator()(ast::binary_op<Op> op) const {
+    op.lval = true;
+    return op;
+  }
+
+  ast::expr operator()(ast::value val) const {
+    assert(false);
+    return ast::expr();
+  }
+};
+
 template <> decltype(auto) assign_binop<ast::assign>() {
   return [](auto &&ctx) {
     if (x3::_val(ctx).type() == typeid(ast::value)) {
@@ -54,9 +66,13 @@ template <> decltype(auto) assign_binop<ast::assign>() {
         x3::_val(ctx) = ast::binary_op<ast::assign>(
             ast::variable(n, false, false), x3::_attr(ctx));
         return;
+      } else {
+        throw std::runtime_error("Cannot assign to constant value");
       }
+    } else {
+      x3::_val(ctx) = ast::binary_op<ast::assign>(
+          boost::apply_visitor(make_op_lval(), x3::_val(ctx)), x3::_attr(ctx));
     }
-    x3::_val(ctx) = ast::binary_op<ast::assign>(x3::_val(ctx), x3::_attr(ctx));
   };
 }
 

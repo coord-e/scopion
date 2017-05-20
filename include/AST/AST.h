@@ -52,10 +52,10 @@ using value = boost::variant<
 class variable {
 public:
   std::string name;
-  bool rl;
+  bool lval;
   bool isFunc;
-  variable(std::string const &n, bool rorl, bool isfunc)
-      : name(n), rl(rorl), isFunc(isfunc) {}
+  variable(std::string const &n, bool lval_, bool isfunc)
+      : name(n), lval(lval_), isFunc(isfunc) {}
 };
 
 using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
@@ -96,8 +96,10 @@ public:
 template <class Op> struct binary_op {
   expr lhs;
   expr rhs;
+  bool lval;
 
-  binary_op(expr const &lhs_, expr const &rhs_) : lhs(lhs_), rhs(rhs_) {}
+  binary_op(expr const &lhs_, expr const &rhs_, bool lval_ = false)
+      : lhs(lhs_), rhs(rhs_), lval(lval_) {}
 };
 
 class printer : boost::static_visitor<void> {
