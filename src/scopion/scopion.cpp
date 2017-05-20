@@ -17,7 +17,9 @@ int main(int argc, char *argv[]) {
   while (1) {
     try {
       std::cout << "> ";
-      std::getline(std::cin, line);
+      std::string l;
+      std::getline(std::cin, l);
+      line += l;
       scopion::assembly asmb("scopion_interpreter");
       auto ast = scopion::parser::parse("{" + line + "}");
 
@@ -25,19 +27,7 @@ int main(int argc, char *argv[]) {
       boost::apply_visitor(scopion::ast::printer(std::cout), ast);
       std::cout << std::endl;
 
-      asmb.IRGen({ast});
-      char *tmpname = strdup("/tmp/tmpfileXXXXXX");
-      mkstemp(tmpname);
-      std::string tmpstr(tmpname);
-      std::ofstream f(tmpstr);
-      f << asmb.getIR();
-      f.close();
-      if (system(("llc " + tmpstr).c_str()) != 0)
-        throw std::runtime_error("Error occured while compiling IR");
-      if (system(("gcc " + tmpstr + ".s -o " + tmpstr + "exec").c_str()) != 0)
-        throw std::runtime_error("Error occured while compiling assembly");
-      if (system((tmpstr + "exec").c_str()) != 0)
-        throw std::runtime_error("Error occured while executing");
+      asmb.run(ast);
     } catch (std::exception const &e) {
       std::cerr << "\033[1;31m[ERROR]\033[0m: " << e.what() << std::endl;
     }

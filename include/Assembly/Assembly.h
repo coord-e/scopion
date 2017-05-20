@@ -1,6 +1,7 @@
 #ifndef SCOPION_ASSEMBLY_H_
 #define SCOPION_ASSEMBLY_H_
 
+#include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
@@ -35,6 +36,7 @@ public:
   }
 
   void IRGen(ast::expr const &asts);
+  llvm::GenericValue run(ast::expr const &asts);
   std::string getIR();
 
 private:

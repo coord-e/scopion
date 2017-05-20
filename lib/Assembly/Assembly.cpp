@@ -2,13 +2,18 @@
 #include <algorithm>
 #include <boost/range/adaptor/indexed.hpp>
 #include <iostream>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/Interpreter.h>
 #include <llvm/IR/ValueSymbolTable.h>
+#include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 
 namespace scopion {
 assembly::assembly(std::string const &name)
     : boost::static_visitor<llvm::Value *>(),
       module_(new llvm::Module(name, context_)), builder_(context_) {
+
+  llvm::InitializeNativeTarget();
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
 
@@ -175,6 +180,20 @@ std::string assembly::getIR() {
 
   module_->print(stream, nullptr);
   return result;
+}
+
+llvm::GenericValue assembly::run(ast::expr const &asts) {
+  auto *func = boost::apply_visitor(*this, asts);
+  auto *funcptr = llvm::cast<llvm::Function>(func);
+  std::unique_ptr<llvm::ExecutionEngine> engine(
+      llvm::EngineBuilder(std::move(module_))
+          .setEngineKind(llvm::EngineKind::Either)
+          .create());
+  engine->finalizeObject();
+
+  auto res = engine->runFunction(funcptr, std::vector<llvm::GenericValue>(1));
+  engine->removeModule(module_.get());
+  return res;
 }
 
 std::string assembly::getTypeStr(llvm::Type *t) {
