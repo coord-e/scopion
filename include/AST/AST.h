@@ -108,34 +108,32 @@ public:
 
   auto operator()(const value &v) const -> void {
     _s << "(";
-    boost::apply_visitor(printer(_s), v);
+    boost::apply_visitor(*this, v);
     _s << ")";
   }
 
-  auto operator()(int value) const -> void { std::cout << value; }
+  auto operator()(int value) const -> void { _s << value; }
 
-  auto operator()(bool value) const -> void {
-    std::cout << std::boolalpha << value;
-  }
+  auto operator()(bool value) const -> void { _s << std::boolalpha << value; }
 
   auto operator()(std::string const &value) const -> void {
-    std::cout << "\"" << value << "\"";
+    _s << "\"" << value << "\"";
   }
 
   auto operator()(ast::variable const &value) const -> void {
-    std::cout << value.name;
+    _s << value.name;
     if (value.isFunc)
-      std::cout << "{}";
+      _s << "{}";
   }
 
   auto operator()(ast::array const &value) const -> void {
     auto &&ary = value.elements;
-    std::cout << "[ ";
+    _s << "[ ";
     for (auto const &i : ary) {
-      boost::apply_visitor(printer(_s), i);
-      std::cout << ", ";
+      boost::apply_visitor(*this, i);
+      _s << ", ";
     }
-    std::cout << "]";
+    _s << "]";
   }
 
   auto operator()(ast::function const &value) const -> void {
@@ -143,7 +141,7 @@ public:
     _s << "{ ";
 
     for (auto const &line : lines) {
-      boost::apply_visitor(printer(_s), line);
+      boost::apply_visitor(*this, line);
       _s << "; ";
     }
     _s << "} ";
@@ -151,9 +149,9 @@ public:
 
   template <typename T> auto operator()(const binary_op<T> &o) const -> void {
     _s << "{ ";
-    boost::apply_visitor(printer(_s), o.lhs);
+    boost::apply_visitor(*this, o.lhs);
     _s << " " << op_to_str(o) << " ";
-    boost::apply_visitor(printer(_s), o.rhs);
+    boost::apply_visitor(*this, o.rhs);
     _s << " }";
   }
 
