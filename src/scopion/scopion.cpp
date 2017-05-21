@@ -23,9 +23,7 @@ int main(int argc, char *argv[]) {
       scopion::assembly asmb("scopion_interpreter");
       auto ast = scopion::parser::parse("{" + line + "}");
 
-      std::cout << "AST: ";
-      boost::apply_visitor(scopion::ast::printer(std::cout), ast);
-      std::cout << std::endl;
+      std::cout << "AST: " << ast << std::endl;
 
       asmb.run(ast);
     } catch (std::exception const &e) {
