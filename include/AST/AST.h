@@ -32,6 +32,7 @@ struct lt;
 struct gtq;
 struct ltq;
 struct assign;
+struct ret;
 struct call;
 struct at;
 struct load;
@@ -65,6 +66,7 @@ using expr = boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
                             boost::recursive_wrapper<binary_op<gtq>>,
                             boost::recursive_wrapper<binary_op<ltq>>,
                             boost::recursive_wrapper<binary_op<assign>>,
+                            boost::recursive_wrapper<binary_op<ret>>,
                             boost::recursive_wrapper<binary_op<call>>,
                             boost::recursive_wrapper<binary_op<at>>,
                             boost::recursive_wrapper<binary_op<load>>>;

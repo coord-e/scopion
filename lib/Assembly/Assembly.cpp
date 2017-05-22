@@ -136,7 +136,7 @@ llvm::Value *translator::operator()(ast::array const &value) {
 llvm::Value *translator::operator()(ast::function const &value) {
   auto &lines = value.lines;
   // 戻り値の型
-  llvm::Type *func_ret_type = builder_.getVoidTy();
+  llvm::Type *func_ret_type = builder_.getInt32Ty();
   // 引数の型
   std::vector<llvm::Type *> func_args_type;
   func_args_type.push_back(builder_.getInt32Ty());
@@ -156,7 +156,13 @@ llvm::Value *translator::operator()(ast::function const &value) {
   for (auto const &line : lines) {
     boost::apply_visitor(*this, line);
   }
-  builder_.CreateRetVoid();
+  if (!std::any_of(entry->getInstList().begin(), entry->getInstList().end(),
+                   [](llvm::Instruction &i) {
+                     return i.getOpcode() == llvm::Instruction::Ret;
+                   })) {
+    builder_.CreateRet(builder_.getInt32(0));
+  }
+
   builder_.SetInsertPoint(pb, pp); // entryを抜ける
   return func;
 }
@@ -331,6 +337,16 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::load> const &op,
     throw std::runtime_error("Cannot load from non-pointer type " +
                              getNameString(lhs->getType()));
   return builder_.CreateLoad(lhs);
+}
+
+llvm::Value *translator::apply_op(ast::binary_op<ast::ret> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
+  if (lhs->getType() != builder_.GetInsertBlock()->getParent()->getReturnType())
+    throw std::runtime_error(
+        "Return type isn't match. exprcted " +
+        getNameString(builder_.GetInsertBlock()->getParent()->getReturnType()) +
+        "but returning type is " + getNameString(lhs->getType()));
+  return builder_.CreateRet(lhs);
 }
 
 std::unique_ptr<module> module::create(ast::expr const &tree, context &ctx,

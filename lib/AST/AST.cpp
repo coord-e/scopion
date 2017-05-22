@@ -81,6 +81,7 @@ private:
   std::string op_to_str(binary_op<call> const &) const { return "()"; }
   std::string op_to_str(binary_op<at> const &) const { return "[]"; }
   std::string op_to_str(binary_op<load> const &) const { return "load"; }
+  std::string op_to_str(binary_op<ret> const &) const { return "|>"; }
 }; // class printer
 
 std::ostream &operator<<(std::ostream &os, expr const &tree) {
