@@ -345,7 +345,7 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::ret> const &op,
     throw std::runtime_error(
         "Return type isn't match. exprcted " +
         getNameString(builder_.GetInsertBlock()->getParent()->getReturnType()) +
-        "but returning type is " + getNameString(lhs->getType()));
+        " but returning type is " + getNameString(lhs->getType()));
   return builder_.CreateRet(lhs);
 }
 
