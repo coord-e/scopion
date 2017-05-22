@@ -14,18 +14,20 @@
 int main(int argc, char *argv[]) {
   std::cerr << "Welcome to scopion (" << SCOPION_VERSION << ")" << std::endl;
   std::string line;
+  scopion::assembly::context ctx;
   while (1) {
     try {
       std::cout << "> ";
       std::string l;
       std::getline(std::cin, l);
       line += l;
-      scopion::assembly asmb("scopion_interpreter");
       auto ast = scopion::parser::parse("{" + line + "}");
 
       std::cout << "AST: " << ast << std::endl;
 
-      asmb.run(ast);
+      auto mod =
+          scopion::assembly::module::create(ast, ctx, "scopion_interpreter");
+      mod->run();
     } catch (std::exception const &e) {
       std::cerr << "\033[1;31m[ERROR]\033[0m: " << e.what() << std::endl;
     }

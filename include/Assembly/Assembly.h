@@ -1,24 +1,31 @@
 #ifndef SCOPION_ASSEMBLY_H_
 #define SCOPION_ASSEMBLY_H_
 
+#include "AST/AST.h"
+
+#include <iostream>
+
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include "AST/AST.h"
-#include <iostream>
-
 namespace scopion {
+namespace assembly {
 
-class assembly : public boost::static_visitor<llvm::Value *> {
-  llvm::LLVMContext context_;
+class context {
+public:
+  llvm::LLVMContext llvmcontext;
+};
+
+class translator : public boost::static_visitor<llvm::Value *> {
   std::unique_ptr<llvm::Module> module_;
   llvm::IRBuilder<> builder_;
 
 public:
-  assembly(std::string const &name);
+  translator(std::unique_ptr<llvm::Module> &&module,
+             llvm::IRBuilder<> const &builder);
 
   llvm::Value *operator()(ast::value value);
 
@@ -36,9 +43,7 @@ public:
     return apply_op(op, lhs, rhs);
   }
 
-  void IRGen(ast::expr const &asts);
-  llvm::GenericValue run(ast::expr const &asts);
-  std::string getIR();
+  std::unique_ptr<llvm::Module> returnModule() { return std::move(module_); }
 
 private:
   template <typename T> std::string getNameString(T *v) {
@@ -92,6 +97,23 @@ private:
   llvm::Value *apply_op(ast::binary_op<ast::load> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
 };
+
+class module {
+  std::unique_ptr<llvm::Module> module_;
+  llvm::Value *val_;
+
+public:
+  static std::unique_ptr<module> create(ast::expr const &tree, context &ctx,
+                                        std::string const &name = "");
+  std::string irgen();
+  llvm::GenericValue run();
+
+private:
+  module(std::unique_ptr<llvm::Module> &&module, llvm::Value *val)
+      : module_(std::move(module)), val_(val) {}
+};
+
+}; // namespace assembly
 }; // namespace scopion
 
 #endif // SCOPION_ASSEMBLY_H_

@@ -1,18 +1,21 @@
 #include "Assembly/Assembly.h"
+
 #include <algorithm>
+
 #include <boost/range/adaptor/indexed.hpp>
-#include <iostream>
+
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Interpreter.h>
 #include <llvm/IR/ValueSymbolTable.h>
 #include <llvm/Support/TargetSelect.h>
 
 namespace scopion {
-assembly::assembly(std::string const &name)
-    : boost::static_visitor<llvm::Value *>(),
-      module_(new llvm::Module(name, context_)), builder_(context_) {
+namespace assembly {
 
-  llvm::InitializeNativeTarget();
+translator::translator(std::unique_ptr<llvm::Module> &&module,
+                       llvm::IRBuilder<> const &builder)
+    : boost::static_visitor<llvm::Value *>(), module_(std::move(module)),
+      builder_(builder) {
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
 
@@ -36,7 +39,7 @@ assembly::assembly(std::string const &name)
                                "printn", module_.get());
 
     llvm::BasicBlock *entry =
-        llvm::BasicBlock::Create(context_,
+        llvm::BasicBlock::Create(module_->getContext(),
                                  "entry_printn", // BasicBlockの名前
                                  llvm_func);
     builder_.SetInsertPoint(entry); // entryの開始
@@ -48,23 +51,23 @@ assembly::assembly(std::string const &name)
   }
 }
 
-llvm::Value *assembly::operator()(ast::value value) {
+llvm::Value *translator::operator()(ast::value value) {
   return boost::apply_visitor(*this, value);
 }
 
-llvm::Value *assembly::operator()(int value) {
+llvm::Value *translator::operator()(int value) {
   return llvm::ConstantInt::get(builder_.getInt32Ty(), value);
 }
 
-llvm::Value *assembly::operator()(bool value) {
+llvm::Value *translator::operator()(bool value) {
   return llvm::ConstantInt::get(builder_.getInt1Ty(), value);
 }
 
-llvm::Value *assembly::operator()(std::string const &value) {
+llvm::Value *translator::operator()(std::string const &value) {
   return builder_.CreateGlobalStringPtr(value);
 }
 
-llvm::Value *assembly::operator()(ast::variable const &value) {
+llvm::Value *translator::operator()(ast::variable const &value) {
   if (value.isFunc) {
     auto *valp = module_->getFunction(value.name);
     if (valp != nullptr) {
@@ -104,7 +107,7 @@ llvm::Value *assembly::operator()(ast::variable const &value) {
   }
   assert(false);
 }
-llvm::Value *assembly::operator()(ast::array const &value) {
+llvm::Value *translator::operator()(ast::array const &value) {
   auto &ary = value.elements;
   std::vector<llvm::Value *> values;
   for (auto const &elm : ary) {
@@ -130,7 +133,7 @@ llvm::Value *assembly::operator()(ast::array const &value) {
   }
   return aryPtr;
 }
-llvm::Value *assembly::operator()(ast::function const &value) {
+llvm::Value *translator::operator()(ast::function const &value) {
   auto &lines = value.lines;
   // 戻り値の型
   llvm::Type *func_ret_type = builder_.getVoidTy();
@@ -143,7 +146,7 @@ llvm::Value *assembly::operator()(ast::function const &value) {
   llvm::Function *func = llvm::Function::Create(
       func_type, llvm::Function::ExternalLinkage, "", module_.get());
   llvm::BasicBlock *entry =
-      llvm::BasicBlock::Create(context_,
+      llvm::BasicBlock::Create(module_->getContext(),
                                "entry", // BasicBlockの名前
                                func);
   auto *pb = builder_.GetInsertBlock();
@@ -158,95 +161,58 @@ llvm::Value *assembly::operator()(ast::function const &value) {
   return func;
 }
 
-void assembly::IRGen(ast::expr const &tree) {
-  auto *main_func = llvm::Function::Create(
-      llvm::FunctionType::get(builder_.getInt32Ty(), false),
-      llvm::Function::ExternalLinkage, "main", module_.get());
-
-  builder_.SetInsertPoint(
-      llvm::BasicBlock::Create(context_, "main_entry", main_func));
-
-  std::vector<llvm::Value *> args = {builder_.getInt32(0)};
-  builder_.CreateCall(boost::apply_visitor(*this, tree),
-                      llvm::ArrayRef<llvm::Value *>(args));
-
-  builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0));
-}
-
-std::string assembly::getIR() {
-  std::string result;
-  llvm::raw_string_ostream stream(result);
-
-  module_->print(stream, nullptr);
-  return result;
-}
-
-llvm::GenericValue assembly::run(ast::expr const &asts) {
-  auto *func = boost::apply_visitor(*this, asts);
-  auto *funcptr = llvm::cast<llvm::Function>(func);
-  std::unique_ptr<llvm::ExecutionEngine> engine(
-      llvm::EngineBuilder(std::move(module_))
-          .setEngineKind(llvm::EngineKind::Either)
-          .create());
-  engine->finalizeObject();
-
-  auto res = engine->runFunction(funcptr, std::vector<llvm::GenericValue>(1));
-  engine->removeModule(module_.get());
-  return res;
-}
-
-llvm::Value *assembly::apply_op(ast::binary_op<ast::add> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::add> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateAdd(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::sub> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::sub> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateSub(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::mul> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::mul> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateMul(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::div> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::div> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateSDiv(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::rem> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::rem> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateSRem(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::shl> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::shl> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateShl(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::shr> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::shr> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateLShr(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::iand> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::iand> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateAnd(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::ior> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::ior> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateOr(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::ixor> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::ixor> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateXor(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::land> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::land> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateAnd(
       builder_.CreateICmpNE(lhs,
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
@@ -254,8 +220,8 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::land> const &op,
           rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::lor> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::lor> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateOr(
       builder_.CreateICmpNE(lhs,
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
@@ -263,38 +229,38 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::lor> const &op,
           rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::eeq> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::eeq> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateICmpEQ(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::neq> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::neq> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateICmpNE(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::gt> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::gt> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateICmpSGT(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::lt> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::lt> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateICmpSLT(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::gtq> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::gtq> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateICmpSGE(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::ltq> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::ltq> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   return builder_.CreateICmpSLE(lhs, rhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   if (lhs == nullptr) { // first appear in the block (only variable)
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
     lhs = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
@@ -310,8 +276,8 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::assign> const &op,
   return builder_.CreateLoad(lhs);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::call> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   if (!lhs->getType()->isPointerTy())
     throw std::runtime_error("Cannot call function from non-pointer type " +
                              getNameString(lhs->getType()));
@@ -325,8 +291,8 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::call> const &op,
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   auto *rval = rhs->getType()->isPointerTy() ? builder_.CreateLoad(rhs) : rhs;
   if (!rval->getType()->isIntegerTy()) {
     throw std::runtime_error("Array's index must be integer, not " +
@@ -359,11 +325,60 @@ llvm::Value *assembly::apply_op(ast::binary_op<ast::at> const &op,
     return builder_.CreateLoad(ep);
 }
 
-llvm::Value *assembly::apply_op(ast::binary_op<ast::load> const &op,
-                                llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *translator::apply_op(ast::binary_op<ast::load> const &op,
+                                  llvm::Value *lhs, llvm::Value *rhs) {
   if (!lhs->getType()->isPointerTy())
     throw std::runtime_error("Cannot load from non-pointer type " +
                              getNameString(lhs->getType()));
   return builder_.CreateLoad(lhs);
 }
+
+std::unique_ptr<module> module::create(ast::expr const &tree, context &ctx,
+                                       std::string const &name) {
+
+  std::unique_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
+  llvm::IRBuilder<> builder(mod->getContext());
+
+  auto *main_func = llvm::Function::Create(
+      llvm::FunctionType::get(builder.getInt32Ty(), false),
+      llvm::Function::ExternalLinkage, "main", mod.get());
+
+  builder.SetInsertPoint(
+      llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
+
+  std::vector<llvm::Value *> args = {builder.getInt32(0)};
+
+  translator tr(std::move(mod), builder);
+  auto val = boost::apply_visitor(tr, tree);
+  mod = tr.returnModule();
+
+  builder.CreateCall(val, llvm::ArrayRef<llvm::Value *>(args));
+
+  builder.CreateRet(builder.getInt32(0));
+
+  return std::unique_ptr<module>(new module(std::move(mod), val));
+}
+
+std::string module::irgen() {
+  std::string result;
+  llvm::raw_string_ostream stream(result);
+
+  module_->print(stream, nullptr);
+  return result;
+}
+
+llvm::GenericValue module::run() {
+  llvm::InitializeNativeTarget();
+  auto *funcptr = llvm::cast<llvm::Function>(val_);
+  std::unique_ptr<llvm::ExecutionEngine> engine(
+      llvm::EngineBuilder(std::move(module_))
+          .setEngineKind(llvm::EngineKind::Either)
+          .create());
+  engine->finalizeObject();
+  auto res = engine->runFunction(funcptr, std::vector<llvm::GenericValue>(1));
+  engine->removeModule(module_.get());
+  return res;
+}
+
+}; // namespace assembly
 }; // namespace scopion
