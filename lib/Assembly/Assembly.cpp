@@ -150,9 +150,17 @@ llvm::Value *translator::operator()(ast::function const &value) {
   auto pp = builder_.GetInsertPoint();
 
   builder_.SetInsertPoint(entry); // entryの開始
+
+  llvm::Value *aptr;
+  if (!func->arg_empty()) { // if there are any arguments
+    aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
+                                 "arg"); // declare "arg"
+  }
+
   for (auto const &line : lines) {
     boost::apply_visitor(*this, line);
   }
+
   llvm::Type *ret_type = nullptr;
   for (auto itr = entry->getInstList().begin();
        itr != entry->getInstList().end(); ++itr) {
@@ -171,16 +179,25 @@ llvm::Value *translator::operator()(ast::function const &value) {
     ret_type = builder_.getVoidTy();
   }
 
-  builder_.SetInsertPoint(pb, pp); // entryを抜ける
-
-  std::vector<llvm::Type *> args_type = {
-      builder_.getInt32Ty()}; //Not implemented yet
+  std::vector<llvm::Type *> args_type = {builder_.getInt32Ty()};
   llvm::Function *newfunc = llvm::Function::Create(
       llvm::FunctionType::get(ret_type, func_args_type, false),
       llvm::Function::ExternalLinkage, "", module_.get());
-  newfunc->getBasicBlockList().splice(newfunc->begin(),
-                                      func->getBasicBlockList());
-  func->eraseFromParent();
+
+  if (!newfunc->arg_empty()) { // if there are any arguments
+    builder_.SetInsertPoint(
+        entry,
+        ++entry->getFirstInsertionPt()); // To the after of declation of "arg"
+    builder_.CreateStore(&(*newfunc->getArgumentList().begin()), aptr);
+  }
+
+  newfunc->getBasicBlockList().splice(
+      newfunc->begin(),
+      func->getBasicBlockList()); // copy to new function
+  func->eraseFromParent();        // remove old one
+
+  builder_.SetInsertPoint(pb, pp); // entryを抜ける
+
   return newfunc;
 }
 
@@ -367,19 +384,19 @@ std::unique_ptr<module> module::create(ast::expr const &tree, context &ctx,
   std::unique_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
   llvm::IRBuilder<> builder(mod->getContext());
 
+  std::vector<llvm::Type *> args_type = {builder.getInt32Ty()};
   auto *main_func = llvm::Function::Create(
-      llvm::FunctionType::get(builder.getInt32Ty(), false),
+      llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
       llvm::Function::ExternalLinkage, "main", mod.get());
 
   builder.SetInsertPoint(
       llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 
-  std::vector<llvm::Value *> args = {builder.getInt32(0)};
-
   translator tr(std::move(mod), builder);
   auto val = boost::apply_visitor(tr, tree);
   mod = tr.returnModule();
 
+  std::vector<llvm::Value *> args = {builder.getInt32(0)};
   builder.CreateCall(val, llvm::ArrayRef<llvm::Value *>(args));
 
   builder.CreateRet(builder.getInt32(0));
