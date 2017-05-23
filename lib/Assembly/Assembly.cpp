@@ -135,14 +135,11 @@ llvm::Value *translator::operator()(ast::array const &value) {
 }
 llvm::Value *translator::operator()(ast::function const &value) {
   auto &lines = value.lines;
-  // 戻り値の型
-  llvm::Type *func_ret_type = builder_.getInt32Ty();
-  // 引数の型
+
   std::vector<llvm::Type *> func_args_type;
   func_args_type.push_back(builder_.getInt32Ty());
-
   llvm::FunctionType *func_type =
-      llvm::FunctionType::get(func_ret_type, func_args_type, false);
+      llvm::FunctionType::get(builder_.getVoidTy(), func_args_type, false);
   llvm::Function *func = llvm::Function::Create(
       func_type, llvm::Function::ExternalLinkage, "", module_.get());
   llvm::BasicBlock *entry =
@@ -156,15 +153,35 @@ llvm::Value *translator::operator()(ast::function const &value) {
   for (auto const &line : lines) {
     boost::apply_visitor(*this, line);
   }
-  if (!std::any_of(entry->getInstList().begin(), entry->getInstList().end(),
-                   [](llvm::Instruction &i) {
-                     return i.getOpcode() == llvm::Instruction::Ret;
-                   })) {
-    builder_.CreateRet(builder_.getInt32(0));
+  llvm::Type *ret_type = nullptr;
+  for (auto itr = entry->getInstList().begin();
+       itr != entry->getInstList().end(); ++itr) {
+    if ((*itr).getOpcode() == llvm::Instruction::Ret) {
+      if ((*itr).getOperand(0)->getType() != ret_type) {
+        if (ret_type == nullptr) {
+          ret_type = (*itr).getOperand(0)->getType();
+        } else {
+          throw std::runtime_error("All return values must have the same type");
+        }
+      }
+    }
+  }
+  if (ret_type == nullptr) {
+    builder_.CreateRetVoid();
+    ret_type = builder_.getVoidTy();
   }
 
   builder_.SetInsertPoint(pb, pp); // entryを抜ける
-  return func;
+
+  std::vector<llvm::Type *> args_type = {
+      builder_.getInt32Ty()}; //Not implemented yet
+  llvm::Function *newfunc = llvm::Function::Create(
+      llvm::FunctionType::get(ret_type, func_args_type, false),
+      llvm::Function::ExternalLinkage, "", module_.get());
+  newfunc->getBasicBlockList().splice(newfunc->begin(),
+                                      func->getBasicBlockList());
+  func->eraseFromParent();
+  return newfunc;
 }
 
 llvm::Value *translator::apply_op(ast::binary_op<ast::add> const &op,
@@ -341,11 +358,6 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::load> const &op,
 
 llvm::Value *translator::apply_op(ast::binary_op<ast::ret> const &op,
                                   llvm::Value *lhs, llvm::Value *rhs) {
-  if (lhs->getType() != builder_.GetInsertBlock()->getParent()->getReturnType())
-    throw std::runtime_error(
-        "Return type isn't match. exprcted " +
-        getNameString(builder_.GetInsertBlock()->getParent()->getReturnType()) +
-        " but returning type is " + getNameString(lhs->getType()));
   return builder_.CreateRet(lhs);
 }
 
