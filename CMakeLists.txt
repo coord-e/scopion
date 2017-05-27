@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(scopion CXX)
 
+set(CMAKE_MACOSX_RPATH 1)
+
 if(NOT ENV{LLVM_DIR})
     set(ENV{LLVM_DIR} /usr/local/Cellar/llvm/4.0.0/)
 endif(NOT ENV{LLVM_DIR})

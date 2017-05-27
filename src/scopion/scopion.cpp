@@ -8,10 +8,7 @@
 
 #include "rang.hpp"
 
-#include "scopion/assembly/assembly.h"
-#include "scopion/ast/ast.h"
-#include "scopion/exceptions.h"
-#include "scopion/parser/parser.h"
+#include "scopion/scopion.h"
 
 #define SCOPION_VERSION "0.0.1-beta"
 
