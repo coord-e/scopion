@@ -1,8 +1,10 @@
 #include "Assembly/Assembly.h"
+#include "exceptions.h"
 
 #include <algorithm>
 
 #include <boost/range/adaptor/indexed.hpp>
+#include <boost/range/iterator_range.hpp>
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Interpreter.h>
@@ -48,6 +50,17 @@ translator::translator(std::unique_ptr<llvm::Module> &&module,
         &(*(llvm_func->getArgumentList().begin()))};
     builder_.CreateCall(module_->getFunction("printf"), args);
     builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0, true));
+  }
+}
+
+llvm::Value *translator::operator()(parser::parsed const &expr) {
+  try {
+    auto *val = boost::apply_visitor(*this, expr.ast);
+    return val;
+  } catch (std::runtime_error e) {
+    throw general_error(
+        e.what(), expr.ast.where,
+        boost::make_iterator_range(expr.code.begin(), expr.code.end()));
   }
 }
 
@@ -378,7 +391,7 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::ret> const &op,
   return builder_.CreateRet(lhs);
 }
 
-std::unique_ptr<module> module::create(ast::expr const &tree, context &ctx,
+std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
                                        std::string const &name) {
 
   std::unique_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
@@ -393,7 +406,7 @@ std::unique_ptr<module> module::create(ast::expr const &tree, context &ctx,
       llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 
   translator tr(std::move(mod), builder);
-  auto val = boost::apply_visitor(tr, tree);
+  auto val = tr(tree);
   mod = tr.returnModule();
 
   std::vector<llvm::Value *> args = {builder.getInt32(0)};

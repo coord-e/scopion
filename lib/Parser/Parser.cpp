@@ -1,12 +1,12 @@
 #include "Parser/Parser.h"
 
-#include <boost/spirit/home/x3.hpp>
-
 #include <boost/algorithm/string.hpp>
+#include <boost/spirit/home/x3.hpp>
 
 #include <array>
 
 #include "AST/AST.h"
+#include "exceptions.h"
 
 namespace scopion {
 namespace parser {
@@ -18,30 +18,37 @@ namespace grammar {
 namespace detail {
 
 decltype(auto) assign() {
-  return [](auto &&ctx) { x3::_val(ctx) = x3::_attr(ctx); };
+  return [](auto &&ctx) {
+    x3::_val(ctx) = ast::expr(x3::_attr(ctx), x3::_where(ctx));
+  };
 }
 
 decltype(auto) assign_str() {
   return [](auto &&ctx) {
     auto &&v = x3::_attr(ctx);
-    x3::_val(ctx) = std::string(v.begin(), v.end());
+    x3::_val(ctx) = ast::expr(std::string(v.begin(), v.end()), x3::_where(ctx));
   };
 }
 
 template <typename T> decltype(auto) assign_as() {
-  return [](auto &&ctx) { x3::_val(ctx) = T(x3::_attr(ctx)); };
+  return [](auto &&ctx) {
+    x3::_val(ctx) = ast::expr(T(x3::_attr(ctx)), x3::_where(ctx));
+  };
 }
 
 decltype(auto) assign_var(bool rl = true) {
   return [rl](auto &&ctx) {
     auto &&v = x3::_attr(ctx);
-    x3::_val(ctx) = ast::variable(std::string(v.begin(), v.end()), rl, false);
+    x3::_val(ctx) =
+        ast::expr(ast::variable(std::string(v.begin(), v.end()), rl, false),
+                  x3::_where(ctx));
   };
 }
 
 template <typename Op> decltype(auto) assign_binop() {
   return [](auto &&ctx) {
-    x3::_val(ctx) = ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx));
+    x3::_val(ctx) = ast::expr(ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx)),
+                              x3::_where(ctx));
   };
 }
 
@@ -63,15 +70,20 @@ template <> decltype(auto) assign_binop<ast::assign>() {
       auto &&v = boost::get<ast::value>(x3::_val(ctx));
       if (v.type() == typeid(ast::variable)) {
         auto &&n = boost::get<ast::variable>(v).name;
-        x3::_val(ctx) = ast::binary_op<ast::assign>(
-            ast::variable(n, false, false), x3::_attr(ctx));
+        x3::_val(ctx) =
+            ast::expr(ast::binary_op<ast::assign>(
+                          ast::variable(n, false, false), x3::_attr(ctx)),
+                      x3::_where(ctx));
         return;
       } else {
-        throw std::runtime_error("Cannot assign to constant value");
+        x3::_pass(ctx) = false;
       }
     } else {
-      x3::_val(ctx) = ast::binary_op<ast::assign>(
-          boost::apply_visitor(make_op_lval(), x3::_val(ctx)), x3::_attr(ctx));
+      x3::_val(ctx) =
+          ast::expr(ast::binary_op<ast::assign>(
+                        boost::apply_visitor(make_op_lval(), x3::_val(ctx)),
+                        x3::_attr(ctx)),
+                    x3::_where(ctx));
     }
   };
 }
@@ -85,19 +97,24 @@ template <> decltype(auto) assign_binop<ast::call>() {
     auto &&v = boost::get<ast::value>(x3::_val(ctx));
     if (v.type() == typeid(ast::variable)) {
       auto &&n = boost::get<ast::variable>(v).name;
-      x3::_val(ctx) = ast::binary_op<ast::call>(ast::variable(n, false, true),
-                                                x3::_attr(ctx));
+      x3::_val(ctx) =
+          ast::expr(ast::binary_op<ast::call>(ast::variable(n, false, true),
+                                              x3::_attr(ctx)),
+                    x3::_where(ctx));
     } else if (v.type() == typeid(ast::function)) {
-      x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx));
+      x3::_val(ctx) =
+          ast::expr(ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx)),
+                    x3::_where(ctx));
     } else {
-      throw std::runtime_error("lvalue have to be a variable or a function");
+      x3::_pass(ctx) = false;
     }
   };
 }
 
 template <typename Op> decltype(auto) assign_sinop(ast::expr rv) {
   return [rv](auto &&ctx) {
-    x3::_val(ctx) = ast::binary_op<Op>(x3::_attr(ctx), rv);
+    x3::_val(ctx) =
+        ast::expr(ast::binary_op<Op>(x3::_attr(ctx), rv), x3::_where(ctx));
   };
 }
 
@@ -225,22 +242,22 @@ BOOST_SPIRIT_DEFINE(primary, call_expr, pre_sinop_expr, post_sinop_expr,
                     ret_expr, expression);
 
 struct expression {
-  //  Our error handler
+
   template <typename Iterator, typename Exception, typename Context>
   x3::error_handler_result on_error(Iterator const &first, Iterator const &last,
                                     Exception const &x,
                                     Context const &context) {
-    throw std::runtime_error(
+    throw general_error(
         x.which() + " is expected but there is " +
-        (x.where() == last ? "nothing" : std::string(x.where(), last)) + "\n" +
-        std::string(first, x.where()) + "\033[1;33m" +
-        std::string(x.where(), last) + "\033[1;0m");
+            (x.where() == last ? "nothing" : std::string{*x.where()}),
+        boost::make_iterator_range(x.where(), x.where()),
+        boost::make_iterator_range(first, last));
     return x3::error_handler_result::fail;
   }
 };
 } // namespace grammar
 
-ast::expr parse(std::string const &code) {
+parsed parse(std::string const &code) {
   ast::expr tree;
 
   auto const space_comment = x3::space | "/*" > *(x3::char_ - "*/") > "*/";
@@ -249,7 +266,7 @@ ast::expr parse(std::string const &code) {
     throw std::runtime_error("detected error");
   }
 
-  return tree;
+  return parsed(tree, code);
 }
 
 }; // namespace parser

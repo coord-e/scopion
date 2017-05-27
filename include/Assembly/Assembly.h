@@ -2,6 +2,7 @@
 #define SCOPION_ASSEMBLY_H_
 
 #include "AST/AST.h"
+#include "Parser/Parser.h"
 
 #include <iostream>
 
@@ -26,6 +27,8 @@ class translator : public boost::static_visitor<llvm::Value *> {
 public:
   translator(std::unique_ptr<llvm::Module> &&module,
              llvm::IRBuilder<> const &builder);
+
+  llvm::Value *operator()(parser::parsed const &expr);
 
   llvm::Value *operator()(ast::value value);
 
@@ -105,7 +108,9 @@ class module {
   llvm::Value *val_;
 
 public:
-  static std::unique_ptr<module> create(ast::expr const &tree, context &ctx,
+  static std::unique_ptr<module> create(parser::parsed const &tree,
+                                        context &ctx,
+
                                         std::string const &name = "");
   std::string irgen();
   llvm::GenericValue run();

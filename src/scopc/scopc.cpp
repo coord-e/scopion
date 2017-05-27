@@ -8,6 +8,7 @@
 #include "AST/AST.h"
 #include "Assembly/Assembly.h"
 #include "Parser/Parser.h"
+#include "exceptions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -39,7 +40,11 @@ int main(int argc, char *argv[]) {
     f.close();
     system(("llc " + tmpstr).c_str());
     system(("gcc " + tmpstr + ".s -o " + std::string(outbin)).c_str());
-  } catch (std::exception const &e) {
-    std::cerr << e.what() << std::endl;
+  } catch (scopion::general_error const &ex) {
+    scopion::diagnosis e(ex);
+    std::cerr << "\033[1;31m[ERROR]\033[0m: @" << e.line_n() << ", " << e.what()
+              << std::endl
+              << e.line() << std::endl
+              << std::string(e.line_c(), ' ') << "^" << std::endl;
   }
 }

@@ -6,9 +6,17 @@
 namespace scopion {
 namespace parser {
 
-ast::expr parse(std::string const &code);
+struct parsed {
+  ast::expr ast;
+  std::string const &code;
+  parsed(ast::expr const &ast_, std::string const &code_)
+      : ast(ast_), code(code_) {}
+};
+
+parsed parse(std::string const &code);
 
 }; // namespace parser
+
 }; // namespace scopion
 
 #endif // SCOPION_PARSER_H_
