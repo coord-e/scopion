@@ -1,9 +1,12 @@
 #include <cstdio>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+
+#include "rang.hpp"
 
 #include "AST/AST.h"
 #include "Assembly/Assembly.h"
@@ -33,10 +36,13 @@ int main(int argc, char *argv[]) {
       mod->run();
     } catch (scopion::general_error const &ex) {
       scopion::diagnosis e(ex);
-      std::cerr << "\033[1;31m[ERROR]\033[0m: @" << e.line_n() << ", "
-                << e.what() << std::endl
+      std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray
+                << "[ERROR]" << rang::style::reset << rang::fg::red << " @"
+                << e.line_n() << rang::style::reset << ": " << e.what()
+                << std::endl
                 << e.line() << std::endl
-                << std::string(e.line_c(), ' ') << "^" << std::endl;
+                << rang::fg::green << std::setw(e.line_c() + 1) << "^"
+                << rang::style::reset << std::endl;
     }
   }
 }

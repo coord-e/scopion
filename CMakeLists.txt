@@ -17,6 +17,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 set(CCMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native")
 
 include_directories(include)
+include_directories(extsrc/include)
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(Boost REQUIRED)
