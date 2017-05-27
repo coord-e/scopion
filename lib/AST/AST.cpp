@@ -1,4 +1,4 @@
-#include "AST/AST.h"
+#include "scopion/ast/ast.h"
 
 namespace scopion {
 namespace ast {

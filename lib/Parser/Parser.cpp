@@ -1,12 +1,12 @@
-#include "Parser/Parser.h"
+#include "scopion/parser/parser.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/spirit/home/x3.hpp>
 
 #include <array>
 
-#include "AST/AST.h"
-#include "exceptions.h"
+#include "scopion/ast/ast.h"
+#include "scopion/exceptions.h"
 
 namespace scopion {
 namespace parser {

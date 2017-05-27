@@ -1,5 +1,5 @@
-#include "Assembly/Assembly.h"
-#include "exceptions.h"
+#include "scopion/assembly/assembly.h"
+#include "scopion/exceptions.h"
 
 #include <algorithm>
 

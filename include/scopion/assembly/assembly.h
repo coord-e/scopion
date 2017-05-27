@@ -1,8 +1,8 @@
 #ifndef SCOPION_ASSEMBLY_H_
 #define SCOPION_ASSEMBLY_H_
 
-#include "AST/AST.h"
-#include "Parser/Parser.h"
+#include "scopion/ast/ast.h"
+#include "scopion/parser/parser.h"
 
 #include <iostream>
 

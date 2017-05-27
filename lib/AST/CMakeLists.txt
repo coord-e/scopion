@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
-add_library(AST STATIC
-  AST.cpp
+add_library(ast STATIC
+  ast.cpp
 )
 
-target_link_libraries(AST ${Boost_LIBRARIES})
+target_link_libraries(ast ${Boost_LIBRARIES})
