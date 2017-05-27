@@ -33,11 +33,14 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES all)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
+if(NOT WITHOUT_TEST)
+   enable_testing()
+   include(cmake/gtest.cmake)
+endif()
+
 add_subdirectory(lib)
 add_subdirectory(src)
 
-#if(NOT without-test)
-#    enable_testing()
-#    include(cmake/gtest.cmake)
-#    add_subdirectory(test)
-#endif()
+if(NOT WITHOUT_TEST)
+   add_subdirectory(test)
+endif()
