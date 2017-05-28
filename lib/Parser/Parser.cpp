@@ -36,7 +36,7 @@ template <typename T> decltype(auto) assign_as() {
   };
 }
 
-decltype(auto) assign_var(bool rl = true) {
+decltype(auto) assign_var(bool rl = false) {
   return [rl](auto &&ctx) {
     auto &&v = x3::_attr(ctx);
     x3::_val(ctx) =
@@ -71,8 +71,8 @@ template <> decltype(auto) assign_binop<ast::assign>() {
       if (v.type() == typeid(ast::variable)) {
         auto &&n = boost::get<ast::variable>(v).name;
         x3::_val(ctx) =
-            ast::expr(ast::binary_op<ast::assign>(
-                          ast::variable(n, false, false), x3::_attr(ctx)),
+            ast::expr(ast::binary_op<ast::assign>(ast::variable(n, true, false),
+                                                  x3::_attr(ctx)),
                       x3::_where(ctx));
         return;
       } else {

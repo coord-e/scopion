@@ -109,13 +109,13 @@ llvm::Value *translator::operator()(ast::variable const &value) {
     auto *valp =
         builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.name);
     if (value.lval) {
+      return valp;
+    } else {
       if (valp != nullptr) {
         return builder_.CreateLoad(valp);
       } else {
         throw std::runtime_error("\"" + value.name + "\" has not declared");
       }
-    } else {
-      return valp;
     }
   }
   assert(false);
