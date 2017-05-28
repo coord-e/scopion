@@ -320,7 +320,14 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
     builder_.CreateStore(rhs, lhs);
   } else {
     if (lhs->getType()->isPointerTy()) {
-      builder_.CreateStore(rhs, lhs);
+      if (lhs->getType()->getPointerElementType() == rhs->getType()) {
+        builder_.CreateStore(rhs, lhs);
+      } else {
+        throw std::runtime_error(
+            "Cannot assign to different type of value (assigning " +
+            getNameString(rhs->getType()) + " into " +
+            getNameString(lhs->getType()->getPointerElementType()) + ")");
+      }
     } else {
       throw std::runtime_error("Cannot assign to non-pointer value (" +
                                getNameString(lhs->getType()) + ")");
