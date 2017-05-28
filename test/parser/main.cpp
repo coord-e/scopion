@@ -103,6 +103,10 @@ TEST_F(parserTest, sinOp) {
             ast::expr(ast::function({ast::binary_op<ast::add>(1, 1)})));
   EXPECT_EQ(parser::parse("{--1;}").ast,
             ast::expr(ast::function({ast::binary_op<ast::sub>(1, 1)})));
+  EXPECT_EQ(parser::parse("{1++;}").ast,
+            ast::expr(ast::function({ast::binary_op<ast::add>(1, 1)})));
+  EXPECT_EQ(parser::parse("{1--;}").ast,
+            ast::expr(ast::function({ast::binary_op<ast::sub>(1, 1)})));
   EXPECT_EQ(parser::parse("{*1;}").ast,
             ast::expr(ast::function({ast::binary_op<ast::load>(1, 1)})));
 }
@@ -117,6 +121,43 @@ TEST_F(parserTest, atOp) {
   EXPECT_EQ(parser::parse("{a[1];}").ast,
             ast::expr(ast::function({ast::binary_op<ast::at>(
                 ast::variable("a", true, false), 1)})));
+}
+
+TEST_F(parserTest, priority) {
+  EXPECT_EQ(
+      parser::parse("{|>a=1||1&&1|1^1&1>1>>1+1**1++a[0];}").ast,
+      ast::expr(ast::function({ast::binary_op<ast::ret>(
+          ast::binary_op<ast::assign>(
+              ast::variable("a", false, false),
+              ast::binary_op<ast::lor>(
+                  1,
+                  ast::binary_op<ast::land>(
+                      1,
+                      ast::binary_op<ast::iand>(
+                          1,
+                          ast::binary_op<ast::ixor>(
+                              1,
+                              ast::binary_op<ast::iand>(
+                                  1,
+                                  ast::binary_op<ast::gt>(
+                                      1,
+                                      ast::binary_op<ast::shr>(
+                                          1,
+                                          ast::binary_op<ast::add>(
+                                              1,
+                                              ast::binary_op<ast::mul>(
+                                                  1,
+                                                  ast::binary_op<ast::load>(
+                                                      ast::binary_op<ast::add>(
+                                                          ast::binary_op<
+                                                              ast::at>(
+                                                              ast::variable(
+                                                                  "a", true,
+                                                                  false),
+                                                              0),
+                                                          1),
+                                                      1))))))))))),
+          1)})));
 }
 
 } // namespace
