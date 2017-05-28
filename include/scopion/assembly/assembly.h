@@ -105,19 +105,20 @@ private:
 
 class module {
   std::unique_ptr<llvm::Module> module_;
-  llvm::Value *val_;
 
 public:
+  llvm::Value *val;
+
   static std::unique_ptr<module> create(parser::parsed const &tree,
                                         context &ctx,
-
                                         std::string const &name = "");
+
   std::string irgen();
   llvm::GenericValue run();
 
 private:
-  module(std::unique_ptr<llvm::Module> &&module, llvm::Value *val)
-      : module_(std::move(module)), val_(val) {}
+  module(std::unique_ptr<llvm::Module> &&module, llvm::Value *val_)
+      : module_(std::move(module)), val(val_) {}
 };
 
 }; // namespace assembly

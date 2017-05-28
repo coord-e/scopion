@@ -427,7 +427,7 @@ std::string module::irgen() {
 
 llvm::GenericValue module::run() {
   llvm::InitializeNativeTarget();
-  auto *funcptr = llvm::cast<llvm::Function>(val_);
+  auto *funcptr = llvm::cast<llvm::Function>(val);
   std::unique_ptr<llvm::ExecutionEngine> engine(
       llvm::EngineBuilder(std::move(module_))
           .setEngineKind(llvm::EngineKind::Either)
