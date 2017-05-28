@@ -2,16 +2,18 @@ cmake_minimum_required(VERSION 3.8)
 
 project(scopion CXX)
 
-set(CMAKE_MACOSX_RPATH 1)
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+if(APPLE)
+    set(CMAKE_MACOSX_RPATH 1)
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
 
 if(NOT ENV{LLVM_DIR})
     set(ENV{LLVM_DIR} /usr/local/Cellar/llvm/4.0.0/)
-endif(NOT ENV{LLVM_DIR})
+endif()
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif(NOT CMAKE_BUILD_TYPE)
+endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Wextra -Wno-unused-parameter")
