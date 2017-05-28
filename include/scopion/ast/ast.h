@@ -1,7 +1,9 @@
 #ifndef SCOPION_AST_H_
 #define SCOPION_AST_H_
 
+#undef BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
 #define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#undef BOOST_MPL_LIMIT_LIST_SIZE
 #define BOOST_MPL_LIMIT_LIST_SIZE 50
 
 #include <boost/range/iterator_range.hpp>
