@@ -41,6 +41,8 @@ struct call;
 struct at;
 struct load;
 
+struct expr;
+
 template <class Op> struct binary_op;
 class variable;
 class array;
@@ -87,6 +89,7 @@ public:
 
   str_range_t where;
 };
+bool operator==(expr const &lhs, expr const &rhs);
 
 class variable {
 public:
@@ -96,18 +99,21 @@ public:
   variable(std::string const &n, bool lval_, bool isfunc)
       : name(n), lval(lval_), isFunc(isfunc) {}
 };
+bool operator==(variable const &lhs, variable const &rhs);
 
 class array {
 public:
   std::vector<expr> elements;
   array(std::vector<expr> const &elms_) : elements(elms_) {}
 };
+bool operator==(array const &lhs, array const &rhs);
 
 class function {
 public:
   std::vector<expr> lines;
   function(std::vector<expr> const &lines_) : lines(lines_) {}
 };
+bool operator==(function const &lhs, function const &rhs);
 
 template <class Op> struct binary_op {
   expr lhs;
@@ -117,6 +123,8 @@ template <class Op> struct binary_op {
   binary_op(expr const &lhs_, expr const &rhs_, bool lval_ = false)
       : lhs(lhs_), rhs(rhs_), lval(lval_) {}
 };
+template <class Op>
+bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
 
 std::ostream &operator<<(std::ostream &os, expr const &tree);
 
