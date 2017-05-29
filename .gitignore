@@ -31,6 +31,19 @@
 *.out
 *.app
 
+# macOS
+*.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Linux
+*~
+
 # CMake Building Directories
 build
 build_debug
