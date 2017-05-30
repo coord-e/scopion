@@ -94,7 +94,7 @@ TEST_F(parserTest, assignOp) {
 
 TEST_F(parserTest, sinOp) {
   EXPECT_EQ(parser::parse("{|>1;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::ret>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::ret>(1, 1)})));
   EXPECT_EQ(parser::parse("{!1;}").ast,
             ast::expr(ast::function({ast::binary_op<ast::ixor>(1, 1)})));
   EXPECT_EQ(parser::parse("{~1;}").ast,
@@ -108,7 +108,7 @@ TEST_F(parserTest, sinOp) {
   EXPECT_EQ(parser::parse("{1--;}").ast,
             ast::expr(ast::function({ast::binary_op<ast::sub>(1, 1)})));
   EXPECT_EQ(parser::parse("{*1;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::load>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::load>(1, 1)})));
 }
 
 TEST_F(parserTest, callOp) {
@@ -126,7 +126,7 @@ TEST_F(parserTest, atOp) {
 TEST_F(parserTest, priority) {
   EXPECT_EQ(
       parser::parse("{|>a=1||1&&1|1^1&1>1>>1+1**1++a[0];}").ast,
-      ast::expr(ast::function({ast::binary_op<ast::ret>(
+      ast::expr(ast::function({ast::single_op<ast::ret>(
           ast::binary_op<ast::assign>(
               ast::variable("a", false, false),
               ast::binary_op<ast::lor>(
@@ -147,7 +147,7 @@ TEST_F(parserTest, priority) {
                                               1,
                                               ast::binary_op<ast::mul>(
                                                   1,
-                                                  ast::binary_op<ast::load>(
+                                                  ast::single_op<ast::load>(
                                                       ast::binary_op<ast::add>(
                                                           ast::binary_op<
                                                               ast::at>(

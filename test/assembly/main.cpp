@@ -14,7 +14,7 @@ class assemblyTest : public ::testing::Test {};
 TEST_F(assemblyTest, variable) {
   auto tree = ast::function(
       {ast::binary_op<ast::assign>(ast::variable("test", false, false), 1),
-       ast::binary_op<ast::ret>(
+       ast::single_op<ast::ret>(
            ast::binary_op<ast::add>(ast::variable("test", true, false), 1),
            0)});
 

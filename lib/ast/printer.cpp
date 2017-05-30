@@ -58,6 +58,13 @@ public:
     _s << " }";
   }
 
+  template <typename T> auto operator()(const single_op<T> &o) const -> void {
+    _s << "{ ";
+    _s << op_to_str(o);
+    boost::apply_visitor(*this, o.value);
+    _s << " }";
+  }
+
 private:
   std::string op_to_str(binary_op<add> const &) const { return "+"; }
   std::string op_to_str(binary_op<sub> const &) const { return "-"; }
@@ -80,8 +87,12 @@ private:
   std::string op_to_str(binary_op<assign> const &) const { return "="; }
   std::string op_to_str(binary_op<call> const &) const { return "()"; }
   std::string op_to_str(binary_op<at> const &) const { return "[]"; }
-  std::string op_to_str(binary_op<load> const &) const { return "load"; }
-  std::string op_to_str(binary_op<ret> const &) const { return "|>"; }
+  std::string op_to_str(single_op<load> const &) const { return "*"; }
+  std::string op_to_str(single_op<ret> const &) const { return "|>"; }
+  std::string op_to_str(single_op<lnot> const &) const { return "!"; }
+  std::string op_to_str(single_op<inot> const &) const { return "~"; }
+  std::string op_to_str(single_op<inc> const &) const { return "++"; }
+  std::string op_to_str(single_op<dec> const &) const { return "--"; }
 }; // class printer
 
 std::ostream &operator<<(std::ostream &os, expr const &tree) {

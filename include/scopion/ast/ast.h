@@ -36,13 +36,19 @@ struct lt;
 struct gtq;
 struct ltq;
 struct assign;
-struct ret;
 struct call;
 struct at;
+
+struct ret;
 struct load;
+struct lnot;
+struct inot;
+struct inc;
+struct dec;
 
 struct expr;
 
+template <class Op> struct single_op;
 template <class Op> struct binary_op;
 class variable;
 class array;
@@ -73,10 +79,14 @@ using expr_base =
                    boost::recursive_wrapper<binary_op<gtq>>,
                    boost::recursive_wrapper<binary_op<ltq>>,
                    boost::recursive_wrapper<binary_op<assign>>,
-                   boost::recursive_wrapper<binary_op<ret>>,
+                   boost::recursive_wrapper<single_op<ret>>,
                    boost::recursive_wrapper<binary_op<call>>,
                    boost::recursive_wrapper<binary_op<at>>,
-                   boost::recursive_wrapper<binary_op<load>>>;
+                   boost::recursive_wrapper<single_op<load>>,
+                   boost::recursive_wrapper<single_op<lnot>>,
+                   boost::recursive_wrapper<single_op<inot>>,
+                   boost::recursive_wrapper<single_op<inc>>,
+                   boost::recursive_wrapper<single_op<dec>>>;
 
 struct expr : expr_base {
   using str_range_t = boost::iterator_range<std::string::const_iterator>;
@@ -114,6 +124,16 @@ public:
   function(std::vector<expr> const &lines_) : lines(lines_) {}
 };
 bool operator==(function const &lhs, function const &rhs);
+
+template <class Op> struct single_op {
+  expr value;
+  bool lval;
+
+  single_op(expr const &value_, bool lval_ = false)
+      : value(value_), lval(lval_) {}
+};
+template <class Op>
+bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs);
 
 template <class Op> struct binary_op {
   expr lhs;

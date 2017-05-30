@@ -174,17 +174,41 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
     return builder_.CreateLoad(ep);
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::load> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  if (!lhs->getType()->isPointerTy())
+llvm::Value *translator::apply_op(ast::single_op<ast::load> const &op,
+                                  llvm::Value *value) {
+  if (!value->getType()->isPointerTy())
     throw std::runtime_error("Cannot load from non-pointer type " +
-                             getNameString(lhs->getType()));
-  return builder_.CreateLoad(lhs);
+                             getNameString(value->getType()));
+  return builder_.CreateLoad(value);
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::ret> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateRet(lhs);
+llvm::Value *translator::apply_op(ast::single_op<ast::ret> const &op,
+                                  llvm::Value *value) {
+  return builder_.CreateRet(value);
 }
-} // namespace assembly
-} // namespace scopion
+
+llvm::Value *translator::apply_op(ast::single_op<ast::lnot> const &,
+                                  llvm::Value *value) {
+  return builder_.CreateXor(
+      builder_.CreateICmpNE(value,
+                            llvm::Constant::getNullValue(builder_.getInt1Ty())),
+      builder_.getInt32(1));
+}
+
+llvm::Value *translator::apply_op(ast::single_op<ast::inot> const &,
+                                  llvm::Value *value) {
+  return builder_.CreateXor(value, builder_.getInt32(1));
+}
+
+llvm::Value *translator::apply_op(ast::single_op<ast::inc> const &,
+                                  llvm::Value *value) {
+  return builder_.CreateAdd(value, builder_.getInt32(1));
+}
+
+llvm::Value *translator::apply_op(ast::single_op<ast::dec> const &,
+                                  llvm::Value *value) {
+  return builder_.CreateSub(value, builder_.getInt32(1));
+}
+
+}; // namespace assembly
+}; // namespace scopion

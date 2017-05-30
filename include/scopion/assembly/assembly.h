@@ -39,6 +39,10 @@ public:
   llvm::Value *operator()(ast::array const &value);
   llvm::Value *operator()(ast::function const &value);
 
+  template <class Op> llvm::Value *operator()(ast::single_op<Op> const &op) {
+    return apply_op(op, boost::apply_visitor(*this, op.value));
+  }
+
   template <class Op> llvm::Value *operator()(ast::binary_op<Op> const &op) {
     llvm::Value *lhs = boost::apply_visitor(*this, op.lhs);
     llvm::Value *rhs = boost::apply_visitor(*this, op.rhs);
@@ -97,10 +101,12 @@ private:
                         llvm::Value *rhs);
   llvm::Value *apply_op(ast::binary_op<ast::at> const &, llvm::Value *lhs,
                         llvm::Value *rhs);
-  llvm::Value *apply_op(ast::binary_op<ast::load> const &, llvm::Value *lhs,
-                        llvm::Value *rhs);
-  llvm::Value *apply_op(ast::binary_op<ast::ret> const &, llvm::Value *lhs,
-                        llvm::Value *rhs);
+  llvm::Value *apply_op(ast::single_op<ast::load> const &, llvm::Value *value);
+  llvm::Value *apply_op(ast::single_op<ast::ret> const &, llvm::Value *value);
+  llvm::Value *apply_op(ast::single_op<ast::lnot> const &, llvm::Value *value);
+  llvm::Value *apply_op(ast::single_op<ast::inot> const &, llvm::Value *value);
+  llvm::Value *apply_op(ast::single_op<ast::inc> const &, llvm::Value *value);
+  llvm::Value *apply_op(ast::single_op<ast::dec> const &, llvm::Value *value);
 };
 
 class module {

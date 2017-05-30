@@ -57,6 +57,11 @@ struct make_op_lval : boost::static_visitor<ast::expr> {
     return op;
   }
 
+  template <typename Op> ast::expr operator()(ast::single_op<Op> op) const {
+    op.lval = true;
+    return op;
+  }
+
   ast::expr operator()(ast::value val) const {
     assert(false);
     return ast::expr();
@@ -110,10 +115,10 @@ template <> decltype(auto) assign_binop<ast::call>() {
   };
 }
 
-template <typename Op> decltype(auto) assign_sinop(ast::expr rv) {
-  return [rv](auto &&ctx) {
+template <typename Op> decltype(auto) assign_sinop() {
+  return [](auto &&ctx) {
     x3::_val(ctx) =
-        ast::expr(ast::binary_op<Op>(x3::_attr(ctx), rv), x3::_where(ctx));
+        ast::expr(ast::single_op<Op>(x3::_attr(ctx)), x3::_where(ctx));
   };
 }
 
@@ -169,16 +174,16 @@ auto const call_expr_def =
 
 auto const post_sinop_expr_def =
     call_expr[detail::assign()] |
-    (call_expr > "++")[detail::assign_sinop<ast::add>(1)] |
-    (call_expr > "--")[detail::assign_sinop<ast::sub>(1)];
+    (call_expr > "++")[detail::assign_sinop<ast::inc>()] |
+    (call_expr > "--")[detail::assign_sinop<ast::dec>()];
 
 auto const pre_sinop_expr_def =
     post_sinop_expr[detail::assign()] |
-    ("!" > post_sinop_expr)[detail::assign_sinop<ast::ixor>(1)] |
-    ("~" > post_sinop_expr)[detail::assign_sinop<ast::ixor>(1)] |
-    ("++" > post_sinop_expr)[detail::assign_sinop<ast::add>(1)] |
-    ("--" > post_sinop_expr)[detail::assign_sinop<ast::sub>(1)] |
-    ("*" > post_sinop_expr)[detail::assign_sinop<ast::load>(1)];
+    ("!" > post_sinop_expr)[detail::assign_sinop<ast::lnot>()] |
+    ("~" > post_sinop_expr)[detail::assign_sinop<ast::inot>()] |
+    ("++" > post_sinop_expr)[detail::assign_sinop<ast::inc>()] |
+    ("--" > post_sinop_expr)[detail::assign_sinop<ast::dec>()] |
+    ("*" > post_sinop_expr)[detail::assign_sinop<ast::load>()];
 
 auto const
     mul_expr_def = pre_sinop_expr[detail::assign()] >>
@@ -231,7 +236,7 @@ auto const assign_expr_def =
 
 auto const ret_expr_def =
     assign_expr[detail::assign()] |
-    ("|>" > assign_expr)[detail::assign_sinop<ast::ret>(1)];
+    ("|>" > assign_expr)[detail::assign_sinop<ast::ret>()];
 
 auto const expression_def = ret_expr[detail::assign()];
 

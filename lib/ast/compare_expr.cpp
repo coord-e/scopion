@@ -48,6 +48,10 @@ bool operator==(function const &lhs, function const &rhs) {
   return (lhs.lines == rhs.lines);
 }
 template <class Op>
+bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs) {
+  return (lhs.value == rhs.value) && (lhs.lval == rhs.lval);
+}
+template <class Op>
 bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs) {
   return (lhs.rhs == rhs.rhs) && (lhs.lhs == rhs.lhs) && (lhs.lval == rhs.lval);
 }
