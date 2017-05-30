@@ -89,38 +89,38 @@ TEST_F(parserTest, compareOp) {
 TEST_F(parserTest, assignOp) {
   EXPECT_EQ(parser::parse("{a=1;}").ast,
             ast::expr(ast::function({ast::binary_op<ast::assign>(
-                ast::variable("a", false, false), 1)})));
+                ast::variable("a", true, false), 1)})));
 }
 
 TEST_F(parserTest, sinOp) {
   EXPECT_EQ(parser::parse("{|>1;}").ast,
-            ast::expr(ast::function({ast::single_op<ast::ret>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::ret>(1)})));
   EXPECT_EQ(parser::parse("{!1;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::ixor>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::lnot>(1)})));
   EXPECT_EQ(parser::parse("{~1;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::ixor>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::inot>(1)})));
   EXPECT_EQ(parser::parse("{++1;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::add>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::inc>(1)})));
   EXPECT_EQ(parser::parse("{--1;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::sub>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::dec>(1)})));
   EXPECT_EQ(parser::parse("{1++;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::add>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::inc>(1)})));
   EXPECT_EQ(parser::parse("{1--;}").ast,
-            ast::expr(ast::function({ast::binary_op<ast::sub>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::dec>(1)})));
   EXPECT_EQ(parser::parse("{*1;}").ast,
-            ast::expr(ast::function({ast::single_op<ast::load>(1, 1)})));
+            ast::expr(ast::function({ast::single_op<ast::load>(1)})));
 }
 
 TEST_F(parserTest, callOp) {
   EXPECT_EQ(parser::parse("{a(1);}").ast,
             ast::expr(ast::function({ast::binary_op<ast::call>(
-                ast::variable("a", true, true), 1)})));
+                ast::variable("a", false, true), 1)})));
 }
 
 TEST_F(parserTest, atOp) {
   EXPECT_EQ(parser::parse("{a[1];}").ast,
             ast::expr(ast::function({ast::binary_op<ast::at>(
-                ast::variable("a", true, false), 1)})));
+                ast::variable("a", false, false), 1)})));
 }
 
 TEST_F(parserTest, priority) {
@@ -155,8 +155,7 @@ TEST_F(parserTest, priority) {
                                                                   "a", true,
                                                                   false),
                                                               0),
-                                                          1),
-                                                      1))))))))))),
+                                                          1)))))))))))),
           1)})));
 }
 
