@@ -66,10 +66,10 @@ int main(int argc, char *argv[]) {
       scopion::diagnosis e(ex);
       std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray
                 << "[ERROR]" << rang::style::reset << rang::fg::red << " @"
-                << e.line_n() << rang::style::reset << ": " << e.what()
+                << e.line_number() << rang::style::reset << ": " << e.what()
                 << std::endl
                 << e.line() << std::endl
-                << rang::fg::green << std::setw(e.line_c() + 1) << "^"
+                << rang::fg::green << std::setw(e.distance() + 1) << "^"
                 << rang::style::reset << std::endl;
     }
   }

@@ -30,7 +30,7 @@ public:
 
   std::string what() { return ex_.what(); }
 
-  uint32_t line_n() {
+  uint32_t line_number() {
     return std::count(ex_.code.begin(), ex_.where.begin(), '\n');
   }
   str_range_t line_range() {
@@ -44,19 +44,11 @@ public:
     auto r = line_range();
     return std::string(r.begin(), r.end());
   }
-  uint16_t line_c() {
+  uint16_t distance() {
     auto r = line_range();
     return std::distance(r.begin(), ex_.where.begin());
   }
 };
-/*
-namespace assembly {
-class error : public general_error {};
-}; // namespace assembly
-
-namespace parser {
-class error : public general_error {};
-}; // namespace parser*/
 
 }; // namespace scopion
 
