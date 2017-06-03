@@ -143,6 +143,7 @@ llvm::Value *translator::operator()(ast::array const &value) {
   }
   return aryPtr;
 }
+
 llvm::Value *translator::operator()(ast::function const &value) {
   auto &lines = value.lines;
 
@@ -154,21 +155,23 @@ llvm::Value *translator::operator()(ast::function const &value) {
       func_type, llvm::Function::ExternalLinkage, "", module_.get());
   llvm::BasicBlock *entry =
       llvm::BasicBlock::Create(module_->getContext(),
-                               "entry", // BasicBlockの名前
+                               "entryf", // BasicBlockの名前
                                func);
   auto *pb = builder_.GetInsertBlock();
   auto pp = builder_.GetInsertPoint();
 
   builder_.SetInsertPoint(entry); // entryの開始
 
-  llvm::Value *aptr;
+  builder_.CreateAlloca(func->getType(), nullptr, "self");
+
   if (!func->arg_empty()) { // if there are any arguments
-    aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                                 "arg"); // declare "arg"
+    builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
+                          "arg"); // declare "arg"
   }
 
   for (auto const &line : lines) {
-    boost::apply_visitor(*this, line);
+    boost::apply_visitor(*this, line); // If lines has function definition, the
+                                       // function will be defined twice.
   }
 
   llvm::Type *ret_type = nullptr;
@@ -189,22 +192,32 @@ llvm::Value *translator::operator()(ast::function const &value) {
     ret_type = builder_.getVoidTy();
   }
 
+  func->eraseFromParent(); // remove old one
+
   std::vector<llvm::Type *> args_type = {builder_.getInt32Ty()};
   llvm::Function *newfunc = llvm::Function::Create(
       llvm::FunctionType::get(ret_type, func_args_type, false),
       llvm::Function::ExternalLinkage, "", module_.get());
+  llvm::BasicBlock *newentry =
+      llvm::BasicBlock::Create(module_->getContext(),
+                               "entry", // BasicBlockの名前
+                               newfunc);
+  builder_.SetInsertPoint(newentry);
 
-  if (!newfunc->arg_empty()) { // if there are any arguments
-    builder_.SetInsertPoint(
-        entry,
-        ++entry->getFirstInsertionPt()); // To the after of declation of "arg"
+  auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
+  builder_.CreateStore(newfunc, selfptr);
+  if (!func->arg_empty()) { // if there are any arguments
+    auto aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
+                                      "arg"); // declare "arg"
     builder_.CreateStore(&(*newfunc->getArgumentList().begin()), aptr);
   }
 
-  newfunc->getBasicBlockList().splice(
-      newfunc->begin(),
-      func->getBasicBlockList()); // copy to new function
-  func->eraseFromParent();        // remove old one
+  for (auto const &line : lines) {
+    boost::apply_visitor(*this, line);
+  }
+  if (ret_type == builder_.getVoidTy()) {
+    builder_.CreateRetVoid();
+  }
 
   builder_.SetInsertPoint(pb, pp); // entryを抜ける
 
