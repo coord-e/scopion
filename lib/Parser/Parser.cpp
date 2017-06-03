@@ -173,9 +173,9 @@ auto const call_expr_def =
       ("[" > expression > "]")[detail::assign_binop<ast::at>()]);
 
 auto const post_sinop_expr_def =
-    call_expr[detail::assign()] |
-    (call_expr > "++")[detail::assign_sinop<ast::inc>()] |
-    (call_expr > "--")[detail::assign_sinop<ast::dec>()];
+    (call_expr >> "++")[detail::assign_sinop<ast::inc>()] |
+    (call_expr >> "--")[detail::assign_sinop<ast::dec>()] |
+    call_expr[detail::assign()];
 
 auto const pre_sinop_expr_def =
     post_sinop_expr[detail::assign()] |
@@ -200,14 +200,14 @@ auto const
                      *((">>" > add_expr)[detail::assign_binop<ast::shr>()] |
                        ("<<" > add_expr)[detail::assign_binop<ast::shl>()]);
 
-auto const
-    cmp_expr_def = shift_expr[detail::assign()] >>
-                   *((">" > shift_expr)[detail::assign_binop<ast::gt>()] |
-                     ("<" > shift_expr)[detail::assign_binop<ast::lt>()] |
-                     (">=" > shift_expr)[detail::assign_binop<ast::gtq>()] |
-                     ("<=" > shift_expr)[detail::assign_binop<ast::ltq>()] |
-                     ("==" > shift_expr)[detail::assign_binop<ast::eeq>()] |
-                     ("!=" > shift_expr)[detail::assign_binop<ast::neq>()]);
+auto const cmp_expr_def =
+    shift_expr[detail::assign()] >>
+    *(((">" - x3::lit(">=")) > shift_expr)[detail::assign_binop<ast::gt>()] |
+      (("<" - x3::lit("<=")) > shift_expr)[detail::assign_binop<ast::lt>()] |
+      (">=" > shift_expr)[detail::assign_binop<ast::gtq>()] |
+      ("<=" > shift_expr)[detail::assign_binop<ast::ltq>()] |
+      ("==" > shift_expr)[detail::assign_binop<ast::eeq>()] |
+      ("!=" > shift_expr)[detail::assign_binop<ast::neq>()]);
 
 auto const iand_expr_def = cmp_expr[detail::assign()] >>
                            *(((x3::lit("&") - "&&") >
