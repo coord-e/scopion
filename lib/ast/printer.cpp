@@ -27,6 +27,8 @@ public:
     _s << value.name;
     if (value.isFunc)
       _s << "{}";
+    if (value.lval)
+      _s << "(lhs)";
   }
 
   auto operator()(ast::array const &value) const -> void {
@@ -55,6 +57,8 @@ public:
     boost::apply_visitor(*this, o.lhs);
     _s << " " << op_to_str(o) << " ";
     boost::apply_visitor(*this, o.rhs);
+    if (o.lval)
+      _s << "(lhs)";
     _s << " }";
   }
 
@@ -62,6 +66,8 @@ public:
     _s << "{ ";
     _s << op_to_str(o);
     boost::apply_visitor(*this, o.value);
+    if (o.lval)
+      _s << "(lhs)";
     _s << " }";
   }
 
