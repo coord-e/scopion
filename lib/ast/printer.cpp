@@ -15,24 +15,24 @@ public:
     _s << ")";
   }
 
-  auto operator()(int value) const -> void { _s << value; }
+  auto operator()(int val) const -> void { _s << val; }
 
-  auto operator()(bool value) const -> void { _s << std::boolalpha << value; }
+  auto operator()(bool val) const -> void { _s << std::boolalpha << val; }
 
-  auto operator()(std::string const &value) const -> void {
-    _s << "\"" << value << "\"";
+  auto operator()(std::string const &val) const -> void {
+    _s << "\"" << val << "\"";
   }
 
-  auto operator()(ast::variable const &value) const -> void {
-    _s << value.name;
-    if (value.isFunc)
+  auto operator()(variable const &val) const -> void {
+    _s << val.name;
+    if (val.isFunc)
       _s << "{}";
-    if (value.lval)
+    if (val.lval)
       _s << "(lhs)";
   }
 
-  auto operator()(ast::array const &value) const -> void {
-    auto &&ary = value.elements;
+  auto operator()(array const &val) const -> void {
+    auto &&ary = val.elements;
     _s << "[ ";
     for (auto const &i : ary) {
       boost::apply_visitor(*this, i);
@@ -41,8 +41,8 @@ public:
     _s << "]";
   }
 
-  auto operator()(ast::function const &value) const -> void {
-    auto &&lines = value.lines;
+  auto operator()(function const &val) const -> void {
+    auto &&lines = val.lines;
     _s << "{ ";
 
     for (auto const &line : lines) {
