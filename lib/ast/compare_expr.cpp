@@ -45,7 +45,7 @@ bool operator==(array const &lhs, array const &rhs) {
   return (lhs.elements == rhs.elements);
 }
 bool operator==(function const &lhs, function const &rhs) {
-  return (lhs.lines == rhs.lines);
+  return (lhs.lines == rhs.lines) && (lhs.args == rhs.args);
 }
 template <class Op>
 bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs) {

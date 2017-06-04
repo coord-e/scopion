@@ -47,12 +47,13 @@ template <class Op> struct single_op;
 template <class Op> struct binary_op;
 class variable;
 class array;
+class arglist;
 class function;
 
-using value = boost::variant<int, bool, boost::recursive_wrapper<std::string>,
-                             boost::recursive_wrapper<variable>,
-                             boost::recursive_wrapper<array>,
-                             boost::recursive_wrapper<function>>;
+using value = boost::variant<
+    int, bool, boost::recursive_wrapper<std::string>,
+    boost::recursive_wrapper<variable>, boost::recursive_wrapper<array>,
+    boost::recursive_wrapper<arglist>, boost::recursive_wrapper<function>>;
 
 using expr_base =
     boost::variant<value, boost::recursive_wrapper<binary_op<add>>,
@@ -113,10 +114,17 @@ public:
 };
 bool operator==(array const &lhs, array const &rhs);
 
+class arglist : public array {
+public:
+  using array::array;
+};
+
 class function {
 public:
+  std::vector<variable> args;
   std::vector<expr> lines;
-  function(std::vector<expr> const &lines_) : lines(lines_) {}
+  function(std::vector<variable> const &args_, std::vector<expr> const &lines_)
+      : args(args_), lines(lines_) {}
 };
 bool operator==(function const &lhs, function const &rhs);
 

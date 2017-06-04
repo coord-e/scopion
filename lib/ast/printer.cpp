@@ -41,11 +41,22 @@ public:
     _s << "]";
   }
 
-  auto operator()(function const &val) const -> void {
-    auto &&lines = val.lines;
-    _s << "{ ";
+  auto operator()(arglist const &val) const -> void {
+    auto &&ary = val.elements;
+    for (auto const &i : ary) {
+      boost::apply_visitor(*this, i);
+      _s << ", ";
+    }
+  }
 
-    for (auto const &line : lines) {
+  auto operator()(function const &val) const -> void {
+    _s << "( ";
+    for (auto const &arg : val.args) {
+      (*this)(arg);
+      _s << ", ";
+    }
+    _s << "){ ";
+    for (auto const &line : val.lines) {
       boost::apply_visitor(*this, line);
       _s << "; ";
     }

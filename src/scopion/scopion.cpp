@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
       std::string l;
       std::getline(std::cin, l);
       line += l + "\n";
-      newone = "{\n" + line + "}";
+      newone = "(){\n" + line + "}";
       auto ast = scopion::parser::parse(newone);
 
       std::cout << "AST: " << ast.ast << std::endl;

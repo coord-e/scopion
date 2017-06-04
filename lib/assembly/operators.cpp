@@ -136,7 +136,19 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::call> const &op,
         "Cannot call function from non-function pointer type " +
         getNameString(lhs->getType()));
 
-  std::vector<llvm::Value *> args = {rhs};
+  auto &&arglist = boost::get<ast::arglist>(boost::get<ast::value>(op.rhs));
+  if (lhs->getType()->getPointerElementType()->getFunctionNumParams() !=
+      arglist.elements.size())
+    throw std::runtime_error(
+        "The number of arguments doesn't match: required " +
+        std::to_string(
+            lhs->getType()->getPointerElementType()->getFunctionNumParams()) +
+        " but supplied " + std::to_string(arglist.elements.size()));
+  std::vector<llvm::Value *> args;
+  for (auto const &arg : arglist.elements) {
+    args.push_back(boost::apply_visitor(*this, arg));
+  }
+
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
 }
 

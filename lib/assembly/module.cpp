@@ -25,8 +25,7 @@ std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
   auto val = tr(tree);
   mod = tr.returnModule();
 
-  std::vector<llvm::Value *> args = {builder.getInt32(0)};
-  builder.CreateCall(val, llvm::ArrayRef<llvm::Value *>(args));
+  builder.CreateCall(val, llvm::ArrayRef<llvm::Value *>({}));
 
   builder.CreateRet(builder.getInt32(0));
 

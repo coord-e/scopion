@@ -3,8 +3,10 @@
 #include "scopion/parser/parser.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/fusion/include/at.hpp>
 #include <boost/fusion/include/deque.hpp>
 #include <boost/fusion/include/for_each.hpp>
+#include <boost/fusion/sequence/intrinsic/at.hpp>
 #include <boost/spirit/home/x3.hpp>
 
 #include <array>
@@ -37,23 +39,16 @@ template <typename T> decltype(auto) assign_as() {
   };
 }
 
-struct total {
-  std::vector<ast::expr> &all;
-  total(std::vector<ast::expr> &all_) : all(all_) {}
-  void operator()(boost::optional<ast::expr> const &c) const {
-    if (c)
-      all.push_back(*c);
-  }
-  void operator()(std::vector<ast::expr> const &c) const {
-    std::copy(c.begin(), c.end(), std::back_inserter(all));
-  }
-};
-
-template <typename T> decltype(auto) assign_as_ary() {
+decltype(auto) assign_func() {
   return [](auto &&ctx) {
-    std::vector<ast::expr> v;
-    boost::fusion::for_each(x3::_attr(ctx), total(v));
-    x3::_val(ctx) = ast::expr(T(v), x3::_where(ctx));
+    auto &&args = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
+    auto &&lines = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
+    std::vector<ast::variable> result;
+    std::transform(
+        args.begin(), args.end(), std::back_inserter(result), [](auto &&x) {
+          return boost::get<ast::variable>(boost::get<ast::value>(x));
+        });
+    x3::_val(ctx) = ast::expr(ast::function(result, lines), x3::_where(ctx));
   };
 }
 
@@ -117,7 +112,8 @@ template <> decltype(auto) assign_binop<ast::assign>() {
 template <> decltype(auto) assign_binop<ast::call>() {
   return [](auto &&ctx) {
     if (x3::_val(ctx).type() != typeid(ast::value)) {
-      x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx));
+      x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx),
+                                                ast::arglist(x3::_attr(ctx)));
       return;
     }
     auto &&v = boost::get<ast::value>(x3::_val(ctx));
@@ -125,11 +121,12 @@ template <> decltype(auto) assign_binop<ast::call>() {
       auto &&n = boost::get<ast::variable>(v).name;
       x3::_val(ctx) =
           ast::expr(ast::binary_op<ast::call>(ast::variable(n, false, true),
-                                              x3::_attr(ctx)),
+                                              ast::arglist(x3::_attr(ctx))),
                     x3::_where(ctx));
     } else if (v.type() == typeid(ast::function)) {
       x3::_val(ctx) =
-          ast::expr(ast::binary_op<ast::call>(x3::_val(ctx), x3::_attr(ctx)),
+          ast::expr(ast::binary_op<ast::call>(x3::_val(ctx),
+                                              ast::arglist(x3::_attr(ctx))),
                     x3::_where(ctx));
     } else {
       x3::_pass(ctx) = false;
@@ -196,22 +193,23 @@ auto const variable_def =
 auto const string_def =
     ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str()];
 
-auto const array_def = ("[" > *(expression >> ",") > -expression >
-                        "]")[detail::assign_as_ary<ast::array>()];
+auto const array_def = ("[" > *(expression >> -x3::lit(",")) >
+                        "]")[detail::assign_as<ast::array>()];
 
-auto const function_def = ("{" > *(expression[detail::assign()] >> ";") >
-                           "}")[detail::assign_as<ast::function>()];
+auto const function_def = ("(" > *(variable >> -x3::lit(",")) > "){" >
+                           *(expression >> ";") > "}")[detail::assign_func()];
 
-auto const primary_def = x3::int_[detail::assign()] |
+auto const primary_def = ("(" >> expression >> ")")[detail::assign()] |
+                         x3::int_[detail::assign()] |
                          x3::bool_[detail::assign()] |
                          string[detail::assign()] | variable[detail::assign()] |
-                         array[detail::assign()] | function[detail::assign()] |
-                         ("(" > expression > ")")[detail::assign()];
+                         array[detail::assign()] | function[detail::assign()];
 
-auto const call_expr_def =
-    primary[detail::assign()] >>
-    *(("(" > expression > ")")[detail::assign_binop<ast::call>()] |
-      ("[" > expression > "]")[detail::assign_binop<ast::at>()]);
+auto const call_expr_def = primary[detail::assign()] >>
+                           *(("(" > *(expression >> -x3::lit(",")) >
+                              ")")[detail::assign_binop<ast::call>()] |
+                             ("[" > expression >
+                              "]")[detail::assign_binop<ast::at>()]);
 
 auto const post_sinop_expr_def =
     (call_expr >> "++")[detail::assign_sinop<ast::inc>()] |

@@ -144,11 +144,16 @@ llvm::Value *translator::operator()(ast::array const &value) {
   return aryPtr;
 }
 
+llvm::Value *translator::operator()(ast::arglist const &value) {
+  return nullptr;
+}
+
 llvm::Value *translator::operator()(ast::function const &value) {
+
   auto &lines = value.lines;
 
-  std::vector<llvm::Type *> func_args_type;
-  func_args_type.push_back(builder_.getInt32Ty());
+  std::vector<llvm::Type *> func_args_type(value.args.size(),
+                                           builder_.getInt32Ty());
   llvm::FunctionType *func_type =
       llvm::FunctionType::get(builder_.getVoidTy(), func_args_type, false);
   llvm::Function *func = llvm::Function::Create(
@@ -164,9 +169,9 @@ llvm::Value *translator::operator()(ast::function const &value) {
 
   builder_.CreateAlloca(func->getType(), nullptr, "self");
 
-  if (!func->arg_empty()) { // if there are any arguments
+  for (auto const &v : value.args) {
     builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                          "arg"); // declare "arg"
+                          v.name); // declare arguments
   }
 
   for (auto const &line : lines) {
@@ -206,10 +211,13 @@ llvm::Value *translator::operator()(ast::function const &value) {
 
   auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
   builder_.CreateStore(newfunc, selfptr);
-  if (!func->arg_empty()) { // if there are any arguments
+
+  auto it = newfunc->getArgumentList().begin();
+  for (auto const &v : value.args) {
     auto aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                                      "arg"); // declare "arg"
-    builder_.CreateStore(&(*newfunc->getArgumentList().begin()), aptr);
+                                      v.name); // declare arguments
+    builder_.CreateStore(&(*it), aptr);
+    it++;
   }
 
   for (auto const &line : lines) {

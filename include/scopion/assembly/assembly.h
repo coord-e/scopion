@@ -37,6 +37,7 @@ public:
   llvm::Value *operator()(std::string const &value);
   llvm::Value *operator()(ast::variable const &value);
   llvm::Value *operator()(ast::array const &value);
+  llvm::Value *operator()(ast::arglist const &value);
   llvm::Value *operator()(ast::function const &value);
 
   template <class Op> llvm::Value *operator()(ast::single_op<Op> const &op) {
