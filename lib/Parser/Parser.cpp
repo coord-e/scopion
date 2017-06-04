@@ -196,14 +196,14 @@ auto const string_def =
 auto const array_def = ("[" > *(expression >> -x3::lit(",")) >
                         "]")[detail::assign_as<ast::array>()];
 
-auto const function_def = ("(" > *(variable >> -x3::lit(",")) > "){" >
+auto const function_def = ((("(" > *(variable >> -x3::lit(","))) >> "){") >
                            *(expression >> ";") > "}")[detail::assign_func()];
 
-auto const primary_def = ("(" >> expression >> ")")[detail::assign()] |
-                         x3::int_[detail::assign()] |
+auto const primary_def = x3::int_[detail::assign()] |
                          x3::bool_[detail::assign()] |
                          string[detail::assign()] | variable[detail::assign()] |
-                         array[detail::assign()] | function[detail::assign()];
+                         array[detail::assign()] | function[detail::assign()] |
+                         ("(" >> expression >> ")")[detail::assign()];
 
 auto const call_expr_def = primary[detail::assign()] >>
                            *(("(" > *(expression >> -x3::lit(",")) >
