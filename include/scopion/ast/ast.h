@@ -45,10 +45,10 @@ struct expr;
 
 template <class Op> struct single_op;
 template <class Op> struct binary_op;
-class variable;
-class array;
-class arglist;
-class function;
+struct variable;
+struct array;
+struct arglist;
+struct function;
 
 using value = boost::variant<
     int, bool, boost::recursive_wrapper<std::string>,
@@ -87,7 +87,6 @@ using expr_base =
 struct expr : expr_base {
   using str_range_t = boost::iterator_range<std::string::const_iterator>;
 
-public:
   using expr_base::expr_base;
   using expr_base::operator=;
 
@@ -97,8 +96,7 @@ public:
 };
 bool operator==(expr const &lhs, expr const &rhs);
 
-class variable {
-public:
+struct variable {
   std::string name;
   bool lval;
   bool isFunc;
@@ -107,20 +105,17 @@ public:
 };
 bool operator==(variable const &lhs, variable const &rhs);
 
-class array {
-public:
+struct array {
   std::vector<expr> elements;
   array(std::vector<expr> const &elms_) : elements(elms_) {}
 };
 bool operator==(array const &lhs, array const &rhs);
 
-class arglist : public array {
-public:
+struct arglist : array {
   using array::array;
 };
 
-class function {
-public:
+struct function {
   std::vector<variable> args;
   std::vector<expr> lines;
   function(std::vector<variable> const &args_, std::vector<expr> const &lines_)
