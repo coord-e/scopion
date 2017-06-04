@@ -146,6 +146,11 @@ template <typename Op> decltype(auto) assign_sinop() {
 
 } // namespace detail
 
+struct variable;
+struct string;
+struct array;
+struct function;
+
 struct primary;
 struct call_expr;
 struct pre_sinop_expr;
@@ -162,6 +167,11 @@ struct lor_expr;
 struct assign_expr;
 struct ret_expr;
 struct expression;
+
+x3::rule<variable, ast::expr> const variable("variable");
+x3::rule<string, ast::expr> const string("string");
+x3::rule<array, ast::expr> const array("array");
+x3::rule<function, ast::expr> const function("function");
 
 x3::rule<primary, ast::expr> const primary("literal");
 x3::rule<call_expr, ast::expr> const call_expr("expression");
@@ -180,15 +190,23 @@ x3::rule<assign_expr, ast::expr> const assign_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
 
-auto const primary_def =
-    x3::int_[detail::assign()] | x3::bool_[detail::assign()] |
-    ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str()] |
-    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()] |
-    ("[" > *(expression >> ",") > -expression >
-     "]")[detail::assign_as_ary<ast::array>()] |
-    ("{" > *(expression[detail::assign()] >> ";") >
-     "}")[detail::assign_as<ast::function>()] |
-    ("(" > expression > ")")[detail::assign()];
+auto const variable_def =
+    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()];
+
+auto const string_def =
+    ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str()];
+
+auto const array_def = ("[" > *(expression >> ",") > -expression >
+                        "]")[detail::assign_as_ary<ast::array>()];
+
+auto const function_def = ("{" > *(expression[detail::assign()] >> ";") >
+                           "}")[detail::assign_as<ast::function>()];
+
+auto const primary_def = x3::int_[detail::assign()] |
+                         x3::bool_[detail::assign()] |
+                         string[detail::assign()] | variable[detail::assign()] |
+                         array[detail::assign()] | function[detail::assign()] |
+                         ("(" > expression > ")")[detail::assign()];
 
 auto const call_expr_def =
     primary[detail::assign()] >>
@@ -263,10 +281,10 @@ auto const ret_expr_def =
 
 auto const expression_def = ret_expr[detail::assign()];
 
-BOOST_SPIRIT_DEFINE(primary, call_expr, pre_sinop_expr, post_sinop_expr,
-                    mul_expr, shift_expr, cmp_expr, add_expr, iand_expr,
-                    ixor_expr, ior_expr, land_expr, lor_expr, assign_expr,
-                    ret_expr, expression);
+BOOST_SPIRIT_DEFINE(variable, string, array, function, primary, call_expr,
+                    pre_sinop_expr, post_sinop_expr, mul_expr, shift_expr,
+                    cmp_expr, add_expr, iand_expr, ixor_expr, ior_expr,
+                    land_expr, lor_expr, assign_expr, ret_expr, expression);
 
 struct expression {
 
