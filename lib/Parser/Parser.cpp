@@ -186,7 +186,7 @@ auto const primary_def =
     x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()] |
     ("[" > *(expression >> ",") > -expression >
      "]")[detail::assign_as_ary<ast::array>()] |
-    ("{" > expression[detail::assign()] % x3::char_(";") > x3::lit(";") >
+    ("{" > *(expression[detail::assign()] >> ";") >
      "}")[detail::assign_as<ast::function>()] |
     ("(" > expression > ")")[detail::assign()];
 
