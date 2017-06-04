@@ -125,7 +125,7 @@ llvm::Value *translator::operator()(ast::array const &value) {
     values.push_back(boost::apply_visitor(*this, elm));
   }
 
-  auto t = values[0]->getType();
+  auto t = values.empty() ? builder_.getVoidTy() : values[0]->getType();
   // check if the type of all elements of array is same
   if (!std::all_of(values.begin(), values.end(),
                    [&t](auto v) { return t == v->getType(); }))

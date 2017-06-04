@@ -3,6 +3,8 @@
 #include "scopion/parser/parser.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/fusion/include/deque.hpp>
+#include <boost/fusion/include/for_each.hpp>
 #include <boost/spirit/home/x3.hpp>
 
 #include <array>
@@ -32,6 +34,26 @@ decltype(auto) assign_str() {
 template <typename T> decltype(auto) assign_as() {
   return [](auto &&ctx) {
     x3::_val(ctx) = ast::expr(T(x3::_attr(ctx)), x3::_where(ctx));
+  };
+}
+
+struct total {
+  std::vector<ast::expr> &all;
+  total(std::vector<ast::expr> &all_) : all(all_) {}
+  void operator()(boost::optional<ast::expr> const &c) const {
+    if (c)
+      all.push_back(*c);
+  }
+  void operator()(std::vector<ast::expr> const &c) const {
+    std::copy(c.begin(), c.end(), std::back_inserter(all));
+  }
+};
+
+template <typename T> decltype(auto) assign_as_ary() {
+  return [](auto &&ctx) {
+    std::vector<ast::expr> v;
+    boost::fusion::for_each(x3::_attr(ctx), total(v));
+    x3::_val(ctx) = ast::expr(T(v), x3::_where(ctx));
   };
 }
 
@@ -162,7 +184,8 @@ auto const primary_def =
     x3::int_[detail::assign()] | x3::bool_[detail::assign()] |
     ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str()] |
     x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var()] |
-    ("[" > expression % "," > "]")[detail::assign_as<ast::array>()] |
+    ("[" > *(expression >> ",") > -expression >
+     "]")[detail::assign_as_ary<ast::array>()] |
     ("{" > expression[detail::assign()] % x3::char_(";") > x3::lit(";") >
      "}")[detail::assign_as<ast::function>()] |
     ("(" > expression > ")")[detail::assign()];
