@@ -151,6 +151,36 @@ bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
 
 std::ostream &operator<<(std::ostream &os, expr const &tree);
 
+struct make_lval_visitor : boost::static_visitor<ast::expr> {
+  template <typename T> ast::expr operator()(T val) const {
+    val.attr().lval = true;
+    return val;
+  }
+
+  ast::expr operator()(ast::value val) const {
+    return boost::apply_visitor(*this, val);
+  }
+};
+
+struct make_to_call_visitor : boost::static_visitor<ast::expr> {
+  template <typename T> ast::expr operator()(T val) const {
+    val.attr().to_call = true;
+    return val;
+  }
+
+  ast::expr operator()(ast::value val) const {
+    return boost::apply_visitor(*this, val);
+  }
+};
+
+template <typename T> ast::expr make_lval(T val) {
+  return boost::apply_visitor(make_lval_visitor(), val);
+}
+
+template <typename T> ast::expr make_to_call(T val) {
+  return boost::apply_visitor(make_to_call_visitor(), val);
+}
+
 }; // namespace ast
 }; // namespace scopion
 

@@ -23,34 +23,6 @@ namespace detail {
 
 namespace utility {
 
-struct make_lval_visitor : boost::static_visitor<ast::expr> {
-  template <typename T> ast::expr operator()(T val) const {
-    val.attr().lval = true;
-    return val;
-  }
-
-  ast::expr operator()(ast::value val) const {
-    return boost::apply_visitor(*this, val);
-  }
-};
-template <typename T> ast::expr make_lval(T val) {
-  return boost::apply_visitor(make_lval_visitor(), val);
-}
-
-struct make_to_call_visitor : boost::static_visitor<ast::expr> {
-  template <typename T> ast::expr operator()(T val) const {
-    val.attr().to_call = true;
-    return val;
-  }
-
-  ast::expr operator()(ast::value val) const {
-    return boost::apply_visitor(*this, val);
-  }
-};
-template <typename T> ast::expr make_to_call(T val) {
-  return boost::apply_visitor(make_to_call_visitor(), val);
-}
-
 template <typename T, typename RangeT> T with_where(T val, RangeT range) {
   val.attr().where = range;
   return val;
@@ -106,17 +78,17 @@ template <typename Op> decltype(auto) assign_binop() {
 
 template <> decltype(auto) assign_binop<ast::assign>() {
   return [](auto &&ctx) {
-    x3::_val(ctx) = utility::with_where(
-        ast::binary_op<ast::assign>(utility::make_lval(x3::_val(ctx)),
-                                    x3::_attr(ctx)),
-        x3::_where(ctx));
+    x3::_val(ctx) =
+        utility::with_where(ast::binary_op<ast::assign>(
+                                ast::make_lval(x3::_val(ctx)), x3::_attr(ctx)),
+                            x3::_where(ctx));
   };
 }
 
 template <> decltype(auto) assign_binop<ast::call>() {
   return [](auto &&ctx) {
     x3::_val(ctx) = utility::with_where(
-        ast::binary_op<ast::call>(utility::make_to_call(x3::_val(ctx)),
+        ast::binary_op<ast::call>(ast::make_to_call(x3::_val(ctx)),
                                   ast::arglist(x3::_attr(ctx))),
         x3::_where(ctx));
   };
