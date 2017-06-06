@@ -142,9 +142,13 @@ bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
 
 std::ostream &operator<<(std::ostream &os, expr const &tree);
 
-struct make_lval_visitor : boost::static_visitor<expr> {
+struct set_lval_visitor : boost::static_visitor<expr> {
+  const bool v;
+
+  set_lval_visitor(bool v_) : v(v_) {}
+
   template <typename T> expr operator()(T val) const {
-    attr(val).lval = true;
+    attr(val).lval = v;
     return val;
   }
 
@@ -153,9 +157,13 @@ struct make_lval_visitor : boost::static_visitor<expr> {
   }
 };
 
-struct make_to_call_visitor : boost::static_visitor<expr> {
+struct set_to_call_visitor : boost::static_visitor<expr> {
+  const bool v;
+
+  set_to_call_visitor(bool v_) : v(v_) {}
+
   template <typename T> expr operator()(T val) const {
-    attr(val).to_call = true;
+    attr(val).to_call = v;
     return val;
   }
 
@@ -163,14 +171,6 @@ struct make_to_call_visitor : boost::static_visitor<expr> {
     return boost::apply_visitor(*this, val);
   }
 };
-
-template <typename T> expr make_lval(T val) {
-  return boost::apply_visitor(make_lval_visitor(), val);
-}
-
-template <typename T> expr make_to_call(T val) {
-  return boost::apply_visitor(make_to_call_visitor(), val);
-}
 
 template <typename T> T &val(value_wrapper<T> &w) { return w.value; }
 
@@ -181,7 +181,15 @@ template <typename T> const T &val(value_wrapper<T> const &w) {
 template <typename T> attribute &attr(T &w) { return w.attr; }
 template <typename T> const attribute &attr(T const &w) { return w.attr; }
 
-template <typename T, typename RangeT> T with_where(T val, RangeT range) {
+template <typename T> expr set_lval(T t, bool val) {
+  return boost::apply_visitor(set_lval_visitor(val), t);
+}
+
+template <typename T> expr set_to_call(T t, bool val) {
+  return boost::apply_visitor(set_to_call_visitor(val), t);
+}
+
+template <typename T, typename RangeT> T set_where(T val, RangeT range) {
   attr(val).where = range;
   return val;
 }

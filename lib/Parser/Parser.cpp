@@ -28,13 +28,13 @@ decltype(auto) assign() {
 decltype(auto) assign_str() {
   return [](auto &&ctx) {
     std::string str(x3::_attr(ctx).begin(), x3::_attr(ctx).end());
-    x3::_val(ctx) = ast::with_where(ast::string(str), x3::_where(ctx));
+    x3::_val(ctx) = ast::set_where(ast::string(str), x3::_where(ctx));
   };
 }
 
 template <typename T> decltype(auto) assign_as() {
   return [](auto &&ctx) {
-    x3::_val(ctx) = ast::with_where(T(x3::_attr(ctx)), x3::_where(ctx));
+    x3::_val(ctx) = ast::set_where(T(x3::_attr(ctx)), x3::_where(ctx));
   };
 }
 
@@ -48,21 +48,21 @@ decltype(auto) assign_func() {
           return boost::get<ast::variable>(boost::get<ast::value>(x));
         });
     x3::_val(ctx) =
-        ast::with_where(ast::function({result, lines}), x3::_where(ctx));
+        ast::set_where(ast::function({result, lines}), x3::_where(ctx));
   };
 }
 
 decltype(auto) assign_var() {
   return [](auto &&ctx) {
     auto &&v = x3::_attr(ctx);
-    x3::_val(ctx) = ast::with_where(
+    x3::_val(ctx) = ast::set_where(
         ast::variable(std::string(v.begin(), v.end())), x3::_where(ctx));
   };
 }
 
 template <typename Op> decltype(auto) assign_binop() {
   return [](auto &&ctx) {
-    x3::_val(ctx) = ast::with_where(
+    x3::_val(ctx) = ast::set_where(
         ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx)), x3::_where(ctx));
   };
 }
@@ -70,16 +70,16 @@ template <typename Op> decltype(auto) assign_binop() {
 template <> decltype(auto) assign_binop<ast::assign>() {
   return [](auto &&ctx) {
     x3::_val(ctx) =
-        ast::with_where(ast::binary_op<ast::assign>(
-                            ast::make_lval(x3::_val(ctx)), x3::_attr(ctx)),
-                        x3::_where(ctx));
+        ast::set_where(ast::binary_op<ast::assign>(
+                           ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)),
+                       x3::_where(ctx));
   };
 }
 
 template <> decltype(auto) assign_binop<ast::call>() {
   return [](auto &&ctx) {
-    x3::_val(ctx) = ast::with_where(
-        ast::binary_op<ast::call>(ast::make_to_call(x3::_val(ctx)),
+    x3::_val(ctx) = ast::set_where(
+        ast::binary_op<ast::call>(ast::set_to_call(x3::_val(ctx), true),
                                   ast::arglist(x3::_attr(ctx))),
         x3::_where(ctx));
   };
@@ -88,7 +88,7 @@ template <> decltype(auto) assign_binop<ast::call>() {
 template <typename Op> decltype(auto) assign_sinop() {
   return [](auto &&ctx) {
     x3::_val(ctx) =
-        ast::with_where(ast::single_op<Op>(x3::_attr(ctx)), x3::_where(ctx));
+        ast::set_where(ast::single_op<Op>(x3::_attr(ctx)), x3::_where(ctx));
   };
 }
 
