@@ -59,8 +59,13 @@ llvm::Value *translator::operator()(ast::value value) {
 
 llvm::Value *translator::operator()(ast::integer value) {
   if (ast::attr(value).lval)
-    throw general_error("A integer constant is not to be assigned",
+    throw general_error("An integer constant is not to be assigned",
                         ast::attr(value).where, code_range_);
+
+  if (ast::attr(value).to_call)
+    throw general_error("An integer constant is not to be called",
+                        ast::attr(value).where, code_range_);
+
   return llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value));
 }
 
@@ -68,6 +73,11 @@ llvm::Value *translator::operator()(ast::boolean value) {
   if (ast::attr(value).lval)
     throw general_error("A boolean constant is not to be assigned",
                         ast::attr(value).where, code_range_);
+
+  if (ast::attr(value).to_call)
+    throw general_error("A boolean constant is not to be called",
+                        ast::attr(value).where, code_range_);
+
   return llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value));
 }
 
@@ -75,6 +85,11 @@ llvm::Value *translator::operator()(ast::string const &value) {
   if (ast::attr(value).lval)
     throw general_error("A string constant is not to be assigned",
                         ast::attr(value).where, code_range_);
+
+  if (ast::attr(value).to_call)
+    throw general_error("A string constant is not to be called",
+                        ast::attr(value).where, code_range_);
+
   return builder_.CreateGlobalStringPtr(ast::val(value));
 }
 
@@ -124,6 +139,10 @@ llvm::Value *translator::operator()(ast::variable const &value) {
 llvm::Value *translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
     throw general_error("An array constant is not to be assigned",
+                        ast::attr(value).where, code_range_);
+
+  if (ast::attr(value).to_call)
+    throw general_error("An array constant is not to be called",
                         ast::attr(value).where, code_range_);
 
   auto &ary = ast::val(value);
