@@ -26,16 +26,16 @@ TEST_F(assemblyTest, variable) {
   llvm::raw_string_ostream stream(string);
   res->val->print(stream);
   auto str = R"(
-define i32 @1(i32) {
+define i32 @1() {
 entry:
-  %arg = alloca i32
-  store i32 %0, i32* %arg
+  %self = alloca i32 ()*
+  store i32 ()* @1, i32 ()** %self
   %test = alloca i32
   store i32 1, i32* %test
+  %0 = load i32, i32* %test
   %1 = load i32, i32* %test
-  %2 = load i32, i32* %test
-  %3 = add i32 %2, 1
-  ret i32 %3
+  %2 = add i32 %1, 1
+  ret i32 %2
 }
 )";
   EXPECT_EQ(str, stream.str());
