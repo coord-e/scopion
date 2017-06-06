@@ -181,6 +181,11 @@ template <typename T> const T &val(value_wrapper<T> const &w) {
 template <typename T> attribute &attr(T &w) { return w.attr; }
 template <typename T> const attribute &attr(T const &w) { return w.attr; }
 
+template <typename T, typename RangeT> T with_where(T val, RangeT range) {
+  attr(val).where = range;
+  return val;
+}
+
 }; // namespace ast
 }; // namespace scopion
 
