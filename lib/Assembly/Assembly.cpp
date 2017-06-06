@@ -1,4 +1,6 @@
-#include "scopion/assembly/assembly.h"
+#include "scopion/assembly/translator.h"
+
+#include "scopion/exceptions.h"
 
 #include <algorithm>
 
@@ -57,22 +59,22 @@ llvm::Value *translator::operator()(ast::value value) {
 
 llvm::Value *translator::operator()(ast::integer value) {
   if (ast::attr(value).lval)
-    throw general_error("A integer constant is not to be assigned", ast::attr(value).where,
-                        code_range_);
+    throw general_error("A integer constant is not to be assigned",
+                        ast::attr(value).where, code_range_);
   return llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value));
 }
 
 llvm::Value *translator::operator()(ast::boolean value) {
   if (ast::attr(value).lval)
-    throw general_error("A boolean constant is not to be assigned", ast::attr(value).where,
-                        code_range_);
+    throw general_error("A boolean constant is not to be assigned",
+                        ast::attr(value).where, code_range_);
   return llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value));
 }
 
 llvm::Value *translator::operator()(ast::string const &value) {
   if (ast::attr(value).lval)
-    throw general_error("A string constant is not to be assigned", ast::attr(value).where,
-                        code_range_);
+    throw general_error("A string constant is not to be assigned",
+                        ast::attr(value).where, code_range_);
   return builder_.CreateGlobalStringPtr(ast::val(value));
 }
 
@@ -82,8 +84,8 @@ llvm::Value *translator::operator()(ast::variable const &value) {
     if (valp != nullptr) {
       return valp;
     } else {
-      auto *varp =
-          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(ast::val(value));
+      auto *varp = builder_.GetInsertBlock()->getValueSymbolTable()->lookup(
+          ast::val(value));
       if (varp != nullptr) {
         if (varp->getType()->getPointerElementType()->isPointerTy()) {
           if (varp->getType()
@@ -104,8 +106,8 @@ llvm::Value *translator::operator()(ast::variable const &value) {
       }
     }
   } else {
-    auto *valp =
-        builder_.GetInsertBlock()->getValueSymbolTable()->lookup(ast::val(value));
+    auto *valp = builder_.GetInsertBlock()->getValueSymbolTable()->lookup(
+        ast::val(value));
     if (ast::attr(value).lval) {
       return valp;
     } else {
@@ -121,8 +123,8 @@ llvm::Value *translator::operator()(ast::variable const &value) {
 }
 llvm::Value *translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
-    throw general_error("An array constant is not to be assigned", ast::attr(value).where,
-                        code_range_);
+    throw general_error("An array constant is not to be assigned",
+                        ast::attr(value).where, code_range_);
 
   auto &ary = ast::val(value);
   std::vector<llvm::Value *> values;

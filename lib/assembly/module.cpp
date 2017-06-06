@@ -1,7 +1,10 @@
-#include "scopion/assembly/assembly.h"
+#include "scopion/assembly/module.h"
+
+#include "scopion/ast/ast.h"
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Interpreter.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/TargetSelect.h>
 
 namespace scopion {

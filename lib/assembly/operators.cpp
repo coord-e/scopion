@@ -1,4 +1,6 @@
-#include "scopion/assembly/assembly.h"
+#include "scopion/assembly/translator.h"
+
+#include "scopion/exceptions.h"
 
 namespace scopion {
 namespace assembly {
