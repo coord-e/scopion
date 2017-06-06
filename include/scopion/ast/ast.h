@@ -48,20 +48,17 @@ struct attribute {
   bool lval = false;
   bool to_call = false;
 };
+bool operator==(attribute const &lhs, attribute const &rhs);
 
 template <typename T> class value_wrapper {
-  T value;
-  attribute attrib;
-
 public:
+  T value;
+  attribute attr;
+
   value_wrapper(T const &val) : value(val) {}
   value_wrapper() : value(T()) {}
 
   operator T() const { return value; }
-
-  const T &get() const { return value; }
-  attribute &attr() { return attrib; }
-  const attribute &attr() const { return attrib; }
 };
 
 template <class T>
@@ -126,12 +123,9 @@ bool operator==(expr const &lhs, expr const &rhs);
 
 template <class Op> struct single_op {
   expr value;
-  attribute attrib;
+  attribute attr;
 
   single_op(expr const &value_) : value(value_) {}
-
-  attribute &attr() { return attrib; }
-  const attribute &attr() const { return attrib; }
 };
 template <class Op>
 bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs);
@@ -139,47 +133,53 @@ bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs);
 template <class Op> struct binary_op {
   expr lhs;
   expr rhs;
-  attribute attrib;
+  attribute attr;
 
   binary_op(expr const &lhs_, expr const &rhs_) : lhs(lhs_), rhs(rhs_) {}
-
-  attribute &attr() { return attrib; }
-  const attribute &attr() const { return attrib; }
 };
 template <class Op>
 bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
 
 std::ostream &operator<<(std::ostream &os, expr const &tree);
 
-struct make_lval_visitor : boost::static_visitor<ast::expr> {
-  template <typename T> ast::expr operator()(T val) const {
-    val.attr().lval = true;
+struct make_lval_visitor : boost::static_visitor<expr> {
+  template <typename T> expr operator()(T val) const {
+    attr(val).lval = true;
     return val;
   }
 
-  ast::expr operator()(ast::value val) const {
+  ast::expr operator()(value val) const {
     return boost::apply_visitor(*this, val);
   }
 };
 
-struct make_to_call_visitor : boost::static_visitor<ast::expr> {
-  template <typename T> ast::expr operator()(T val) const {
-    val.attr().to_call = true;
+struct make_to_call_visitor : boost::static_visitor<expr> {
+  template <typename T> expr operator()(T val) const {
+    attr(val).to_call = true;
     return val;
   }
 
-  ast::expr operator()(ast::value val) const {
+  ast::expr operator()(value val) const {
     return boost::apply_visitor(*this, val);
   }
 };
 
-template <typename T> ast::expr make_lval(T val) {
+template <typename T> expr make_lval(T val) {
   return boost::apply_visitor(make_lval_visitor(), val);
 }
 
-template <typename T> ast::expr make_to_call(T val) {
+template <typename T> expr make_to_call(T val) {
   return boost::apply_visitor(make_to_call_visitor(), val);
 }
+
+template <typename T> T &val(value_wrapper<T> &w) { return w.value; }
+
+template <typename T> const T &val(value_wrapper<T> const &w) {
+  return w.value;
+}
+
+template <typename T> attribute &attr(T &w) { return w.attr; }
+template <typename T> const attribute &attr(T const &w) { return w.attr; }
 
 }; // namespace ast
 }; // namespace scopion

@@ -24,7 +24,7 @@ namespace detail {
 namespace utility {
 
 template <typename T, typename RangeT> T with_where(T val, RangeT range) {
-  val.attr().where = range;
+  ast::attr(val).where = range;
   return val;
 }
 

@@ -56,34 +56,34 @@ llvm::Value *translator::operator()(ast::value value) {
 }
 
 llvm::Value *translator::operator()(ast::integer value) {
-  if (value.attr().lval)
-    throw general_error("A integer constant is not to be assigned", value.attr().where,
+  if (ast::attr(value).lval)
+    throw general_error("A integer constant is not to be assigned", ast::attr(value).where,
                         code_range_);
-  return llvm::ConstantInt::get(builder_.getInt32Ty(), value.get());
+  return llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value));
 }
 
 llvm::Value *translator::operator()(ast::boolean value) {
-  if (value.attr().lval)
-    throw general_error("A boolean constant is not to be assigned", value.attr().where,
+  if (ast::attr(value).lval)
+    throw general_error("A boolean constant is not to be assigned", ast::attr(value).where,
                         code_range_);
-  return llvm::ConstantInt::get(builder_.getInt1Ty(), value.get());
+  return llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value));
 }
 
 llvm::Value *translator::operator()(ast::string const &value) {
-  if (value.attr().lval)
-    throw general_error("A string constant is not to be assigned", value.attr().where,
+  if (ast::attr(value).lval)
+    throw general_error("A string constant is not to be assigned", ast::attr(value).where,
                         code_range_);
-  return builder_.CreateGlobalStringPtr(value.get());
+  return builder_.CreateGlobalStringPtr(ast::val(value));
 }
 
 llvm::Value *translator::operator()(ast::variable const &value) {
-  if (value.attr().to_call) {
-    auto *valp = module_->getFunction(value.get());
+  if (ast::attr(value).to_call) {
+    auto *valp = module_->getFunction(ast::val(value));
     if (valp != nullptr) {
       return valp;
     } else {
       auto *varp =
-          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.get());
+          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(ast::val(value));
       if (varp != nullptr) {
         if (varp->getType()->getPointerElementType()->isPointerTy()) {
           if (varp->getType()
@@ -94,37 +94,37 @@ llvm::Value *translator::operator()(ast::variable const &value) {
           }
         }
         throw general_error(
-            "Variable \"" + value.get() + "\" is not a function but " +
+            "Variable \"" + ast::val(value) + "\" is not a function but " +
                 getNameString(varp->getType()->getPointerElementType()),
-            value.attr().where, code_range_);
+            ast::attr(value).where, code_range_);
       } else {
-        throw general_error("Function \"" + value.get() +
+        throw general_error("Function \"" + ast::val(value) +
                                 "\" has not declared in this scope",
-                            value.attr().where, code_range_);
+                            ast::attr(value).where, code_range_);
       }
     }
   } else {
     auto *valp =
-        builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.get());
-    if (value.attr().lval) {
+        builder_.GetInsertBlock()->getValueSymbolTable()->lookup(ast::val(value));
+    if (ast::attr(value).lval) {
       return valp;
     } else {
       if (valp != nullptr) {
         return builder_.CreateLoad(valp);
       } else {
-        throw general_error("\"" + value.get() + "\" has not declared",
-                            value.attr().where, code_range_);
+        throw general_error("\"" + ast::val(value) + "\" has not declared",
+                            ast::attr(value).where, code_range_);
       }
     }
   }
   assert(false);
 }
 llvm::Value *translator::operator()(ast::array const &value) {
-  if (value.attr().lval)
-    throw general_error("An array constant is not to be assigned", value.attr().where,
+  if (ast::attr(value).lval)
+    throw general_error("An array constant is not to be assigned", ast::attr(value).where,
                         code_range_);
 
-  auto &ary = value.get();
+  auto &ary = ast::val(value);
   std::vector<llvm::Value *> values;
   for (auto const &elm : ary) {
     // Convert exprs to llvm::Value* and store it into new vector
@@ -136,7 +136,7 @@ llvm::Value *translator::operator()(ast::array const &value) {
   if (!std::all_of(values.begin(), values.end(),
                    [&t](auto v) { return t == v->getType(); }))
     throw general_error("all elements of array must have the same type",
-                        value.attr().where, code_range_);
+                        ast::attr(value).where, code_range_);
 
   auto aryType = llvm::ArrayType::get(t, ary.size());
   auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
@@ -156,12 +156,12 @@ llvm::Value *translator::operator()(ast::arglist const &value) {
 }
 
 llvm::Value *translator::operator()(ast::function const &value) {
-  if (value.attr().lval)
+  if (ast::attr(value).lval)
     throw general_error("A function constant is not to be assigned",
-                        value.attr().where, code_range_);
+                        ast::attr(value).where, code_range_);
 
-  auto &args = value.get().first;
-  auto &lines = value.get().second;
+  auto &args = ast::val(value).first;
+  auto &lines = ast::val(value).second;
 
   std::vector<llvm::Type *> func_args_type(args.size(), builder_.getInt32Ty());
   llvm::FunctionType *func_type =
@@ -181,7 +181,7 @@ llvm::Value *translator::operator()(ast::function const &value) {
 
   for (auto const &v : args) {
     builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                          v.get()); // declare arguments
+                          ast::val(v)); // declare arguments
   }
 
   for (auto const &line : lines) {
@@ -198,7 +198,7 @@ llvm::Value *translator::operator()(ast::function const &value) {
           ret_type = (*itr).getOperand(0)->getType();
         } else {
           throw general_error("All return values must have the same type",
-                              value.attr().where, code_range_);
+                              ast::attr(value).where, code_range_);
         }
       }
     }
@@ -226,7 +226,7 @@ llvm::Value *translator::operator()(ast::function const &value) {
   auto it = newfunc->getArgumentList().begin();
   for (auto const &v : args) {
     auto aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                                      v.get()); // declare arguments
+                                      ast::val(v)); // declare arguments
     builder_.CreateStore(&(*it), aptr);
     it++;
   }

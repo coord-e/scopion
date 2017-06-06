@@ -15,26 +15,26 @@ public:
     _s << ")";
   }
 
-  auto operator()(ast::integer val) const -> void { _s << val.get(); }
+  auto operator()(ast::integer val) const -> void { _s << ast::val(val); }
 
   auto operator()(ast::boolean val) const -> void {
-    _s << std::boolalpha << val.get();
+    _s << std::boolalpha << ast::val(val);
   }
 
   auto operator()(ast::string const &val) const -> void {
-    _s << "\"" << val.get() << "\"";
+    _s << "\"" << ast::val(val) << "\"";
   }
 
   auto operator()(variable const &val) const -> void {
-    _s << val.get();
-    if (val.attr().to_call)
+    _s << ast::val(val);
+    if (attr(val).to_call)
       _s << "{}";
-    if (val.attr().lval)
+    if (attr(val).lval)
       _s << "(lhs)";
   }
 
   auto operator()(array const &val) const -> void {
-    auto &&ary = val.get();
+    auto &&ary = ast::val(val);
     _s << "[ ";
     for (auto const &i : ary) {
       boost::apply_visitor(*this, i);
@@ -44,7 +44,7 @@ public:
   }
 
   auto operator()(arglist const &val) const -> void {
-    auto &&ary = val.get();
+    auto &&ary = ast::val(val);
     for (auto const &i : ary) {
       boost::apply_visitor(*this, i);
       _s << ", ";
@@ -53,12 +53,12 @@ public:
 
   auto operator()(function const &val) const -> void {
     _s << "( ";
-    for (auto const &arg : val.get().first) {
+    for (auto const &arg : ast::val(val).first) {
       (*this)(arg);
       _s << ", ";
     }
     _s << "){ ";
-    for (auto const &line : val.get().second) {
+    for (auto const &line : ast::val(val).second) {
       boost::apply_visitor(*this, line);
       _s << "; ";
     }
@@ -71,7 +71,7 @@ public:
     _s << " " << op_to_str(o) << " ";
     boost::apply_visitor(*this, o.rhs);
     _s << " }";
-    if (o.attr().lval)
+    if (attr(o).lval)
       _s << "(lhs)";
   }
 
@@ -80,7 +80,7 @@ public:
     _s << op_to_str(o);
     boost::apply_visitor(*this, o.value);
     _s << " }";
-    if (o.attr().lval)
+    if (attr(o).lval)
       _s << "(lhs)";
   }
 
