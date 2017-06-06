@@ -20,6 +20,10 @@ struct set_lval_visitor : boost::static_visitor<expr> {
     return val;
   }
 
+  ast::expr operator()(expr val) const {
+    return boost::apply_visitor(*this, val);
+  }
+
   ast::expr operator()(value val) const {
     return boost::apply_visitor(*this, val);
   }
@@ -33,6 +37,10 @@ struct set_to_call_visitor : boost::static_visitor<expr> {
   template <typename T> expr operator()(T val) const {
     attr(val).to_call = v;
     return val;
+  }
+
+  ast::expr operator()(expr val) const {
+    return boost::apply_visitor(*this, val);
   }
 
   ast::expr operator()(value val) const {
@@ -50,11 +58,11 @@ template <typename T> attribute &attr(T &w) { return w.attr; }
 template <typename T> const attribute &attr(T const &w) { return w.attr; }
 
 template <typename T> expr set_lval(T t, bool val) {
-  return boost::apply_visitor(set_lval_visitor(val), t);
+  return set_lval_visitor(val)(t);
 }
 
 template <typename T> expr set_to_call(T t, bool val) {
-  return boost::apply_visitor(set_to_call_visitor(val), t);
+  return set_to_call_visitor(val)(t);
 }
 
 template <typename T, typename RangeT> T set_where(T val, RangeT range) {
