@@ -114,10 +114,10 @@ private:
   std::string op_to_str(single_op<dec> const &) const { return "--"; }
 }; // class printer
 
-std::ostream &operator<<(std::ostream &os, expr const &tree) {
-  boost::apply_visitor(printer(os), tree);
-  return os;
-}
-
 }; // namespace ast
 }; // namespace scopion
+
+std::ostream &operator<<(std::ostream &os, scopion::ast::expr const &tree) {
+  boost::apply_visitor(scopion::ast::printer(os), tree);
+  return os;
+}
