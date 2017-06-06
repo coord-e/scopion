@@ -105,21 +105,23 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
                                   llvm::Value *lhs, llvm::Value *rhs) {
   if (lhs == nullptr) { // first appear in the block (only variable)
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-    lhs = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.name);
+    lhs = builder_.CreateAlloca(rhs->getType(), nullptr, lvar.get());
     builder_.CreateStore(rhs, lhs);
   } else {
     if (lhs->getType()->isPointerTy()) {
       if (lhs->getType()->getPointerElementType() == rhs->getType()) {
         builder_.CreateStore(rhs, lhs);
       } else {
-        throw std::runtime_error(
+        throw general_error(
             "Cannot assign to different type of value (assigning " +
-            getNameString(rhs->getType()) + " into " +
-            getNameString(lhs->getType()->getPointerElementType()) + ")");
+                getNameString(rhs->getType()) + " into " +
+                getNameString(lhs->getType()->getPointerElementType()) + ")",
+            op.where, code_range_);
       }
     } else {
-      throw std::runtime_error("Cannot assign to non-pointer value (" +
-                               getNameString(lhs->getType()) + ")");
+      throw general_error("Cannot assign to non-pointer value (" +
+                              getNameString(lhs->getType()) + ")",
+                          op.where, code_range_);
     }
   }
   return builder_.CreateLoad(lhs);
@@ -128,24 +130,27 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
 llvm::Value *translator::apply_op(ast::binary_op<ast::call> const &op,
                                   llvm::Value *lhs, llvm::Value *rhs) {
   if (!lhs->getType()->isPointerTy())
-    throw std::runtime_error("Cannot call function from non-pointer type " +
-                             getNameString(lhs->getType()));
+    throw general_error("Cannot call function from non-pointer type " +
+                            getNameString(lhs->getType()),
+                        op.where, code_range_);
 
   if (!lhs->getType()->getPointerElementType()->isFunctionTy())
-    throw std::runtime_error(
-        "Cannot call function from non-function pointer type " +
-        getNameString(lhs->getType()));
+    throw general_error("Cannot call function from non-function pointer type " +
+                            getNameString(lhs->getType()),
+                        op.where, code_range_);
 
   auto &&arglist = boost::get<ast::arglist>(boost::get<ast::value>(op.rhs));
   if (lhs->getType()->getPointerElementType()->getFunctionNumParams() !=
-      arglist.elements.size())
-    throw std::runtime_error(
-        "The number of arguments doesn't match: required " +
-        std::to_string(
-            lhs->getType()->getPointerElementType()->getFunctionNumParams()) +
-        " but supplied " + std::to_string(arglist.elements.size()));
+      arglist.get().size())
+    throw general_error("The number of arguments doesn't match: required " +
+                            std::to_string(lhs->getType()
+                                               ->getPointerElementType()
+                                               ->getFunctionNumParams()) +
+                            " but supplied " +
+                            std::to_string(arglist.get().size()),
+                        op.where, code_range_);
   std::vector<llvm::Value *> args;
-  for (auto const &arg : arglist.elements) {
+  for (auto const &arg : arglist.get()) {
     args.push_back(boost::apply_visitor(*this, arg));
   }
 
@@ -156,12 +161,14 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
                                   llvm::Value *lhs, llvm::Value *rhs) {
   auto *rval = rhs->getType()->isPointerTy() ? builder_.CreateLoad(rhs) : rhs;
   if (!rval->getType()->isIntegerTy()) {
-    throw std::runtime_error("Array's index must be integer, not " +
-                             getNameString(rval->getType()));
+    throw general_error("Array's index must be integer, not " +
+                            getNameString(rval->getType()),
+                        op.where, code_range_);
   }
   if (!lhs->getType()->isPointerTy()) {
-    throw std::runtime_error("Cannot get element from non-pointer type " +
-                             getNameString(lhs->getType()));
+    throw general_error("Cannot get element from non-pointer type " +
+                            getNameString(lhs->getType()),
+                        op.where, code_range_);
   }
 
   auto *lval = lhs;
@@ -170,8 +177,9 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
     lval = builder_.CreateLoad(lhs);
 
     if (!lval->getType()->getPointerElementType()->isArrayTy()) {
-      throw std::runtime_error("Cannot get element from non-array type " +
-                               getNameString(lhs->getType()));
+      throw general_error("Cannot get element from non-array type " +
+                              getNameString(lhs->getType()),
+                          op.where, code_range_);
     }
   }
   // Now lval's type is pointer to array
@@ -189,8 +197,9 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
 llvm::Value *translator::apply_op(ast::single_op<ast::load> const &op,
                                   llvm::Value *value) {
   if (!value->getType()->isPointerTy())
-    throw std::runtime_error("Cannot load from non-pointer type " +
-                             getNameString(value->getType()));
+    throw general_error("Cannot load from non-pointer type " +
+                            getNameString(value->getType()),
+                        op.where, code_range_);
   return builder_.CreateLoad(value);
 }
 

@@ -2,6 +2,7 @@
 #define SCOPION_ASSEMBLY_H_
 
 #include "scopion/ast/ast.h"
+#include "scopion/exceptions.h"
 #include "scopion/parser/parser.h"
 
 #include <iostream>
@@ -23,18 +24,17 @@ public:
 class translator : public boost::static_visitor<llvm::Value *> {
   std::unique_ptr<llvm::Module> module_;
   llvm::IRBuilder<> builder_;
+  boost::iterator_range<std::string::const_iterator> const code_range_;
 
 public:
   translator(std::unique_ptr<llvm::Module> &&module,
-             llvm::IRBuilder<> const &builder);
-
-  llvm::Value *operator()(parser::parsed const &expr);
+             llvm::IRBuilder<> const &builder, std::string const &code);
 
   llvm::Value *operator()(ast::value value);
 
-  llvm::Value *operator()(int value);
-  llvm::Value *operator()(bool value);
-  llvm::Value *operator()(std::string const &value);
+  llvm::Value *operator()(ast::integer value);
+  llvm::Value *operator()(ast::boolean value);
+  llvm::Value *operator()(ast::string const &value);
   llvm::Value *operator()(ast::variable const &value);
   llvm::Value *operator()(ast::array const &value);
   llvm::Value *operator()(ast::arglist const &value);

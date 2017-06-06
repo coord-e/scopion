@@ -15,24 +15,26 @@ public:
     _s << ")";
   }
 
-  auto operator()(int val) const -> void { _s << val; }
+  auto operator()(ast::integer val) const -> void { _s << val.get(); }
 
-  auto operator()(bool val) const -> void { _s << std::boolalpha << val; }
+  auto operator()(ast::boolean val) const -> void {
+    _s << std::boolalpha << val.get();
+  }
 
-  auto operator()(std::string const &val) const -> void {
-    _s << "\"" << val << "\"";
+  auto operator()(ast::string const &val) const -> void {
+    _s << "\"" << val.get() << "\"";
   }
 
   auto operator()(variable const &val) const -> void {
-    _s << val.name;
-    if (val.isFunc)
+    _s << val.get();
+    if (val.to_call)
       _s << "{}";
     if (val.lval)
       _s << "(lhs)";
   }
 
   auto operator()(array const &val) const -> void {
-    auto &&ary = val.elements;
+    auto &&ary = val.get();
     _s << "[ ";
     for (auto const &i : ary) {
       boost::apply_visitor(*this, i);
@@ -42,7 +44,7 @@ public:
   }
 
   auto operator()(arglist const &val) const -> void {
-    auto &&ary = val.elements;
+    auto &&ary = val.get();
     for (auto const &i : ary) {
       boost::apply_visitor(*this, i);
       _s << ", ";
@@ -51,12 +53,12 @@ public:
 
   auto operator()(function const &val) const -> void {
     _s << "( ";
-    for (auto const &arg : val.args) {
+    for (auto const &arg : val.get().first) {
       (*this)(arg);
       _s << ", ";
     }
     _s << "){ ";
-    for (auto const &line : val.lines) {
+    for (auto const &line : val.get().second) {
       boost::apply_visitor(*this, line);
       _s << "; ";
     }
@@ -68,18 +70,18 @@ public:
     boost::apply_visitor(*this, o.lhs);
     _s << " " << op_to_str(o) << " ";
     boost::apply_visitor(*this, o.rhs);
+    _s << " }";
     if (o.lval)
       _s << "(lhs)";
-    _s << " }";
   }
 
   template <typename T> auto operator()(const single_op<T> &o) const -> void {
     _s << "{ ";
     _s << op_to_str(o);
     boost::apply_visitor(*this, o.value);
+    _s << " }";
     if (o.lval)
       _s << "(lhs)";
-    _s << " }";
   }
 
 private:

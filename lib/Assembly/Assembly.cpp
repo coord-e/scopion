@@ -1,5 +1,4 @@
 #include "scopion/assembly/assembly.h"
-#include "scopion/exceptions.h"
 
 #include <algorithm>
 
@@ -12,9 +11,11 @@ namespace scopion {
 namespace assembly {
 
 translator::translator(std::unique_ptr<llvm::Module> &&module,
-                       llvm::IRBuilder<> const &builder)
+                       llvm::IRBuilder<> const &builder,
+                       std::string const &code)
     : boost::static_visitor<llvm::Value *>(), module_(std::move(module)),
-      builder_(builder) {
+      builder_(builder),
+      code_range_(boost::make_iterator_range(code.begin(), code.end())) {
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
 
@@ -50,41 +51,39 @@ translator::translator(std::unique_ptr<llvm::Module> &&module,
   }
 }
 
-llvm::Value *translator::operator()(parser::parsed const &expr) {
-  try {
-    auto *val = boost::apply_visitor(*this, expr.ast);
-    return val;
-  } catch (std::runtime_error e) {
-    throw general_error(
-        e.what(), expr.ast.where,
-        boost::make_iterator_range(expr.code.begin(), expr.code.end()));
-  }
-}
-
 llvm::Value *translator::operator()(ast::value value) {
   return boost::apply_visitor(*this, value);
 }
 
-llvm::Value *translator::operator()(int value) {
-  return llvm::ConstantInt::get(builder_.getInt32Ty(), value);
+llvm::Value *translator::operator()(ast::integer value) {
+  if (value.lval)
+    throw general_error("A integer constant is not to be assigned", value.where,
+                        code_range_);
+  return llvm::ConstantInt::get(builder_.getInt32Ty(), value.get());
 }
 
-llvm::Value *translator::operator()(bool value) {
-  return llvm::ConstantInt::get(builder_.getInt1Ty(), value);
+llvm::Value *translator::operator()(ast::boolean value) {
+  if (value.lval)
+    throw general_error("A boolean constant is not to be assigned", value.where,
+                        code_range_);
+  return llvm::ConstantInt::get(builder_.getInt1Ty(), value.get());
 }
 
-llvm::Value *translator::operator()(std::string const &value) {
-  return builder_.CreateGlobalStringPtr(value);
+llvm::Value *translator::operator()(ast::string const &value) {
+  if (value.lval)
+    throw general_error("A string constant is not to be assigned", value.where,
+                        code_range_);
+  return builder_.CreateGlobalStringPtr(value.get());
 }
 
 llvm::Value *translator::operator()(ast::variable const &value) {
-  if (value.isFunc) {
-    auto *valp = module_->getFunction(value.name);
+  if (value.to_call) {
+    auto *valp = module_->getFunction(value.get());
     if (valp != nullptr) {
       return valp;
     } else {
       auto *varp =
-          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.name);
+          builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.get());
       if (varp != nullptr) {
         if (varp->getType()->getPointerElementType()->isPointerTy()) {
           if (varp->getType()
@@ -94,31 +93,38 @@ llvm::Value *translator::operator()(ast::variable const &value) {
             return builder_.CreateLoad(varp);
           }
         }
-        throw std::runtime_error(
-            "Variable \"" + value.name + "\" is not a function but " +
-            getNameString(varp->getType()->getPointerElementType()));
+        throw general_error(
+            "Variable \"" + value.get() + "\" is not a function but " +
+                getNameString(varp->getType()->getPointerElementType()),
+            value.where, code_range_);
       } else {
-        throw std::runtime_error("Function \"" + value.name +
-                                 "\" has not declared in this scope");
+        throw general_error("Function \"" + value.get() +
+                                "\" has not declared in this scope",
+                            value.where, code_range_);
       }
     }
   } else {
     auto *valp =
-        builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.name);
+        builder_.GetInsertBlock()->getValueSymbolTable()->lookup(value.get());
     if (value.lval) {
       return valp;
     } else {
       if (valp != nullptr) {
         return builder_.CreateLoad(valp);
       } else {
-        throw std::runtime_error("\"" + value.name + "\" has not declared");
+        throw general_error("\"" + value.get() + "\" has not declared",
+                            value.where, code_range_);
       }
     }
   }
   assert(false);
 }
 llvm::Value *translator::operator()(ast::array const &value) {
-  auto &ary = value.elements;
+  if (value.lval)
+    throw general_error("An array constant is not to be assigned", value.where,
+                        code_range_);
+
+  auto &ary = value.get();
   std::vector<llvm::Value *> values;
   for (auto const &elm : ary) {
     // Convert exprs to llvm::Value* and store it into new vector
@@ -129,7 +135,8 @@ llvm::Value *translator::operator()(ast::array const &value) {
   // check if the type of all elements of array is same
   if (!std::all_of(values.begin(), values.end(),
                    [&t](auto v) { return t == v->getType(); }))
-    throw std::runtime_error("all elements of array must have the same type");
+    throw general_error("all elements of array must have the same type",
+                        value.where, code_range_);
 
   auto aryType = llvm::ArrayType::get(t, ary.size());
   auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
@@ -149,11 +156,14 @@ llvm::Value *translator::operator()(ast::arglist const &value) {
 }
 
 llvm::Value *translator::operator()(ast::function const &value) {
+  if (value.lval)
+    throw general_error("A function constant is not to be assigned",
+                        value.where, code_range_);
 
-  auto &lines = value.lines;
+  auto &args = value.get().first;
+  auto &lines = value.get().second;
 
-  std::vector<llvm::Type *> func_args_type(value.args.size(),
-                                           builder_.getInt32Ty());
+  std::vector<llvm::Type *> func_args_type(args.size(), builder_.getInt32Ty());
   llvm::FunctionType *func_type =
       llvm::FunctionType::get(builder_.getVoidTy(), func_args_type, false);
   llvm::Function *func = llvm::Function::Create(
@@ -169,9 +179,9 @@ llvm::Value *translator::operator()(ast::function const &value) {
 
   builder_.CreateAlloca(func->getType(), nullptr, "self");
 
-  for (auto const &v : value.args) {
+  for (auto const &v : args) {
     builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                          v.name); // declare arguments
+                          v.get()); // declare arguments
   }
 
   for (auto const &line : lines) {
@@ -187,7 +197,8 @@ llvm::Value *translator::operator()(ast::function const &value) {
         if (ret_type == nullptr) {
           ret_type = (*itr).getOperand(0)->getType();
         } else {
-          throw std::runtime_error("All return values must have the same type");
+          throw general_error("All return values must have the same type",
+                              value.where, code_range_);
         }
       }
     }
@@ -213,9 +224,9 @@ llvm::Value *translator::operator()(ast::function const &value) {
   builder_.CreateStore(newfunc, selfptr);
 
   auto it = newfunc->getArgumentList().begin();
-  for (auto const &v : value.args) {
+  for (auto const &v : args) {
     auto aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                                      v.name); // declare arguments
+                                      v.get()); // declare arguments
     builder_.CreateStore(&(*it), aptr);
     it++;
   }

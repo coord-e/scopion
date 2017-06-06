@@ -13,10 +13,10 @@ class assemblyTest : public ::testing::Test {};
 
 TEST_F(assemblyTest, variable) {
   auto tree = ast::function(
-      {}, {ast::binary_op<ast::assign>(ast::variable("test", true, false), 1),
-           ast::single_op<ast::ret>(
-               ast::binary_op<ast::add>(ast::variable("test", false, false), 1),
-               0)});
+      {}, {ast::binary_op<ast::assign>(ast::variable("test", true, false),
+                                       ast::integer(1)),
+           ast::single_op<ast::ret>(ast::binary_op<ast::add>(
+               ast::variable("test", false, false), ast::integer(1)))});
 
   assembly::context ctx;
   auto res = scopion::assembly::module::create(parser::parsed(tree, ""), ctx,

@@ -21,8 +21,8 @@ std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
   builder.SetInsertPoint(
       llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 
-  translator tr(std::move(mod), builder);
-  auto val = tr(tree);
+  translator tr(std::move(mod), builder, tree.code);
+  auto val = boost::apply_visitor(tr, tree.ast);
   mod = tr.returnModule();
 
   builder.CreateCall(val, llvm::ArrayRef<llvm::Value *>({}));

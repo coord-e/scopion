@@ -34,19 +34,16 @@ public:
   }
 };
 
+template <class T>
+bool operator==(value_wrapper<T> const &lhs, value_wrapper<T> const &rhs) {
+  return (lhs.get() == rhs.get()) && (rhs.lval == lhs.lval) &&
+         (rhs.to_call == lhs.to_call);
+}
+
 bool operator==(expr const &lhs, expr const &rhs) {
   return boost::apply_visitor(compare_expr<expr>(lhs), rhs);
 }
-bool operator==(variable const &lhs, variable const &rhs) {
-  return (lhs.name == rhs.name) && (lhs.lval == rhs.lval) &&
-         (lhs.isFunc == rhs.isFunc);
-}
-bool operator==(array const &lhs, array const &rhs) {
-  return (lhs.elements == rhs.elements);
-}
-bool operator==(function const &lhs, function const &rhs) {
-  return (lhs.lines == rhs.lines) && (lhs.args == rhs.args);
-}
+
 template <class Op>
 bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs) {
   return (lhs.value == rhs.value) && (lhs.lval == rhs.lval);

@@ -10,6 +10,7 @@
 #include <boost/spirit/home/x3.hpp>
 
 #include <array>
+#include <type_traits>
 
 namespace scopion {
 namespace parser {
@@ -20,22 +21,63 @@ namespace grammar {
 
 namespace detail {
 
+namespace utility {
+
+struct make_lval_visitor : boost::static_visitor<ast::expr> {
+  template <class T,
+            typename std::enable_if<std::is_base_of<ast::base, T>::value>::type
+                * = nullptr>
+  ast::expr operator()(T val) const {
+    val.lval = true;
+    return val;
+  }
+
+  ast::expr operator()(ast::value val) const {
+    return boost::apply_visitor(*this, val);
+  }
+};
+template <typename T> ast::expr make_lval(T val) {
+  return boost::apply_visitor(make_lval_visitor(), val);
+}
+
+struct make_to_call_visitor : boost::static_visitor<ast::expr> {
+  template <class T,
+            typename std::enable_if<std::is_base_of<ast::base, T>::value>::type
+                * = nullptr>
+  ast::expr operator()(T val) const {
+    val.to_call = true;
+    return val;
+  }
+
+  ast::expr operator()(ast::value val) const {
+    return boost::apply_visitor(*this, val);
+  }
+};
+template <typename T> ast::expr make_to_call(T val) {
+  return boost::apply_visitor(make_to_call_visitor(), val);
+}
+
+template <typename T, typename RangeT> T with_where(T val, RangeT range) {
+  val.where = range;
+  return val;
+}
+
+}; // namespace utility
+
 decltype(auto) assign() {
-  return [](auto &&ctx) {
-    x3::_val(ctx) = ast::expr(x3::_attr(ctx), x3::_where(ctx));
-  };
+  return [](auto &&ctx) { x3::_val(ctx) = x3::_attr(ctx); };
 }
 
 decltype(auto) assign_str() {
   return [](auto &&ctx) {
-    auto &&v = x3::_attr(ctx);
-    x3::_val(ctx) = ast::expr(std::string(v.begin(), v.end()), x3::_where(ctx));
+    std::string str(x3::_attr(ctx).begin(), x3::_attr(ctx).end());
+    x3::_val(ctx) = utility::with_where(ast::string(str), x3::_where(ctx));
   };
 }
 
 template <typename T> decltype(auto) assign_as() {
   return [](auto &&ctx) {
-    x3::_val(ctx) = ast::expr(T(x3::_attr(ctx)), x3::_where(ctx));
+    x3::_val(ctx) = utility::with_where(T(x3::_attr(ctx)), x3::_where(ctx));
   };
 }
 
@@ -48,96 +90,48 @@ decltype(auto) assign_func() {
         args.begin(), args.end(), std::back_inserter(result), [](auto &&x) {
           return boost::get<ast::variable>(boost::get<ast::value>(x));
         });
-    x3::_val(ctx) = ast::expr(ast::function(result, lines), x3::_where(ctx));
+    x3::_val(ctx) =
+        utility::with_where(ast::function({result, lines}), x3::_where(ctx));
   };
 }
 
-decltype(auto) assign_var(bool rl = false) {
-  return [rl](auto &&ctx) {
+decltype(auto) assign_var() {
+  return [](auto &&ctx) {
     auto &&v = x3::_attr(ctx);
-    x3::_val(ctx) =
-        ast::expr(ast::variable(std::string(v.begin(), v.end()), rl, false),
-                  x3::_where(ctx));
+    x3::_val(ctx) = utility::with_where(
+        ast::variable(std::string(v.begin(), v.end())), x3::_where(ctx));
   };
 }
 
 template <typename Op> decltype(auto) assign_binop() {
   return [](auto &&ctx) {
-    x3::_val(ctx) = ast::expr(ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx)),
-                              x3::_where(ctx));
+    x3::_val(ctx) = utility::with_where(
+        ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx)), x3::_where(ctx));
   };
 }
 
-struct make_op_lval : boost::static_visitor<ast::expr> {
-  template <typename Op> ast::expr operator()(ast::binary_op<Op> op) const {
-    op.lval = true;
-    return op;
-  }
-
-  template <typename Op> ast::expr operator()(ast::single_op<Op> op) const {
-    op.lval = true;
-    return op;
-  }
-
-  ast::expr operator()(ast::value val) const {
-    assert(false);
-    return ast::expr();
-  }
-};
-
 template <> decltype(auto) assign_binop<ast::assign>() {
   return [](auto &&ctx) {
-    if (x3::_val(ctx).type() == typeid(ast::value)) {
-      auto &&v = boost::get<ast::value>(x3::_val(ctx));
-      if (v.type() == typeid(ast::variable)) {
-        auto &&n = boost::get<ast::variable>(v).name;
-        x3::_val(ctx) =
-            ast::expr(ast::binary_op<ast::assign>(ast::variable(n, true, false),
-                                                  x3::_attr(ctx)),
-                      x3::_where(ctx));
-        return;
-      } else {
-        x3::_pass(ctx) = false;
-      }
-    } else {
-      x3::_val(ctx) =
-          ast::expr(ast::binary_op<ast::assign>(
-                        boost::apply_visitor(make_op_lval(), x3::_val(ctx)),
-                        x3::_attr(ctx)),
-                    x3::_where(ctx));
-    }
+    x3::_val(ctx) = utility::with_where(
+        ast::binary_op<ast::assign>(utility::make_lval(x3::_val(ctx)),
+                                    x3::_attr(ctx)),
+        x3::_where(ctx));
   };
 }
 
 template <> decltype(auto) assign_binop<ast::call>() {
   return [](auto &&ctx) {
-    if (x3::_val(ctx).type() != typeid(ast::value)) {
-      x3::_val(ctx) = ast::binary_op<ast::call>(x3::_val(ctx),
-                                                ast::arglist(x3::_attr(ctx)));
-      return;
-    }
-    auto &&v = boost::get<ast::value>(x3::_val(ctx));
-    if (v.type() == typeid(ast::variable)) {
-      auto &&n = boost::get<ast::variable>(v).name;
-      x3::_val(ctx) =
-          ast::expr(ast::binary_op<ast::call>(ast::variable(n, false, true),
-                                              ast::arglist(x3::_attr(ctx))),
-                    x3::_where(ctx));
-    } else if (v.type() == typeid(ast::function)) {
-      x3::_val(ctx) =
-          ast::expr(ast::binary_op<ast::call>(x3::_val(ctx),
-                                              ast::arglist(x3::_attr(ctx))),
-                    x3::_where(ctx));
-    } else {
-      x3::_pass(ctx) = false;
-    }
+    x3::_val(ctx) = utility::with_where(
+        ast::binary_op<ast::call>(utility::make_to_call(x3::_val(ctx)),
+                                  ast::arglist(x3::_attr(ctx))),
+        x3::_where(ctx));
   };
 }
 
 template <typename Op> decltype(auto) assign_sinop() {
   return [](auto &&ctx) {
-    x3::_val(ctx) =
-        ast::expr(ast::single_op<Op>(x3::_attr(ctx)), x3::_where(ctx));
+    x3::_val(ctx) = utility::with_where(ast::single_op<Op>(x3::_attr(ctx)),
+                                        x3::_where(ctx));
   };
 }
 
@@ -199,8 +193,8 @@ auto const array_def = ("[" > *(expression >> -x3::lit(",")) >
 auto const function_def = ((("(" > *(variable >> -x3::lit(","))) >> "){") >
                            *(expression >> ";") > "}")[detail::assign_func()];
 
-auto const primary_def = x3::int_[detail::assign()] |
-                         x3::bool_[detail::assign()] |
+auto const primary_def = x3::int_[detail::assign_as<ast::integer>()] |
+                         x3::bool_[detail::assign_as<ast::boolean>()] |
                          string[detail::assign()] | variable[detail::assign()] |
                          array[detail::assign()] | function[detail::assign()] |
                          ("(" >> expression >> ")")[detail::assign()];
