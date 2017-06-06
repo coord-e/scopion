@@ -1,6 +1,6 @@
 #include "scopion/assembly/translator.h"
 
-#include "scopion/exceptions.h"
+#include "scopion/error.h"
 
 namespace scopion {
 namespace assembly {

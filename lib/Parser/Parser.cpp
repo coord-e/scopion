@@ -1,5 +1,5 @@
 #include "scopion/ast/ast.h"
-#include "scopion/exceptions.h"
+#include "scopion/error.h"
 #include "scopion/parser/parser.h"
 
 #include <boost/algorithm/string.hpp>
