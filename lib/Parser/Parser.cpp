@@ -24,11 +24,8 @@ namespace detail {
 namespace utility {
 
 struct make_lval_visitor : boost::static_visitor<ast::expr> {
-  template <class T,
-            typename std::enable_if<std::is_base_of<ast::base, T>::value>::type
-                * = nullptr>
-  ast::expr operator()(T val) const {
-    val.lval = true;
+  template <typename T> ast::expr operator()(T val) const {
+    val.attr().lval = true;
     return val;
   }
 
@@ -41,11 +38,8 @@ template <typename T> ast::expr make_lval(T val) {
 }
 
 struct make_to_call_visitor : boost::static_visitor<ast::expr> {
-  template <class T,
-            typename std::enable_if<std::is_base_of<ast::base, T>::value>::type
-                * = nullptr>
-  ast::expr operator()(T val) const {
-    val.to_call = true;
+  template <typename T> ast::expr operator()(T val) const {
+    val.attr().to_call = true;
     return val;
   }
 
@@ -58,7 +52,7 @@ template <typename T> ast::expr make_to_call(T val) {
 }
 
 template <typename T, typename RangeT> T with_where(T val, RangeT range) {
-  val.where = range;
+  val.attr().where = range;
   return val;
 }
 

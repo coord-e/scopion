@@ -36,8 +36,8 @@ public:
 
 template <class T>
 bool operator==(value_wrapper<T> const &lhs, value_wrapper<T> const &rhs) {
-  return (lhs.get() == rhs.get()) && (rhs.lval == lhs.lval) &&
-         (rhs.to_call == lhs.to_call);
+  return (lhs.get() == rhs.get()) && (rhs.attr().lval == lhs.attr().lval) &&
+         (rhs.attr().to_call == lhs.attr().to_call);
 }
 
 bool operator==(expr const &lhs, expr const &rhs) {
@@ -46,11 +46,11 @@ bool operator==(expr const &lhs, expr const &rhs) {
 
 template <class Op>
 bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs) {
-  return (lhs.value == rhs.value) && (lhs.lval == rhs.lval);
+  return (lhs.value == rhs.value) && (lhs.attr().lval == rhs.attr().lval);
 }
 template <class Op>
 bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs) {
-  return (lhs.rhs == rhs.rhs) && (lhs.lhs == rhs.lhs) && (lhs.lval == rhs.lval);
+  return (lhs.rhs == rhs.rhs) && (lhs.lhs == rhs.lhs) && (lhs.attr().lval == rhs.attr().lval);
 }
 } // namespace ast
 } // namespace scopion

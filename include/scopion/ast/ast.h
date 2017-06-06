@@ -43,15 +43,15 @@ struct dec;
 
 struct expr;
 
-struct base {
-  using str_range_t = boost::iterator_range<std::string::const_iterator>;
-  str_range_t where;
+struct attribute {
+  boost::iterator_range<std::string::const_iterator> where;
   bool lval = false;
   bool to_call = false;
 };
 
-template <typename T> class value_wrapper : public base {
+template <typename T> class value_wrapper {
   T value;
+  attribute attrib;
 
 public:
   value_wrapper(T const &val) : value(val) {}
@@ -60,6 +60,8 @@ public:
   operator T() const { return value; }
 
   const T &get() const { return value; }
+  attribute &attr() { return attrib; }
+  const attribute &attr() const { return attrib; }
 };
 
 template <class T>
@@ -122,19 +124,27 @@ struct expr : expr_base {
 };
 bool operator==(expr const &lhs, expr const &rhs);
 
-template <class Op> struct single_op : base {
+template <class Op> struct single_op {
   expr value;
+  attribute attrib;
 
   single_op(expr const &value_) : value(value_) {}
+
+  attribute &attr() { return attrib; }
+  const attribute &attr() const { return attrib; }
 };
 template <class Op>
 bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs);
 
-template <class Op> struct binary_op : base {
+template <class Op> struct binary_op {
   expr lhs;
   expr rhs;
+  attribute attrib;
 
   binary_op(expr const &lhs_, expr const &rhs_) : lhs(lhs_), rhs(rhs_) {}
+
+  attribute &attr() { return attrib; }
+  const attribute &attr() const { return attrib; }
 };
 template <class Op>
 bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);

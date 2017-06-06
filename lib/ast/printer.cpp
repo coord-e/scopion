@@ -27,9 +27,9 @@ public:
 
   auto operator()(variable const &val) const -> void {
     _s << val.get();
-    if (val.to_call)
+    if (val.attr().to_call)
       _s << "{}";
-    if (val.lval)
+    if (val.attr().lval)
       _s << "(lhs)";
   }
 
@@ -71,7 +71,7 @@ public:
     _s << " " << op_to_str(o) << " ";
     boost::apply_visitor(*this, o.rhs);
     _s << " }";
-    if (o.lval)
+    if (o.attr().lval)
       _s << "(lhs)";
   }
 
@@ -80,7 +80,7 @@ public:
     _s << op_to_str(o);
     boost::apply_visitor(*this, o.value);
     _s << " }";
-    if (o.lval)
+    if (o.attr().lval)
       _s << "(lhs)";
   }
 
