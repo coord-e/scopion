@@ -1,7 +1,7 @@
 #ifndef SCOPION_PARSER_H_
 #define SCOPION_PARSER_H_
 
-#include "scopion/ast/ast.h"
+#include "scopion/ast/ast.hpp"
 
 namespace scopion {
 namespace parser {

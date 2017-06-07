@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "scopion/scopion.h"
+#include "scopion/scopion.hpp"
 
 namespace {
 

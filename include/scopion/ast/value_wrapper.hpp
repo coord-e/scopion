@@ -1,7 +1,7 @@
 #ifndef SCOPION_AST_VALUE_WRAPPER_H_
 #define SCOPION_AST_VALUE_WRAPPER_H_
 
-#include "scopion/ast/attribute.h"
+#include "scopion/ast/attribute.hpp"
 
 namespace scopion {
 namespace ast {

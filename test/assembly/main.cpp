@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "scopion/assembly/assembly.h"
+#include "scopion/assembly/assembly.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/variant.hpp>

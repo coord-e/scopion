@@ -1,10 +1,10 @@
 #ifndef SCOPION_MODULE_H_
 #define SCOPION_MODULE_H_
 
-#include "scopion/assembly/context.h"
-#include "scopion/assembly/translator.h"
+#include "scopion/assembly/context.hpp"
+#include "scopion/assembly/translator.hpp"
 
-#include "scopion/parser/parser.h"
+#include "scopion/parser/parser.hpp"
 
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/IR/Module.h>

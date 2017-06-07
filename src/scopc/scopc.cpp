@@ -11,7 +11,7 @@
 #include "cmdline.h"
 #include "rang.hpp"
 
-#include "scopion/scopion.h"
+#include "scopion/scopion.hpp"
 
 namespace fs = boost::filesystem;
 

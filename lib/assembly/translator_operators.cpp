@@ -1,6 +1,6 @@
-#include "scopion/assembly/translator.h"
+#include "scopion/assembly/translator.hpp"
 
-#include "scopion/error.h"
+#include "scopion/error.hpp"
 
 namespace scopion {
 namespace assembly {

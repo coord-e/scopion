@@ -1,6 +1,6 @@
-#include "scopion/assembly/module.h"
+#include "scopion/assembly/module.hpp"
 
-#include "scopion/ast/ast.h"
+#include "scopion/ast/ast.hpp"
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Interpreter.h>

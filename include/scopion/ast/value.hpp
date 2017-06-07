@@ -1,8 +1,8 @@
 #ifndef SCOPION_AST_VALUE_H_
 #define SCOPION_AST_VALUE_H_
 
-#include "scopion/ast/expr.h"
-#include "scopion/ast/value_wrapper.h"
+#include "scopion/ast/expr.hpp"
+#include "scopion/ast/value_wrapper.hpp"
 
 #include <boost/variant.hpp>
 

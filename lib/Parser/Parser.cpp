@@ -1,6 +1,6 @@
-#include "scopion/ast/ast.h"
-#include "scopion/error.h"
-#include "scopion/parser/parser.h"
+#include "scopion/ast/ast.hpp"
+#include "scopion/error.hpp"
+#include "scopion/parser/parser.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/fusion/include/at.hpp>

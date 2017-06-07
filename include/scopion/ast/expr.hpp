@@ -1,7 +1,7 @@
 #ifndef SCOPION_AST_EXPR_H_
 #define SCOPION_AST_EXPR_H_
 
-#include "scopion/ast/value.h"
+#include "scopion/ast/value.hpp"
 
 #include <boost/variant.hpp>
 

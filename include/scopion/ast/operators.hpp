@@ -1,8 +1,8 @@
 #ifndef SCOPION_AST_OPERATORS_H_
 #define SCOPION_AST_OPERATORS_H_
 
-#include "scopion/ast/attribute.h"
-#include "scopion/ast/expr.h"
+#include "scopion/ast/attribute.hpp"
+#include "scopion/ast/expr.hpp"
 
 namespace scopion {
 namespace ast {

@@ -1,7 +1,7 @@
 #ifndef SCOPION_TRANSLATOR_H_
 #define SCOPION_TRANSLATOR_H_
 
-#include "scopion/ast/ast.h"
+#include "scopion/ast/ast.hpp"
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>

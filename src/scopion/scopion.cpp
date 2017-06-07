@@ -9,7 +9,7 @@
 #include "cmdline.h"
 #include "rang.hpp"
 
-#include "scopion/scopion.h"
+#include "scopion/scopion.hpp"
 
 #define SCOPION_VERSION "0.0.1-beta"
 
