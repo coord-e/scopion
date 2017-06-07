@@ -57,6 +57,10 @@ llvm::Value *translator::operator()(ast::value value) {
   return boost::apply_visitor(*this, value);
 }
 
+llvm::Value *translator::operator()(ast::operators value) {
+  return boost::apply_visitor(*this, value);
+}
+
 llvm::Value *translator::operator()(ast::integer value) {
   if (ast::attr(value).lval)
     throw general_error("An integer constant is not to be assigned",

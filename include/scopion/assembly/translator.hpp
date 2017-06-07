@@ -20,6 +20,7 @@ public:
              llvm::IRBuilder<> const &builder, std::string const &code);
 
   llvm::Value *operator()(ast::value value);
+  llvm::Value *operator()(ast::operators value);
 
   llvm::Value *operator()(ast::integer value);
   llvm::Value *operator()(ast::boolean value);

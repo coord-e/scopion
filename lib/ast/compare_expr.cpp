@@ -27,6 +27,13 @@ public:
     return boost::apply_visitor(n, value);
   }
 
+  bool operator()(ast::operators value) const {
+    if (with.type() != typeid(value))
+      return false;
+    compare_expr<ast::operators> n(boost::get<ast::operators>(with));
+    return boost::apply_visitor(n, value);
+  }
+
   template <typename T> bool operator()(T value) const {
     if (with.type() != typeid(value))
       return false;

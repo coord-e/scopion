@@ -27,6 +27,10 @@ struct set_lval_visitor : boost::static_visitor<expr> {
   ast::expr operator()(value val) const {
     return boost::apply_visitor(*this, val);
   }
+
+  ast::expr operator()(operators val) const {
+    return boost::apply_visitor(*this, val);
+  }
 };
 
 struct set_to_call_visitor : boost::static_visitor<expr> {
@@ -44,6 +48,10 @@ struct set_to_call_visitor : boost::static_visitor<expr> {
   }
 
   ast::expr operator()(value val) const {
+    return boost::apply_visitor(*this, val);
+  }
+
+  ast::expr operator()(operators val) const {
     return boost::apply_visitor(*this, val);
   }
 };

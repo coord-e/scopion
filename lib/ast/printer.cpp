@@ -15,6 +15,12 @@ public:
     _s << ")";
   }
 
+  auto operator()(const operators &v) const -> void {
+    _s << "(";
+    boost::apply_visitor(*this, v);
+    _s << ")";
+  }
+
   auto operator()(ast::integer val) const -> void { _s << ast::val(val); }
 
   auto operator()(ast::boolean val) const -> void {
