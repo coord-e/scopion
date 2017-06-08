@@ -13,7 +13,7 @@ namespace scopion {
 namespace assembly {
 
 class module {
-  std::unique_ptr<llvm::Module> module_;
+  std::shared_ptr<llvm::Module> module_;
 
 public:
   llvm::Value *val;
@@ -26,7 +26,7 @@ public:
   llvm::GenericValue run();
 
 private:
-  module(std::unique_ptr<llvm::Module> &&module, llvm::Value *val_)
+  module(std::shared_ptr<llvm::Module> &module, llvm::Value *val_)
       : module_(std::move(module)), val(val_) {}
 };
 

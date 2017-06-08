@@ -12,10 +12,10 @@
 namespace scopion {
 namespace assembly {
 
-translator::translator(std::unique_ptr<llvm::Module> &&module,
+translator::translator(std::shared_ptr<llvm::Module> &module,
                        llvm::IRBuilder<> const &builder,
                        std::string const &code)
-    : boost::static_visitor<llvm::Value *>(), module_(std::move(module)),
+    : boost::static_visitor<llvm::Value *>(), module_(module),
       builder_(builder),
       code_range_(boost::make_iterator_range(code.begin(), code.end())) {
   {

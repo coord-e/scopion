@@ -11,12 +11,12 @@ namespace scopion {
 namespace assembly {
 
 class translator : public boost::static_visitor<llvm::Value *> {
-  std::unique_ptr<llvm::Module> module_;
+  std::shared_ptr<llvm::Module> module_;
   llvm::IRBuilder<> builder_;
   boost::iterator_range<std::string::const_iterator> const code_range_;
 
 public:
-  translator(std::unique_ptr<llvm::Module> &&module,
+  translator(std::shared_ptr<llvm::Module> &module,
              llvm::IRBuilder<> const &builder, std::string const &code);
 
   llvm::Value *operator()(ast::value value);
@@ -40,8 +40,6 @@ public:
 
     return apply_op(op, lhs, rhs);
   }
-
-  std::unique_ptr<llvm::Module> returnModule() { return std::move(module_); }
 
 private:
   template <typename T> std::string getNameString(T *v) {

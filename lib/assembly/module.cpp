@@ -13,7 +13,7 @@ namespace assembly {
 std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
                                        std::string const &name) {
 
-  std::unique_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
+  std::shared_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
   llvm::IRBuilder<> builder(mod->getContext());
 
   std::vector<llvm::Type *> args_type = {builder.getInt32Ty()};
@@ -24,15 +24,14 @@ std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
   builder.SetInsertPoint(
       llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 
-  translator tr(std::move(mod), builder, tree.code);
+  translator tr(mod, builder, tree.code);
   auto val = boost::apply_visitor(tr, tree.ast);
-  mod = tr.returnModule();
 
   builder.CreateCall(val, llvm::ArrayRef<llvm::Value *>({}));
 
   builder.CreateRet(builder.getInt32(0));
 
-  return std::unique_ptr<module>(new module(std::move(mod), val));
+  return std::unique_ptr<module>(new module(mod, val));
 }
 
 std::string module::irgen() {
@@ -47,7 +46,7 @@ llvm::GenericValue module::run() {
   llvm::InitializeNativeTarget();
   auto *funcptr = llvm::cast<llvm::Function>(val);
   std::unique_ptr<llvm::ExecutionEngine> engine(
-      llvm::EngineBuilder(std::move(module_))
+      llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module_.get()))
           .setEngineKind(llvm::EngineKind::Either)
           .create());
   engine->finalizeObject();
