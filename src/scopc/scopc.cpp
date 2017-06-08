@@ -110,8 +110,7 @@ int main(int argc, char *argv[]) {
     }
 
     system(("gcc " + tmpstr + ".s -o " + std::string(outpath)).c_str());
-  } catch (scopion::general_error const &ex) {
-    scopion::diagnosis e(ex);
+  } catch (scopion::error const &e) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray
               << "[ERROR]" << rang::style::reset << rang::fg::red << " @"
               << e.line_number() << rang::style::reset << ": " << e.what()

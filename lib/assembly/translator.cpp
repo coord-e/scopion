@@ -63,11 +63,11 @@ llvm::Value *translator::operator()(ast::operators value) {
 
 llvm::Value *translator::operator()(ast::integer value) {
   if (ast::attr(value).lval)
-    throw general_error("An integer constant is not to be assigned",
+    throw error("An integer constant is not to be assigned",
                         ast::attr(value).where, code_range_);
 
   if (ast::attr(value).to_call)
-    throw general_error("An integer constant is not to be called",
+    throw error("An integer constant is not to be called",
                         ast::attr(value).where, code_range_);
 
   return llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value));
@@ -75,11 +75,11 @@ llvm::Value *translator::operator()(ast::integer value) {
 
 llvm::Value *translator::operator()(ast::boolean value) {
   if (ast::attr(value).lval)
-    throw general_error("A boolean constant is not to be assigned",
+    throw error("A boolean constant is not to be assigned",
                         ast::attr(value).where, code_range_);
 
   if (ast::attr(value).to_call)
-    throw general_error("A boolean constant is not to be called",
+    throw error("A boolean constant is not to be called",
                         ast::attr(value).where, code_range_);
 
   return llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value));
@@ -87,11 +87,11 @@ llvm::Value *translator::operator()(ast::boolean value) {
 
 llvm::Value *translator::operator()(ast::string const &value) {
   if (ast::attr(value).lval)
-    throw general_error("A string constant is not to be assigned",
+    throw error("A string constant is not to be assigned",
                         ast::attr(value).where, code_range_);
 
   if (ast::attr(value).to_call)
-    throw general_error("A string constant is not to be called",
+    throw error("A string constant is not to be called",
                         ast::attr(value).where, code_range_);
 
   return builder_.CreateGlobalStringPtr(ast::val(value));
@@ -114,12 +114,12 @@ llvm::Value *translator::operator()(ast::variable const &value) {
             return builder_.CreateLoad(varp);
           }
         }
-        throw general_error(
+        throw error(
             "Variable \"" + ast::val(value) + "\" is not a function but " +
                 getNameString(varp->getType()->getPointerElementType()),
             ast::attr(value).where, code_range_);
       } else {
-        throw general_error("Function \"" + ast::val(value) +
+        throw error("Function \"" + ast::val(value) +
                                 "\" has not declared in this scope",
                             ast::attr(value).where, code_range_);
       }
@@ -133,7 +133,7 @@ llvm::Value *translator::operator()(ast::variable const &value) {
       if (valp != nullptr) {
         return builder_.CreateLoad(valp);
       } else {
-        throw general_error("\"" + ast::val(value) + "\" has not declared",
+        throw error("\"" + ast::val(value) + "\" has not declared",
                             ast::attr(value).where, code_range_);
       }
     }
@@ -142,11 +142,11 @@ llvm::Value *translator::operator()(ast::variable const &value) {
 }
 llvm::Value *translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
-    throw general_error("An array constant is not to be assigned",
+    throw error("An array constant is not to be assigned",
                         ast::attr(value).where, code_range_);
 
   if (ast::attr(value).to_call)
-    throw general_error("An array constant is not to be called",
+    throw error("An array constant is not to be called",
                         ast::attr(value).where, code_range_);
 
   auto &ary = ast::val(value);
@@ -160,7 +160,7 @@ llvm::Value *translator::operator()(ast::array const &value) {
   // check if the type of all elements of array is same
   if (!std::all_of(values.begin(), values.end(),
                    [&t](auto v) { return t == v->getType(); }))
-    throw general_error("all elements of array must have the same type",
+    throw error("all elements of array must have the same type",
                         ast::attr(value).where, code_range_);
 
   auto aryType = llvm::ArrayType::get(t, ary.size());
@@ -182,7 +182,7 @@ llvm::Value *translator::operator()(ast::arglist const &value) {
 
 llvm::Value *translator::operator()(ast::function const &value) {
   if (ast::attr(value).lval)
-    throw general_error("A function constant is not to be assigned",
+    throw error("A function constant is not to be assigned",
                         ast::attr(value).where, code_range_);
 
   auto &args = ast::val(value).first;
@@ -222,7 +222,7 @@ llvm::Value *translator::operator()(ast::function const &value) {
         if (ret_type == nullptr) {
           ret_type = (*itr).getOperand(0)->getType();
         } else {
-          throw general_error("All return values must have the same type",
+          throw error("All return values must have the same type",
                               ast::attr(value).where, code_range_);
         }
       }

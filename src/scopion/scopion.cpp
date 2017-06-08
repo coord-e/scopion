@@ -62,8 +62,7 @@ int main(int argc, char *argv[]) {
       auto mod =
           scopion::assembly::module::create(ast, ctx, "scopion_interpreter");
       mod->run();
-    } catch (scopion::general_error const &ex) {
-      scopion::diagnosis e(ex);
+    } catch (scopion::error const &e) {
       std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray
                 << "[ERROR]" << rang::style::reset << rang::fg::red << " @"
                 << e.line_number() << rang::style::reset << ": " << e.what()

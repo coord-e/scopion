@@ -8,45 +8,36 @@
 #include <boost/range/iterator_range.hpp>
 
 namespace scopion {
-using str_range_t = boost::iterator_range<std::string::const_iterator>;
 
-class general_error : public std::runtime_error {
+class error : public std::runtime_error {
+  using str_range_t = boost::iterator_range<std::string::const_iterator>;
 
 public:
-  str_range_t where;
-  str_range_t code;
-  uint8_t level;
-  general_error(std::string const &message, str_range_t where_,
-                str_range_t code_, uint8_t level_ = 0)
+  const str_range_t where;
+  const str_range_t code;
+  const uint8_t level;
+
+  error(std::string const &message, str_range_t const &where_,
+        str_range_t const &code_, uint8_t level_ = 0)
       : std::runtime_error(message), where(where_), code(code_), level(level_) {
   }
-};
 
-class diagnosis {
-  general_error const &ex_;
-
-public:
-  diagnosis(general_error const &ex) : ex_(ex) {}
-
-  std::string what() { return ex_.what(); }
-
-  uint32_t line_number() {
-    return std::count(ex_.code.begin(), ex_.where.begin(), '\n');
+  uint32_t line_number() const {
+    return std::count(code.begin(), where.begin(), '\n');
   }
-  str_range_t line_range() {
-    auto range =
-        boost::make_iterator_range(ex_.code.begin(), ex_.where.begin());
+  str_range_t line_range() const {
+    auto range = boost::make_iterator_range(code.begin(), where.begin());
     auto sol = boost::find(range | boost::adaptors::reversed, '\n').base();
-    auto eol = std::find(ex_.where.begin(), ex_.code.end(), '\n');
+    auto eol = std::find(where.begin(), code.end(), '\n');
     return boost::make_iterator_range(sol, eol);
   }
-  std::string line() {
+  std::string line() const {
     auto r = line_range();
     return std::string(r.begin(), r.end());
   }
-  uint16_t distance() {
+  uint16_t distance() const {
     auto r = line_range();
-    return std::distance(r.begin(), ex_.where.begin());
+    return std::distance(r.begin(), where.begin());
   }
 };
 

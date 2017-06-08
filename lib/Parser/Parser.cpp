@@ -226,7 +226,7 @@ struct expression {
   x3::error_handler_result on_error(Iterator const &first, Iterator const &last,
                                     Exception const &x,
                                     Context const &context) {
-    throw general_error(
+    throw error(
         x.which() + " is expected but there is " +
             (x.where() == last ? "nothing" : std::string{*x.where()}),
         boost::make_iterator_range(x.where(), x.where()),
