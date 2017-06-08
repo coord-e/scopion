@@ -108,6 +108,9 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::ltq> const &op,
 llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
                                   llvm::Value *lhs, llvm::Value *rhs) {
   if (lhs == nullptr) { // first appear in the block (only variable)
+    if (rhs->getType()->isVoidTy())
+      throw error("Cannot assign the value of void type", ast::attr(op).where,
+                  code_range_);
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
     lhs = builder_.CreateAlloca(rhs->getType(), nullptr, ast::val(lvar));
     builder_.CreateStore(rhs, lhs);
