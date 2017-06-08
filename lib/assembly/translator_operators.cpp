@@ -2,6 +2,8 @@
 
 #include "scopion/error.hpp"
 
+#include <boost/range/adaptor/indexed.hpp>
+
 namespace scopion {
 namespace assembly {
 
@@ -152,8 +154,18 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::call> const &op,
                             std::to_string(ast::val(arglist).size()),
                         ast::attr(op).where, code_range_);
   std::vector<llvm::Value *> args;
-  for (auto const &arg : ast::val(arglist)) {
-    args.push_back(boost::apply_visitor(*this, arg));
+  for (auto const &arg : ast::val(arglist) | boost::adaptors::indexed()) {
+    auto v = boost::apply_visitor(*this, arg.value());
+    auto expected =
+        lhs->getType()->getPointerElementType()->getFunctionParamType(
+            arg.index());
+    if (v->getType() != expected)
+      throw error("The type of argument " + std::to_string(arg.index() + 1) +
+                      " doesn't match: expected " + getNameString(expected) +
+                      " but " + getNameString(v->getType()),
+                  ast::attr(op).where, code_range_);
+
+    args.push_back(boost::apply_visitor(*this, arg.value()));
   }
 
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
