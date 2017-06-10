@@ -1,5 +1,5 @@
-#ifndef SCOPION_EXCEPTIONS_H_
-#define SCOPION_EXCEPTIONS_H_
+#ifndef SCOPION_ERROR_H_
+#define SCOPION_ERROR_H_
 
 #include <algorithm>
 

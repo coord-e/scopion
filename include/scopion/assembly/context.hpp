@@ -1,5 +1,5 @@
-#ifndef SCOPION_CONTEXT_H_
-#define SCOPION_CONTEXT_H_
+#ifndef SCOPION_ASSEMBLY_CONTEXT_H_
+#define SCOPION_ASSEMBLY_CONTEXT_H_
 
 #include <llvm/IR/LLVMContext.h>
 

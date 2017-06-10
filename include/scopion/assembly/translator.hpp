@@ -1,5 +1,5 @@
-#ifndef SCOPION_TRANSLATOR_H_
-#define SCOPION_TRANSLATOR_H_
+#ifndef SCOPION_ASSEMBLY_TRANSLATOR_H_
+#define SCOPION_ASSEMBLY_TRANSLATOR_H_
 
 #include "scopion/ast/ast.hpp"
 

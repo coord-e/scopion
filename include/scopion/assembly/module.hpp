@@ -1,5 +1,5 @@
-#ifndef SCOPION_MODULE_H_
-#define SCOPION_MODULE_H_
+#ifndef SCOPION_ASSEMBLY_MODULE_H_
+#define SCOPION_ASSEMBLY_MODULE_H_
 
 #include "scopion/assembly/context.hpp"
 #include "scopion/assembly/translator.hpp"
