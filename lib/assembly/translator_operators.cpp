@@ -169,7 +169,7 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::call> const &op,
                       " but " + getNameString(v->getType()),
                   ast::attr(op).where, code_range_);
 
-    args.push_back(boost::apply_visitor(*this, arg.value()));
+    args.push_back(v);
   }
 
   return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
