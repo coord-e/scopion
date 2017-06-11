@@ -85,6 +85,7 @@ struct variable;
 struct string;
 struct array;
 struct function;
+struct scope;
 
 struct primary;
 struct call_expr;
@@ -107,6 +108,7 @@ x3::rule<variable, ast::expr> const variable("variable");
 x3::rule<string, ast::expr> const string("string");
 x3::rule<array, ast::expr> const array("array");
 x3::rule<function, ast::expr> const function("function");
+x3::rule<scope, ast::expr> const scope("scope");
 
 x3::rule<primary, ast::expr> const primary("literal");
 x3::rule<call_expr, ast::expr> const call_expr("expression");
@@ -137,10 +139,14 @@ auto const array_def =
 auto const function_def = ((("(" > *(variable >> -x3::lit(","))) >> "){") >
                            *(expression >> ";") > "}")[detail::assign_func];
 
+auto const scope_def =
+    ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
+
 auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
                          x3::bool_[detail::assign_as<ast::boolean>] |
                          string[detail::assign] | variable[detail::assign] |
                          array[detail::assign] | function[detail::assign] |
+                         scope[detail::assign] |
                          ("(" >> expression >> ")")[detail::assign];
 
 auto const call_expr_def = primary[detail::assign] >>
@@ -215,10 +221,11 @@ auto const ret_expr_def = assign_expr[detail::assign] |
 
 auto const expression_def = ret_expr[detail::assign];
 
-BOOST_SPIRIT_DEFINE(variable, string, array, function, primary, call_expr,
-                    pre_sinop_expr, post_sinop_expr, mul_expr, shift_expr,
-                    cmp_expr, add_expr, iand_expr, ixor_expr, ior_expr,
-                    land_expr, lor_expr, assign_expr, ret_expr, expression);
+BOOST_SPIRIT_DEFINE(variable, string, array, function, scope, primary,
+                    call_expr, pre_sinop_expr, post_sinop_expr, mul_expr,
+                    shift_expr, cmp_expr, add_expr, iand_expr, ixor_expr,
+                    ior_expr, land_expr, lor_expr, assign_expr, ret_expr,
+                    expression);
 
 struct expression {
 
@@ -226,11 +233,10 @@ struct expression {
   x3::error_handler_result on_error(Iterator const &first, Iterator const &last,
                                     Exception const &x,
                                     Context const &context) {
-    throw error(
-        x.which() + " is expected but there is " +
-            (x.where() == last ? "nothing" : std::string{*x.where()}),
-        boost::make_iterator_range(x.where(), x.where()),
-        boost::make_iterator_range(first, last));
+    throw error(x.which() + " is expected but there is " +
+                    (x.where() == last ? "nothing" : std::string{*x.where()}),
+                boost::make_iterator_range(x.where(), x.where()),
+                boost::make_iterator_range(first, last));
     return x3::error_handler_result::fail;
   }
 };

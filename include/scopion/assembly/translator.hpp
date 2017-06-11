@@ -1,6 +1,7 @@
 #ifndef SCOPION_ASSEMBLY_TRANSLATOR_H_
 #define SCOPION_ASSEMBLY_TRANSLATOR_H_
 
+#include "scopion/assembly/scope.hpp"
 #include "scopion/ast/ast.hpp"
 
 #include <llvm/IR/IRBuilder.h>
@@ -14,6 +15,7 @@ class translator : public boost::static_visitor<llvm::Value *> {
   std::shared_ptr<llvm::Module> module_;
   llvm::IRBuilder<> builder_;
   boost::iterator_range<std::string::const_iterator> const code_range_;
+  std::unique_ptr<scope> currentScope_;
 
 public:
   translator(std::shared_ptr<llvm::Module> &module,
@@ -29,6 +31,7 @@ public:
   llvm::Value *operator()(ast::array const &value);
   llvm::Value *operator()(ast::arglist const &value);
   llvm::Value *operator()(ast::function const &value);
+  llvm::Value *operator()(ast::scope const &value);
 
   template <class Op> llvm::Value *operator()(ast::single_op<Op> const &op) {
     return apply_op(op, boost::apply_visitor(*this, op.value));

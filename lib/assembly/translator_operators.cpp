@@ -1,3 +1,4 @@
+#include "scopion/assembly/scope.hpp"
 #include "scopion/assembly/translator.hpp"
 
 #include "scopion/error.hpp"
@@ -113,6 +114,7 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
                   code_range_);
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
     lhs = builder_.CreateAlloca(rhs->getType(), nullptr, ast::val(lvar));
+    currentScope_->symbols[ast::val(lvar)] = lhs;
     builder_.CreateStore(rhs, lhs);
   } else {
     if (lhs->getType()->isPointerTy()) {

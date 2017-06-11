@@ -71,6 +71,15 @@ public:
     _s << "} ";
   }
 
+  auto operator()(scope const &val) const -> void {
+    _s << "{ ";
+    for (auto const &line : ast::val(val)) {
+      boost::apply_visitor(*this, line);
+      _s << "; ";
+    }
+    _s << "} ";
+  }
+
   template <typename T> auto operator()(const binary_op<T> &o) const -> void {
     _s << "{ ";
     boost::apply_visitor(*this, o.lhs);

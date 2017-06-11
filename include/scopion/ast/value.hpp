@@ -27,10 +27,15 @@ struct arglist : array {
 using function =
     value_wrapper<std::pair<std::vector<variable>, std::vector<expr>>>;
 
+struct scope : array {
+  using array::array;
+};
+
 using value = boost::variant<
     integer, boolean, boost::recursive_wrapper<string>,
     boost::recursive_wrapper<variable>, boost::recursive_wrapper<array>,
-    boost::recursive_wrapper<arglist>, boost::recursive_wrapper<function>>;
+    boost::recursive_wrapper<arglist>, boost::recursive_wrapper<function>,
+    boost::recursive_wrapper<scope>>;
 
 }; // namespace ast
 }; // namespace scopion
