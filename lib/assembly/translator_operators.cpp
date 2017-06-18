@@ -1,4 +1,4 @@
-#include "scopion/assembly/scope.hpp"
+#include "scopion/assembly/scoped_value.hpp"
 #include "scopion/assembly/translator.hpp"
 
 #include "scopion/error.hpp"
@@ -8,118 +8,141 @@
 namespace scopion {
 namespace assembly {
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::add> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateAdd(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::add> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateAdd(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::sub> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSub(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::sub> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateSub(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::mul> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateMul(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::mul> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateMul(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::div> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSDiv(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::div> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateSDiv(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::rem> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateSRem(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::rem> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateSRem(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::shl> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateShl(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::shl> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateShl(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::shr> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateLShr(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::shr> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateLShr(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::iand> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateAnd(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::iand> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateAnd(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::ior> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateOr(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::ior> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateOr(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::ixor> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateXor(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::ixor> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateXor(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::land> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateAnd(
-      builder_.CreateICmpNE(lhs,
+uniq_v_t translator::apply_op(ast::binary_op<ast::land> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(builder_.CreateAnd(
+      builder_.CreateICmpNE(lhs->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
-      builder_.CreateICmpNE(
-          rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
+      builder_.CreateICmpNE(rhs->getValue(), llvm::Constant::getNullValue(
+                                                 builder_.getInt1Ty()))));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::lor> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateOr(
-      builder_.CreateICmpNE(lhs,
+uniq_v_t translator::apply_op(ast::binary_op<ast::lor> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(builder_.CreateOr(
+      builder_.CreateICmpNE(lhs->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
-      builder_.CreateICmpNE(
-          rhs, llvm::Constant::getNullValue(builder_.getInt1Ty())));
+      builder_.CreateICmpNE(rhs->getValue(), llvm::Constant::getNullValue(
+                                                 builder_.getInt1Ty()))));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::eeq> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpEQ(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::eeq> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateICmpEQ(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::neq> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpNE(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::neq> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateICmpNE(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::gt> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSGT(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::gt> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateICmpSGT(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::lt> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSLT(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::lt> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateICmpSLT(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::gtq> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSGE(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::gtq> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateICmpSGE(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::ltq> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  return builder_.CreateICmpSLE(lhs, rhs);
+uniq_v_t translator::apply_op(ast::binary_op<ast::ltq> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateICmpSLE(lhs->getValue(), rhs->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  if (lhs == nullptr) { // first appear in the block (only variable)
+uniq_v_t translator::apply_op(ast::binary_op<ast::assign> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t &&rhs) {
+  if (!lhs) { // first appear in the block (only variable)
     if (rhs->getType()->isVoidTy())
       throw error("Cannot assign the value of void type", ast::attr(op).where,
                   code_range_);
+
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-    lhs = builder_.CreateAlloca(rhs->getType(), nullptr, ast::val(lvar));
-    currentScope_->symbols[ast::val(lvar)] = lhs;
-    builder_.CreateStore(rhs, lhs);
+    if (rhs->getType()->isLabelTy()) {
+      currentScope_->symbols[ast::val(lvar)] =
+          currentScope_->symbols[rhs->getValue()->getName().str()]; // aliasing
+      return std::move(rhs);
+    }
+    auto lhsa = builder_.CreateAlloca(rhs->getType(), nullptr, ast::val(lvar));
+    currentScope_->symbols[ast::val(lvar)] = new scoped_value{lhsa};
+    builder_.CreateStore(rhs->getValue(), lhsa);
+    return std::make_unique<scoped_value>(builder_.CreateLoad(lhsa));
   } else {
     if (lhs->getType()->isPointerTy()) {
       if (lhs->getType()->getPointerElementType() == rhs->getType()) {
-        builder_.CreateStore(rhs, lhs);
+        builder_.CreateStore(rhs->getValue(), lhs->getValue());
       } else {
         throw error("Cannot assign to different type of value (assigning " +
                         getNameString(rhs->getType()) + " into " +
@@ -132,12 +155,36 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::assign> const &op,
                       getNameString(lhs->getType()) + ")",
                   ast::attr(op).where, code_range_);
     }
+    return std::make_unique<scoped_value>(builder_.CreateLoad(lhs->getValue()));
   }
-  return builder_.CreateLoad(lhs);
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::call> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
+uniq_v_t translator::apply_op(ast::binary_op<ast::call> const &op,
+                              uniq_v_t &&lhs, uniq_v_t const &&rhs) {
+  if (lhs->hasBlock()) { // lhs->getType()->isLabelTy()=>segfault!
+    auto prevScope = std::move(currentScope_);
+    auto pb = builder_.GetInsertBlock();
+    auto pp = builder_.GetInsertPoint();
+
+    assert(lhs->hasBlock());
+    auto theblock = lhs->getBlock();
+    auto insts = *(lhs->getInsts());
+    builder_.SetInsertPoint(theblock);
+    currentScope_ = std::move(lhs);
+    for (auto const &i : insts) {
+      boost::apply_visitor(*this, i);
+    }
+
+    builder_.CreateBr(pb);
+
+    builder_.SetInsertPoint(pb, pp);
+
+    builder_.CreateBr(theblock);
+
+    currentScope_ = std::move(prevScope);
+    return std::make_unique<scoped_value>(); // Voidをかえしたいんだけど
+  }
+
   if (!lhs->getType()->isPointerTy())
     throw error("Cannot call function from non-pointer type " +
                     getNameString(lhs->getType()),
@@ -169,15 +216,18 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::call> const &op,
                       " but " + getNameString(v->getType()),
                   ast::attr(op).where, code_range_);
 
-    args.push_back(v);
+    args.push_back(v->getValue());
   }
 
-  return builder_.CreateCall(lhs, llvm::ArrayRef<llvm::Value *>(args));
+  return std::make_unique<scoped_value>(builder_.CreateCall(
+      lhs->getValue(), llvm::ArrayRef<llvm::Value *>(args)));
 }
 
-llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
-                                  llvm::Value *lhs, llvm::Value *rhs) {
-  auto *rval = rhs->getType()->isPointerTy() ? builder_.CreateLoad(rhs) : rhs;
+uniq_v_t translator::apply_op(ast::binary_op<ast::at> const &op,
+                              uniq_v_t const &&lhs, uniq_v_t const &&rhs) {
+  auto rval = rhs->getType()->isPointerTy()
+                  ? builder_.CreateLoad(rhs->getValue())
+                  : rhs->getValue();
   if (!rval->getType()->isIntegerTy()) {
     throw error("Array's index must be integer, not " +
                     getNameString(rval->getType()),
@@ -189,10 +239,10 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
                 ast::attr(op).where, code_range_);
   }
 
-  auto *lval = lhs;
+  auto lval = lhs->getValue();
 
   if (!lhs->getType()->getPointerElementType()->isArrayTy()) {
-    lval = builder_.CreateLoad(lhs);
+    lval = builder_.CreateLoad(lhs->getValue());
 
     if (!lval->getType()->getPointerElementType()->isArrayTy()) {
       throw error("Cannot get element from non-array type " +
@@ -203,50 +253,53 @@ llvm::Value *translator::apply_op(ast::binary_op<ast::at> const &op,
   // Now lval's type is pointer to array
 
   std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rval};
-  auto *ep =
+  auto ep =
       builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
                                  llvm::ArrayRef<llvm::Value *>(idxList));
   if (ast::attr(op).lval)
-    return ep;
+    return std::make_unique<scoped_value>(ep);
   else
-    return builder_.CreateLoad(ep);
+    return std::make_unique<scoped_value>(builder_.CreateLoad(ep));
 }
 
-llvm::Value *translator::apply_op(ast::single_op<ast::load> const &op,
-                                  llvm::Value *value) {
+uniq_v_t translator::apply_op(ast::single_op<ast::load> const &op,
+                              uniq_v_t const &&value) {
   if (!value->getType()->isPointerTy())
     throw error("Cannot load from non-pointer type " +
                     getNameString(value->getType()),
                 ast::attr(op).where, code_range_);
-  return builder_.CreateLoad(value);
+  return std::make_unique<scoped_value>(builder_.CreateLoad(value->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::single_op<ast::ret> const &op,
-                                  llvm::Value *value) {
-  return builder_.CreateRet(value);
+uniq_v_t translator::apply_op(ast::single_op<ast::ret> const &op,
+                              uniq_v_t const &&value) {
+  return std::make_unique<scoped_value>(builder_.CreateRet(value->getValue()));
 }
 
-llvm::Value *translator::apply_op(ast::single_op<ast::lnot> const &,
-                                  llvm::Value *value) {
-  return builder_.CreateXor(
-      builder_.CreateICmpNE(value,
+uniq_v_t translator::apply_op(ast::single_op<ast::lnot> const &,
+                              uniq_v_t const &&value) {
+  return std::make_unique<scoped_value>(builder_.CreateXor(
+      builder_.CreateICmpNE(value->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
-      builder_.getInt32(1));
+      builder_.getInt32(1)));
 }
 
-llvm::Value *translator::apply_op(ast::single_op<ast::inot> const &,
-                                  llvm::Value *value) {
-  return builder_.CreateXor(value, builder_.getInt32(1));
+uniq_v_t translator::apply_op(ast::single_op<ast::inot> const &,
+                              uniq_v_t const &&value) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateXor(value->getValue(), builder_.getInt32(1)));
 }
 
-llvm::Value *translator::apply_op(ast::single_op<ast::inc> const &,
-                                  llvm::Value *value) {
-  return builder_.CreateAdd(value, builder_.getInt32(1));
+uniq_v_t translator::apply_op(ast::single_op<ast::inc> const &,
+                              uniq_v_t const &&value) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateAdd(value->getValue(), builder_.getInt32(1)));
 }
 
-llvm::Value *translator::apply_op(ast::single_op<ast::dec> const &,
-                                  llvm::Value *value) {
-  return builder_.CreateSub(value, builder_.getInt32(1));
+uniq_v_t translator::apply_op(ast::single_op<ast::dec> const &,
+                              uniq_v_t const &&value) {
+  return std::make_unique<scoped_value>(
+      builder_.CreateSub(value->getValue(), builder_.getInt32(1)));
 }
 
 }; // namespace assembly
