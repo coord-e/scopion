@@ -68,7 +68,7 @@ uniq_v_t translator::operator()(ast::integer value) {
     throw error("An integer constant is not to be called",
                 ast::attr(value).where, code_range_);
 
-  return std::make_unique<scoped_value>(
+  return new scoped_value(
       llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value)));
 }
 
@@ -81,7 +81,7 @@ uniq_v_t translator::operator()(ast::boolean value) {
     throw error("A boolean constant is not to be called",
                 ast::attr(value).where, code_range_);
 
-  return std::make_unique<scoped_value>(
+  return new scoped_value(
       llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value)));
 }
 
@@ -94,21 +94,20 @@ uniq_v_t translator::operator()(ast::string const &value) {
     throw error("A string constant is not to be called", ast::attr(value).where,
                 code_range_);
 
-  return std::make_unique<scoped_value>(
-      builder_.CreateGlobalStringPtr(ast::val(value)));
+  return new scoped_value(builder_.CreateGlobalStringPtr(ast::val(value)));
 }
 
 uniq_v_t translator::operator()(ast::variable const &value) {
   if (ast::attr(value).to_call) {
     auto valp = module_->getFunction(ast::val(value));
     if (valp != nullptr) {
-      return std::make_unique<scoped_value>(valp);
+      return new scoped_value(valp);
     } else {
       try {
         auto varp = currentScope_->symbols.at(ast::val(value));
 
         if (varp->hasBlock()) {
-          return std::unique_ptr<scoped_value>(varp);
+          return varp;
         } else {
           auto vval = varp->getValue();
           if (!vval->getType()->isPointerTy())
@@ -121,7 +120,7 @@ uniq_v_t translator::operator()(ast::variable const &value) {
                     ->getPointerElementType()
                     ->getPointerElementType()
                     ->isFunctionTy()) {
-              return std::make_unique<scoped_value>(builder_.CreateLoad(vval));
+              return new scoped_value(builder_.CreateLoad(vval));
             }
           }
           throw error(
@@ -139,10 +138,9 @@ uniq_v_t translator::operator()(ast::variable const &value) {
     try {
       auto valp = currentScope_->symbols.at(ast::val(value));
       if (ast::attr(value).lval) {
-        return std::unique_ptr<scoped_value>(valp);
+        return valp;
       } else {
-        return std::make_unique<scoped_value>(
-            builder_.CreateLoad(valp->getValue()));
+        return new scoped_value(builder_.CreateLoad(valp->getValue()));
       }
     } catch (std::out_of_range &) {
       if (ast::attr(value).lval) {
@@ -189,7 +187,7 @@ uniq_v_t translator::operator()(ast::array const &value) {
 
     builder_.CreateStore(v.value()->getValue(), p);
   }
-  return std::make_unique<scoped_value>(aryPtr);
+  return new scoped_value(aryPtr);
 }
 
 uniq_v_t translator::operator()(ast::arglist const &value) { return nullptr; }
@@ -212,7 +210,7 @@ uniq_v_t translator::operator()(ast::function const &fcv) {
                                "entryf", // BasicBlockの名前
                                func);
   auto prevScope = std::move(currentScope_);
-  currentScope_ = std::make_unique<scoped_value>(entry, &lines);
+  currentScope_ = new scoped_value(entry, &lines);
 
   auto pb = builder_.GetInsertBlock();
   auto pp = builder_.GetInsertPoint();
@@ -263,7 +261,7 @@ uniq_v_t translator::operator()(ast::function const &fcv) {
       llvm::BasicBlock::Create(module_->getContext(),
                                "entry", // BasicBlockの名前
                                newfunc);
-  currentScope_ = std::make_unique<scoped_value>(newentry, &lines);
+  currentScope_ = new scoped_value(newentry, &lines);
   builder_.SetInsertPoint(newentry);
 
   auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
@@ -289,7 +287,7 @@ uniq_v_t translator::operator()(ast::function const &fcv) {
   currentScope_ = std::move(prevScope);
   builder_.SetInsertPoint(pb, pp); // entryを抜ける
 
-  return std::make_unique<scoped_value>(newfunc);
+  return new scoped_value(newfunc);
 }
 
 uniq_v_t translator::operator()(ast::scope const &scv) {
@@ -317,7 +315,7 @@ uniq_v_t translator::operator()(ast::scope const &scv) {
   currentScope_->symbols[bbname] = *csp;*/
   currentScope_->symbols[bbname] = newsc;
 
-  return std::unique_ptr<scoped_value>(newsc);
+  return newsc;
 }
 
 }; // namespace assembly

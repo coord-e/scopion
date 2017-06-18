@@ -34,9 +34,9 @@ public:
       : value_(val), block_(block), insts_(insts) {}
 
   virtual ~scoped_value() {
-    for (auto &s : symbols) {
+    /*for (auto &s : symbols) {
       delete s.second;
-    }
+    }*/
   }
 
   llvm::Value *getValue() {
