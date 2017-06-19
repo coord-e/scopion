@@ -6,6 +6,8 @@
 
 #include <boost/variant.hpp>
 
+#include <iostream>
+
 namespace scopion {
 namespace ast {
 
@@ -40,5 +42,7 @@ bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
 
 }; // namespace ast
 }; // namespace scopion
+
+std::ostream &operator<<(std::ostream &os, scopion::ast::expr const &tree);
 
 #endif
