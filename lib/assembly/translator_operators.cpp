@@ -118,16 +118,14 @@ uniq_v_t translator::apply_op(ast::binary_op<ast::ltq> const &op,
 uniq_v_t translator::apply_op(ast::binary_op<ast::assign> const &op,
                               uniq_v_t const lhs, uniq_v_t rhs) {
   if (!lhs) { // first appear in the block (only variable)
+    auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
+    if (rhs->hasBlock()) {
+      currentScope_->symbols[ast::val(lvar)] = rhs; // aliasing
+      return rhs;
+    }
     if (rhs->getType()->isVoidTy())
       throw error("Cannot assign the value of void type", ast::attr(op).where,
                   code_range_);
-
-    auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
-    if (rhs->getType()->isLabelTy()) {
-      currentScope_->symbols[ast::val(lvar)] =
-          currentScope_->symbols[rhs->getValue()->getName().str()]; // aliasing
-      return rhs;
-    }
     auto lhsa = builder_.CreateAlloca(rhs->getType(), nullptr, ast::val(lvar));
     currentScope_->symbols[ast::val(lvar)] = new scoped_value{lhsa};
     builder_.CreateStore(rhs->getValue(), lhsa);
@@ -154,24 +152,31 @@ uniq_v_t translator::apply_op(ast::binary_op<ast::assign> const &op,
 
 uniq_v_t translator::apply_op(ast::binary_op<ast::call> const &op, uniq_v_t lhs,
                               uniq_v_t const rhs) {
-  if (lhs->hasBlock()) { // lhs->getType()->isLabelTy()=>segfault!
-    auto prevScope = currentScope_;
+  if (lhs->hasBlock()) {
+
     auto pb = builder_.GetInsertBlock();
     auto pp = builder_.GetInsertPoint();
 
-    assert(lhs->hasBlock());
-    auto theblock = lhs->getBlock();
+    auto nb = llvm::BasicBlock::Create(module_->getContext(), "",
+                                       builder_.GetInsertBlock()->getParent());
+
+    auto theblock = llvm::BasicBlock::Create(
+        module_->getContext(), "", builder_.GetInsertBlock()->getParent());
     builder_.SetInsertPoint(theblock);
+    lhs->setBlock(theblock);
+    auto prevScope = currentScope_;
     currentScope_ = lhs;
     for (auto const &i : *(lhs->getInsts())) {
       boost::apply_visitor(*this, i);
     }
 
-    builder_.CreateBr(pb);
+    builder_.CreateBr(nb);
 
     builder_.SetInsertPoint(pb, pp);
 
     builder_.CreateBr(theblock);
+
+    builder_.SetInsertPoint(nb);
 
     currentScope_ = prevScope;
     return new scoped_value(); // Voidをかえしたいんだけど

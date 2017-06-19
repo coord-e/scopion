@@ -33,12 +33,6 @@ public:
                std::vector<ast::expr> const *insts)
       : value_(val), block_(block), insts_(insts) {}
 
-  virtual ~scoped_value() {
-    /*for (auto &s : symbols) {
-      delete s.second;
-    }*/
-  }
-
   llvm::Value *getValue() {
     if (value_ != nullptr)
       return value_;
@@ -52,6 +46,10 @@ public:
     assert(block_ != nullptr);
     return block_;
   }
+
+  inline void setValue(llvm::Value *v) { value_ = v; }
+
+  inline void setBlock(llvm::BasicBlock *b) { block_ = b; }
 
   std::vector<ast::expr> const *getInsts() {
     assert(insts_ != nullptr);

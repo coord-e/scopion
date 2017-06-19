@@ -291,29 +291,11 @@ uniq_v_t translator::operator()(ast::function const &fcv) {
 }
 
 uniq_v_t translator::operator()(ast::scope const &scv) {
-  auto bbname = "_BB" + std::to_string(currentScope_->symbols.size());
-  auto bb = llvm::BasicBlock::Create(module_->getContext(), bbname,
-                                     builder_.GetInsertBlock()->getParent());
-  auto newsc = new scoped_value{bb, &ast::val(scv)};
+  auto bb = llvm::BasicBlock::Create(module_->getContext()); // empty
+  auto newsc = new scoped_value(bb, new std::vector<ast::expr>(ast::val(scv)));
 
   std::copy(currentScope_->symbols.begin(), currentScope_->symbols.end(),
             std::inserter(newsc->symbols, newsc->symbols.end()));
-  /*auto prevScope = std::move(currentScope_);
-  currentScope_ = std::move(newsc);
-
-  builder_.CreateBr(currentScope_->block);
-
-  builder_.SetInsertPoint(currentScope_->block);
-
-  for (auto const &line : ast::val(scv)) {
-    boost::apply_visitor(*this, line);
-  }
-
-  auto cs = std::move(currentScope_);
-  currentScope_ = std::move(prevScope);
-  auto csp = cs.release();
-  currentScope_->symbols[bbname] = *csp;*/
-  currentScope_->symbols[bbname] = newsc;
 
   return newsc;
 }
