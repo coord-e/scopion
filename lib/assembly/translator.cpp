@@ -14,7 +14,7 @@ namespace assembly {
 translator::translator(std::shared_ptr<llvm::Module> &module,
                        llvm::IRBuilder<> const &builder,
                        std::string const &code)
-    : boost::static_visitor<uniq_v_t>(), module_(module), builder_(builder),
+    : boost::static_visitor<scoped_value *>(), module_(module), builder_(builder),
       code_range_(boost::make_iterator_range(code.begin(), code.end())) {
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
@@ -51,15 +51,15 @@ translator::translator(std::shared_ptr<llvm::Module> &module,
   }
 }
 
-uniq_v_t translator::operator()(ast::value value) {
+scoped_value * translator::operator()(ast::value value) {
   return boost::apply_visitor(*this, value);
 }
 
-uniq_v_t translator::operator()(ast::operators value) {
+scoped_value * translator::operator()(ast::operators value) {
   return boost::apply_visitor(*this, value);
 }
 
-uniq_v_t translator::operator()(ast::integer value) {
+scoped_value * translator::operator()(ast::integer value) {
   if (ast::attr(value).lval)
     throw error("An integer constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -72,7 +72,7 @@ uniq_v_t translator::operator()(ast::integer value) {
       llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value)));
 }
 
-uniq_v_t translator::operator()(ast::boolean value) {
+scoped_value * translator::operator()(ast::boolean value) {
   if (ast::attr(value).lval)
     throw error("A boolean constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -85,7 +85,7 @@ uniq_v_t translator::operator()(ast::boolean value) {
       llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value)));
 }
 
-uniq_v_t translator::operator()(ast::string const &value) {
+scoped_value * translator::operator()(ast::string const &value) {
   if (ast::attr(value).lval)
     throw error("A string constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -97,7 +97,7 @@ uniq_v_t translator::operator()(ast::string const &value) {
   return new scoped_value(builder_.CreateGlobalStringPtr(ast::val(value)));
 }
 
-uniq_v_t translator::operator()(ast::variable const &value) {
+scoped_value * translator::operator()(ast::variable const &value) {
   if (ast::attr(value).to_call) {
     auto valp = module_->getFunction(ast::val(value));
     if (valp != nullptr) {
@@ -154,7 +154,7 @@ uniq_v_t translator::operator()(ast::variable const &value) {
   }
   assert(false);
 }
-uniq_v_t translator::operator()(ast::array const &value) {
+scoped_value * translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
     throw error("An array constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -164,7 +164,7 @@ uniq_v_t translator::operator()(ast::array const &value) {
                 code_range_);
 
   auto &ary = ast::val(value);
-  std::vector<uniq_v_t> values;
+  std::vector<scoped_value *> values;
   for (auto const &elm : ary) {
     // Convert exprs to llvm::Value* and store it into new vector
     values.push_back(boost::apply_visitor(*this, elm));
@@ -190,9 +190,9 @@ uniq_v_t translator::operator()(ast::array const &value) {
   return new scoped_value(aryPtr);
 }
 
-uniq_v_t translator::operator()(ast::arglist const &value) { return nullptr; }
+scoped_value * translator::operator()(ast::arglist const &value) { return nullptr; }
 
-uniq_v_t translator::operator()(ast::function const &fcv) {
+scoped_value * translator::operator()(ast::function const &fcv) {
   if (ast::attr(fcv).lval)
     throw error("A function constant is not to be assigned",
                 ast::attr(fcv).where, code_range_);
@@ -290,7 +290,7 @@ uniq_v_t translator::operator()(ast::function const &fcv) {
   return new scoped_value(newfunc);
 }
 
-uniq_v_t translator::operator()(ast::scope const &scv) {
+scoped_value * translator::operator()(ast::scope const &scv) {
   auto bb = llvm::BasicBlock::Create(module_->getContext()); // empty
   auto newsc = new scoped_value(bb, new std::vector<ast::expr>(ast::val(scv)));
 

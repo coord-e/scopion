@@ -8,61 +8,61 @@
 namespace scopion {
 namespace assembly {
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::add> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::add> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateAdd(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::sub> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::sub> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateSub(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::mul> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::mul> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateMul(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::div> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::div> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateSDiv(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::rem> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::rem> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateSRem(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::shl> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::shl> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateShl(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::shr> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::shr> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateLShr(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::iand> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::iand> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateAnd(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::ior> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::ior> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateOr(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::ixor> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::ixor> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateXor(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::land> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::land> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateAnd(
       builder_.CreateICmpNE(lhs->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
@@ -70,8 +70,8 @@ uniq_v_t translator::apply_op(ast::binary_op<ast::land> const &op,
                                                  builder_.getInt1Ty()))));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::lor> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::lor> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(builder_.CreateOr(
       builder_.CreateICmpNE(lhs->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
@@ -79,44 +79,44 @@ uniq_v_t translator::apply_op(ast::binary_op<ast::lor> const &op,
                                                  builder_.getInt1Ty()))));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::eeq> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::eeq> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateICmpEQ(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::neq> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::neq> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateICmpNE(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::gt> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::gt> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateICmpSGT(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::lt> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::lt> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateICmpSLT(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::gtq> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::gtq> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateICmpSGE(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::ltq> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::ltq> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   return new scoped_value(
       builder_.CreateICmpSLE(lhs->getValue(), rhs->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::assign> const &op,
-                              uniq_v_t const lhs, uniq_v_t rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::assign> const &op,
+                              scoped_value * const lhs, scoped_value * rhs) {
   if (!lhs) { // first appear in the block (only variable)
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
     if (rhs->hasBlock()) {
@@ -150,8 +150,8 @@ uniq_v_t translator::apply_op(ast::binary_op<ast::assign> const &op,
   }
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::call> const &op, uniq_v_t lhs,
-                              uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::call> const &op, scoped_value * lhs,
+                              scoped_value * const rhs) {
   if (lhs->hasBlock()) {
 
     auto pb = builder_.GetInsertBlock();
@@ -220,8 +220,8 @@ uniq_v_t translator::apply_op(ast::binary_op<ast::call> const &op, uniq_v_t lhs,
       lhs->getValue(), llvm::ArrayRef<llvm::Value *>(args)));
 }
 
-uniq_v_t translator::apply_op(ast::binary_op<ast::at> const &op,
-                              uniq_v_t const lhs, uniq_v_t const rhs) {
+scoped_value * translator::apply_op(ast::binary_op<ast::at> const &op,
+                              scoped_value * const lhs, scoped_value * const rhs) {
   auto rval = rhs->getType()->isPointerTy()
                   ? builder_.CreateLoad(rhs->getValue())
                   : rhs->getValue();
@@ -259,8 +259,8 @@ uniq_v_t translator::apply_op(ast::binary_op<ast::at> const &op,
     return new scoped_value(builder_.CreateLoad(ep));
 }
 
-uniq_v_t translator::apply_op(ast::single_op<ast::load> const &op,
-                              uniq_v_t const value) {
+scoped_value * translator::apply_op(ast::single_op<ast::load> const &op,
+                              scoped_value * const value) {
   if (!value->getType()->isPointerTy())
     throw error("Cannot load from non-pointer type " +
                     getNameString(value->getType()),
@@ -268,33 +268,33 @@ uniq_v_t translator::apply_op(ast::single_op<ast::load> const &op,
   return new scoped_value(builder_.CreateLoad(value->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::single_op<ast::ret> const &op,
-                              uniq_v_t const value) {
+scoped_value * translator::apply_op(ast::single_op<ast::ret> const &op,
+                              scoped_value * const value) {
   return new scoped_value(builder_.CreateRet(value->getValue()));
 }
 
-uniq_v_t translator::apply_op(ast::single_op<ast::lnot> const &,
-                              uniq_v_t const value) {
+scoped_value * translator::apply_op(ast::single_op<ast::lnot> const &,
+                              scoped_value * const value) {
   return new scoped_value(builder_.CreateXor(
       builder_.CreateICmpNE(value->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.getInt32(1)));
 }
 
-uniq_v_t translator::apply_op(ast::single_op<ast::inot> const &,
-                              uniq_v_t const value) {
+scoped_value * translator::apply_op(ast::single_op<ast::inot> const &,
+                              scoped_value * const value) {
   return new scoped_value(
       builder_.CreateXor(value->getValue(), builder_.getInt32(1)));
 }
 
-uniq_v_t translator::apply_op(ast::single_op<ast::inc> const &,
-                              uniq_v_t const value) {
+scoped_value * translator::apply_op(ast::single_op<ast::inc> const &,
+                              scoped_value * const value) {
   return new scoped_value(
       builder_.CreateAdd(value->getValue(), builder_.getInt32(1)));
 }
 
-uniq_v_t translator::apply_op(ast::single_op<ast::dec> const &,
-                              uniq_v_t const value) {
+scoped_value * translator::apply_op(ast::single_op<ast::dec> const &,
+                              scoped_value * const value) {
   return new scoped_value(
       builder_.CreateSub(value->getValue(), builder_.getInt32(1)));
 }
