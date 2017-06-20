@@ -171,6 +171,7 @@ scoped_value * translator::apply_op(ast::binary_op<ast::call> const &op, scoped_
     }
 
     builder_.CreateBr(nb);
+    currentScope_ = prevScope;
 
     builder_.SetInsertPoint(pb, pp);
 
@@ -178,7 +179,6 @@ scoped_value * translator::apply_op(ast::binary_op<ast::call> const &op, scoped_
 
     builder_.SetInsertPoint(nb);
 
-    currentScope_ = prevScope;
     return new scoped_value(); // Voidをかえしたいんだけど
   }
 
