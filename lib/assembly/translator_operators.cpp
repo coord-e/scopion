@@ -8,61 +8,72 @@
 namespace scopion {
 namespace assembly {
 
-scoped_value * translator::apply_op(ast::binary_op<ast::add> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::add> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateAdd(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::sub> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::sub> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateSub(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::mul> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::mul> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateMul(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::div> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::div> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateSDiv(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::rem> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::rem> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateSRem(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::shl> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::shl> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateShl(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::shr> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::shr> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateLShr(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::iand> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::iand> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateAnd(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::ior> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::ior> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateOr(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::ixor> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::ixor> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateXor(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::land> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::land> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateAnd(
       builder_.CreateICmpNE(lhs->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
@@ -70,8 +81,9 @@ scoped_value * translator::apply_op(ast::binary_op<ast::land> const &op,
                                                  builder_.getInt1Ty()))));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::lor> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::lor> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(builder_.CreateOr(
       builder_.CreateICmpNE(lhs->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
@@ -79,44 +91,50 @@ scoped_value * translator::apply_op(ast::binary_op<ast::lor> const &op,
                                                  builder_.getInt1Ty()))));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::eeq> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::eeq> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateICmpEQ(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::neq> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::neq> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateICmpNE(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::gt> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::gt> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateICmpSGT(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::lt> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::lt> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateICmpSLT(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::gtq> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::gtq> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateICmpSGE(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::ltq> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::ltq> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   return new scoped_value(
       builder_.CreateICmpSLE(lhs->getValue(), rhs->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::assign> const &op,
-                              scoped_value * const lhs, scoped_value * rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::assign> const &op,
+                                   scoped_value *const lhs, scoped_value *rhs) {
   if (!lhs) { // first appear in the block (only variable)
     auto &&lvar = boost::get<ast::variable>(boost::get<ast::value>(op.lhs));
     if (rhs->hasBlock()) {
@@ -150,8 +168,8 @@ scoped_value * translator::apply_op(ast::binary_op<ast::assign> const &op,
   }
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::call> const &op, scoped_value * lhs,
-                              scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::call> const &op,
+                                   scoped_value *lhs, scoped_value *const rhs) {
   if (lhs->hasBlock()) {
 
     auto pb = builder_.GetInsertBlock();
@@ -220,8 +238,9 @@ scoped_value * translator::apply_op(ast::binary_op<ast::call> const &op, scoped_
       lhs->getValue(), llvm::ArrayRef<llvm::Value *>(args)));
 }
 
-scoped_value * translator::apply_op(ast::binary_op<ast::at> const &op,
-                              scoped_value * const lhs, scoped_value * const rhs) {
+scoped_value *translator::apply_op(ast::binary_op<ast::at> const &op,
+                                   scoped_value *const lhs,
+                                   scoped_value *const rhs) {
   auto rval = rhs->getType()->isPointerTy()
                   ? builder_.CreateLoad(rhs->getValue())
                   : rhs->getValue();
@@ -259,8 +278,8 @@ scoped_value * translator::apply_op(ast::binary_op<ast::at> const &op,
     return new scoped_value(builder_.CreateLoad(ep));
 }
 
-scoped_value * translator::apply_op(ast::single_op<ast::load> const &op,
-                              scoped_value * const value) {
+scoped_value *translator::apply_op(ast::single_op<ast::load> const &op,
+                                   scoped_value *const value) {
   if (!value->getType()->isPointerTy())
     throw error("Cannot load from non-pointer type " +
                     getNameString(value->getType()),
