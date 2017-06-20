@@ -268,35 +268,78 @@ scoped_value * translator::apply_op(ast::single_op<ast::load> const &op,
   return new scoped_value(builder_.CreateLoad(value->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::single_op<ast::ret> const &op,
-                              scoped_value * const value) {
+scoped_value *translator::apply_op(ast::single_op<ast::ret> const &op,
+                                   scoped_value *const value) {
   return new scoped_value(builder_.CreateRet(value->getValue()));
 }
 
-scoped_value * translator::apply_op(ast::single_op<ast::lnot> const &,
-                              scoped_value * const value) {
+scoped_value *translator::apply_op(ast::single_op<ast::lnot> const &,
+                                   scoped_value *const value) {
   return new scoped_value(builder_.CreateXor(
       builder_.CreateICmpNE(value->getValue(),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.getInt32(1)));
 }
 
-scoped_value * translator::apply_op(ast::single_op<ast::inot> const &,
-                              scoped_value * const value) {
+scoped_value *translator::apply_op(ast::single_op<ast::inot> const &,
+                                   scoped_value *const value) {
   return new scoped_value(
       builder_.CreateXor(value->getValue(), builder_.getInt32(1)));
 }
 
-scoped_value * translator::apply_op(ast::single_op<ast::inc> const &,
-                              scoped_value * const value) {
+scoped_value *translator::apply_op(ast::single_op<ast::inc> const &,
+                                   scoped_value *const value) {
   return new scoped_value(
       builder_.CreateAdd(value->getValue(), builder_.getInt32(1)));
 }
 
-scoped_value * translator::apply_op(ast::single_op<ast::dec> const &,
-                              scoped_value * const value) {
+scoped_value *translator::apply_op(ast::single_op<ast::dec> const &,
+                                   scoped_value *const value) {
   return new scoped_value(
       builder_.CreateSub(value->getValue(), builder_.getInt32(1)));
+}
+
+scoped_value *translator::apply_op(ast::ternary_op<ast::cond> const &,
+                                   scoped_value *const first,
+                                   scoped_value *const second,
+                                   scoped_value *const third) {
+
+  llvm::BasicBlock *thenbb = llvm::BasicBlock::Create(
+      module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+  llvm::BasicBlock *elsebb = llvm::BasicBlock::Create(
+      module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+
+  auto pb = builder_.GetInsertBlock();
+  auto pp = builder_.GetInsertPoint();
+
+  llvm::BasicBlock *mergebb = llvm::BasicBlock::Create(
+      module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+
+  builder_.SetInsertPoint(thenbb);
+  second->setBlock(thenbb);
+  auto prevScope = currentScope_;
+  currentScope_ = second;
+  for (auto const &i : *(second->getInsts())) {
+    boost::apply_visitor(*this, i);
+  }
+  builder_.CreateBr(mergebb);
+
+  builder_.SetInsertPoint(elsebb);
+  second->setBlock(elsebb);
+  currentScope_ = third;
+  for (auto const &i : *(third->getInsts())) {
+    boost::apply_visitor(*this, i);
+  }
+  builder_.CreateBr(mergebb);
+
+  currentScope_ = prevScope;
+  builder_.SetInsertPoint(pb, pp);
+
+  builder_.CreateCondBr(first->getValue(), thenbb, elsebb);
+
+  builder_.SetInsertPoint(mergebb);
+
+  return new scoped_value();
 }
 
 }; // namespace assembly
