@@ -44,6 +44,14 @@ public:
     return apply_op(op, lhs, rhs);
   }
 
+  template <class Op> scoped_value *operator()(ast::ternary_op<Op> const &op) {
+    scoped_value *first = boost::apply_visitor(*this, op.first);
+    scoped_value *second = boost::apply_visitor(*this, op.second);
+    scoped_value *third = boost::apply_visitor(*this, op.third);
+
+    return apply_op(op, first, second, third);
+  }
+
 private:
   template <typename T> std::string getNameString(T *v) {
     std::string type_string;
@@ -105,6 +113,9 @@ private:
                          scoped_value *const value);
   scoped_value *apply_op(ast::single_op<ast::dec> const &,
                          scoped_value *const value);
+  scoped_value *apply_op(ast::ternary_op<ast::cond> const &,
+                         scoped_value *const first, scoped_value *const second,
+                         scoped_value *const third);
 };
 
 }; // namespace assembly

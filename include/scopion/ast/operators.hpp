@@ -40,6 +40,7 @@ struct dec;
 
 template <class Op> struct single_op;
 template <class Op> struct binary_op;
+template <class Op> struct ternary_op;
 
 using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<sub>>,

@@ -57,6 +57,14 @@ auto assign_binop = [](auto &&ctx) {
       ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx)), x3::_where(ctx));
 };
 
+template <typename Op>
+auto assign_terop = [](auto &&ctx) {
+  auto &&th = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
+  auto &&el = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
+  x3::_val(ctx) = ast::set_where(ast::ternary_op<Op>(x3::_val(ctx), th, el),
+                                 x3::_where(ctx));
+};
+
 template <>
 auto assign_binop<ast::assign> = [](auto &&ctx) {
   x3::_val(ctx) =

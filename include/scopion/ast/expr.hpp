@@ -40,6 +40,18 @@ template <class Op> struct binary_op {
 template <class Op>
 bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
 
+template <class Op> struct ternary_op {
+  expr first;
+  expr second;
+  expr third;
+  attribute attr;
+
+  ternary_op(expr const &first_, expr const &second_, expr const &third_)
+      : first(first_), second(second_), third(third_) {}
+};
+template <class Op>
+bool operator==(ternary_op<Op> const &lhs, ternary_op<Op> const &rhs);
+
 }; // namespace ast
 }; // namespace scopion
 

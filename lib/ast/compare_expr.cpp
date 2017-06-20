@@ -63,5 +63,11 @@ bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs) {
   return (lhs.rhs == rhs.rhs) && (lhs.lhs == rhs.lhs) &&
          (ast::attr(lhs) == ast::attr(rhs));
 }
+template <class Op>
+bool operator==(ternary_op<Op> const &lhs, ternary_op<Op> const &rhs) {
+  return (lhs.first == rhs.first) && (lhs.second == rhs.second) &&
+         (lhs.third == rhs.third) && (ast::attr(lhs) == ast::attr(rhs));
+}
+
 } // namespace ast
 } // namespace scopion
