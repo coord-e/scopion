@@ -57,6 +57,14 @@ auto assign_binop = [](auto &&ctx) {
       ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx)), x3::_where(ctx));
 };
 
+template <typename Op>
+auto assign_terop = [](auto &&ctx) {
+  auto &&th = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
+  auto &&el = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
+  x3::_val(ctx) = ast::set_where(ast::ternary_op<Op>(x3::_val(ctx), th, el),
+                                 x3::_where(ctx));
+};
+
 template <>
 auto assign_binop<ast::assign> = [](auto &&ctx) {
   x3::_val(ctx) =
@@ -100,6 +108,7 @@ struct ixor_expr;
 struct ior_expr;
 struct land_expr;
 struct lor_expr;
+struct cond_expr;
 struct assign_expr;
 struct ret_expr;
 struct expression;
@@ -123,6 +132,7 @@ x3::rule<ixor_expr, ast::expr> const ixor_expr("expression");
 x3::rule<ior_expr, ast::expr> const ior_expr("expression");
 x3::rule<land_expr, ast::expr> const land_expr("expression");
 x3::rule<lor_expr, ast::expr> const lor_expr("expression");
+x3::rule<cond_expr, ast::expr> const cond_expr("expression");
 x3::rule<assign_expr, ast::expr> const assign_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
@@ -211,10 +221,14 @@ auto const land_expr_def = ior_expr[detail::assign] >>
 auto const lor_expr_def = land_expr[detail::assign] >>
                           *(("||" > land_expr)[detail::assign_binop<ast::lor>]);
 
+auto const cond_expr_def = lor_expr[detail::assign] >>
+                           *(("?" > lor_expr > ":" >
+                              lor_expr)[detail::assign_terop<ast::cond>]);
+
 auto const assign_expr_def =
-    lor_expr[detail::assign] >> "=" >>
+    cond_expr[detail::assign] >> "=" >>
         assign_expr[detail::assign_binop<ast::assign>] |
-    lor_expr[detail::assign];
+    cond_expr[detail::assign];
 
 auto const ret_expr_def = assign_expr[detail::assign] |
                           ("|>" > assign_expr)[detail::assign_sinop<ast::ret>];
@@ -224,8 +238,8 @@ auto const expression_def = ret_expr[detail::assign];
 BOOST_SPIRIT_DEFINE(variable, string, array, function, scope, primary,
                     call_expr, pre_sinop_expr, post_sinop_expr, mul_expr,
                     shift_expr, cmp_expr, add_expr, iand_expr, ixor_expr,
-                    ior_expr, land_expr, lor_expr, assign_expr, ret_expr,
-                    expression);
+                    ior_expr, land_expr, lor_expr, cond_expr, assign_expr,
+                    ret_expr, expression);
 
 struct expression {
 

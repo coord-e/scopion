@@ -29,6 +29,7 @@ struct gtq;
 struct ltq;
 struct assign;
 struct call;
+struct cond;
 struct at;
 
 struct ret;
@@ -40,6 +41,7 @@ struct dec;
 
 template <class Op> struct single_op;
 template <class Op> struct binary_op;
+template <class Op> struct ternary_op;
 
 using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<sub>>,
@@ -67,7 +69,8 @@ using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<single_op<lnot>>,
                                  boost::recursive_wrapper<single_op<inot>>,
                                  boost::recursive_wrapper<single_op<inc>>,
-                                 boost::recursive_wrapper<single_op<dec>>>;
+                                 boost::recursive_wrapper<single_op<dec>>,
+                                 boost::recursive_wrapper<ternary_op<cond>>>;
 }; // namespace ast
 }; // namespace scopion
 
