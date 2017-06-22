@@ -7,6 +7,7 @@
 #include <boost/fusion/include/deque.hpp>
 #include <boost/fusion/include/for_each.hpp>
 #include <boost/fusion/sequence/intrinsic/at.hpp>
+#include <boost/range/adaptor/indexed.hpp>
 #include <boost/spirit/home/x3.hpp>
 
 #include <array>
@@ -51,40 +52,46 @@ auto assign_var = [](auto &&ctx) {
                                  x3::_where(ctx));
 };
 
-template <typename Op>
-auto assign_binop = [](auto &&ctx) {
-  x3::_val(ctx) = ast::set_where(
-      ast::binary_op<Op>(x3::_val(ctx), x3::_attr(ctx)), x3::_where(ctx));
+template <typename Op, size_t N>
+auto assign_op = [](auto &&ctx) {
+  static_assert(N >= 3, "Wrong number of terms");
+  std::array<ast::expr, N> ary;
+  ary[0] = x3::_val(ctx);
+  for (auto const &v : x3::_attr(ctx) | boost::adaptors::indexed()) {
+    ary[v.index() + 1] = v.value();
+  }
+  x3::_val(ctx) = ast::set_where(ast::op<Op, N>(ary), x3::_where(ctx));
 };
 
 template <typename Op>
-auto assign_terop = [](auto &&ctx) {
-  auto &&th = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
-  auto &&el = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
-  x3::_val(ctx) = ast::set_where(ast::ternary_op<Op>(x3::_val(ctx), th, el),
-                                 x3::_where(ctx));
-};
-
-template <>
-auto assign_binop<ast::assign> = [](auto &&ctx) {
-  x3::_val(ctx) =
-      ast::set_where(ast::binary_op<ast::assign>(
-                         ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)),
-                     x3::_where(ctx));
-};
-
-template <>
-auto assign_binop<ast::call> = [](auto &&ctx) {
+auto assign_op<Op, 2> = [](auto &&ctx) {
   x3::_val(ctx) = ast::set_where(
-      ast::binary_op<ast::call>(ast::set_to_call(x3::_val(ctx), true),
-                                ast::arglist(x3::_attr(ctx))),
+      ast::binary_op<Op>(ast::op_base<Op, 2>({x3::_val(ctx), x3::_attr(ctx)})),
       x3::_where(ctx));
 };
 
 template <typename Op>
-auto assign_sinop = [](auto &&ctx) {
+auto assign_op<Op, 1> = [](auto &&ctx) {
   x3::_val(ctx) =
-      ast::set_where(ast::single_op<Op>(x3::_attr(ctx)), x3::_where(ctx));
+      ast::set_where(ast::single_op<Op>(ast::op_base<Op, 1>({x3::_attr(ctx)})),
+                     x3::_where(ctx));
+};
+
+template <>
+auto assign_op<ast::assign, 2> = [](auto &&ctx) {
+  x3::_val(ctx) =
+      ast::set_where(ast::binary_op<ast::assign>(ast::op_base<ast::assign, 2>(
+                         {ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)})),
+                     x3::_where(ctx));
+};
+
+template <>
+auto assign_op<ast::call, 2> = [](auto &&ctx) {
+  x3::_val(ctx) =
+      ast::set_where(ast::binary_op<ast::call>(ast::op<ast::call, 2>(
+                         {ast::set_to_call(x3::_val(ctx), true),
+                          ast::arglist(x3::_attr(ctx))})),
+                     x3::_where(ctx));
 };
 
 } // namespace detail
@@ -161,77 +168,77 @@ auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
 
 auto const call_expr_def = primary[detail::assign] >>
                            *(("(" > *(expression >> -x3::lit(",")) >
-                              ")")[detail::assign_binop<ast::call>] |
+                              ")")[detail::assign_op<ast::call, 2>] |
                              ("[" > expression >
-                              "]")[detail::assign_binop<ast::at>]);
+                              "]")[detail::assign_op<ast::at, 2>]);
 
 auto const post_sinop_expr_def =
-    (call_expr >> "++")[detail::assign_sinop<ast::inc>] |
-    (call_expr >> "--")[detail::assign_sinop<ast::dec>] |
+    (call_expr >> "++")[detail::assign_op<ast::inc, 1>] |
+    (call_expr >> "--")[detail::assign_op<ast::dec, 1>] |
     call_expr[detail::assign];
 
 auto const pre_sinop_expr_def =
     post_sinop_expr[detail::assign] |
-    ("!" > post_sinop_expr)[detail::assign_sinop<ast::lnot>] |
-    ("~" > post_sinop_expr)[detail::assign_sinop<ast::inot>] |
-    ("++" > post_sinop_expr)[detail::assign_sinop<ast::inc>] |
-    ("--" > post_sinop_expr)[detail::assign_sinop<ast::dec>] |
-    ("*" > post_sinop_expr)[detail::assign_sinop<ast::load>];
+    ("!" > post_sinop_expr)[detail::assign_op<ast::lnot, 1>] |
+    ("~" > post_sinop_expr)[detail::assign_op<ast::inot, 1>] |
+    ("++" > post_sinop_expr)[detail::assign_op<ast::inc, 1>] |
+    ("--" > post_sinop_expr)[detail::assign_op<ast::dec, 1>] |
+    ("*" > post_sinop_expr)[detail::assign_op<ast::load, 1>];
 
 auto const
     mul_expr_def = pre_sinop_expr[detail::assign] >>
-                   *(("*" > pre_sinop_expr)[detail::assign_binop<ast::mul>] |
-                     ("/" > pre_sinop_expr)[detail::assign_binop<ast::div>]);
+                   *(("*" > pre_sinop_expr)[detail::assign_op<ast::mul, 2>] |
+                     ("/" > pre_sinop_expr)[detail::assign_op<ast::div, 2>]);
 
 auto const add_expr_def = mul_expr[detail::assign] >>
-                          *(("+" > mul_expr)[detail::assign_binop<ast::add>] |
-                            ("-" > mul_expr)[detail::assign_binop<ast::sub>] |
-                            ("%" > mul_expr)[detail::assign_binop<ast::rem>]);
+                          *(("+" > mul_expr)[detail::assign_op<ast::add, 2>] |
+                            ("-" > mul_expr)[detail::assign_op<ast::sub, 2>] |
+                            ("%" > mul_expr)[detail::assign_op<ast::rem, 2>]);
 
 auto const
     shift_expr_def = add_expr[detail::assign] >>
-                     *((">>" > add_expr)[detail::assign_binop<ast::shr>] |
-                       ("<<" > add_expr)[detail::assign_binop<ast::shl>]);
+                     *((">>" > add_expr)[detail::assign_op<ast::shr, 2>] |
+                       ("<<" > add_expr)[detail::assign_op<ast::shl, 2>]);
 
 auto const cmp_expr_def =
     shift_expr[detail::assign] >>
-    *(((">" - x3::lit(">=")) > shift_expr)[detail::assign_binop<ast::gt>] |
-      (("<" - x3::lit("<=")) > shift_expr)[detail::assign_binop<ast::lt>] |
-      (">=" > shift_expr)[detail::assign_binop<ast::gtq>] |
-      ("<=" > shift_expr)[detail::assign_binop<ast::ltq>] |
-      ("==" > shift_expr)[detail::assign_binop<ast::eeq>] |
-      ("!=" > shift_expr)[detail::assign_binop<ast::neq>]);
+    *(((">" - x3::lit(">=")) > shift_expr)[detail::assign_op<ast::gt, 2>] |
+      (("<" - x3::lit("<=")) > shift_expr)[detail::assign_op<ast::lt, 2>] |
+      (">=" > shift_expr)[detail::assign_op<ast::gtq, 2>] |
+      ("<=" > shift_expr)[detail::assign_op<ast::ltq, 2>] |
+      ("==" > shift_expr)[detail::assign_op<ast::eeq, 2>] |
+      ("!=" > shift_expr)[detail::assign_op<ast::neq, 2>]);
 
 auto const iand_expr_def = cmp_expr[detail::assign] >>
                            *(((x3::lit("&") - "&&") >
-                              cmp_expr)[detail::assign_binop<ast::iand>]);
+                              cmp_expr)[detail::assign_op<ast::iand, 2>]);
 
 auto const ixor_expr_def = iand_expr[detail::assign] >>
                            *(("^" >
-                              iand_expr)[detail::assign_binop<ast::ixor>]);
+                              iand_expr)[detail::assign_op<ast::ixor, 2>]);
 
 auto const ior_expr_def = ixor_expr[detail::assign] >>
                           *(((x3::lit("|") - "||") >
-                             ixor_expr)[detail::assign_binop<ast::ior>]);
+                             ixor_expr)[detail::assign_op<ast::ior, 2>]);
 
 auto const land_expr_def = ior_expr[detail::assign] >>
                            *(("&&" >
-                              ior_expr)[detail::assign_binop<ast::land>]);
+                              ior_expr)[detail::assign_op<ast::land, 2>]);
 
 auto const lor_expr_def = land_expr[detail::assign] >>
-                          *(("||" > land_expr)[detail::assign_binop<ast::lor>]);
+                          *(("||" > land_expr)[detail::assign_op<ast::lor, 2>]);
 
 auto const cond_expr_def = lor_expr[detail::assign] >>
                            *(("?" > lor_expr > ":" >
-                              lor_expr)[detail::assign_terop<ast::cond>]);
+                              lor_expr)[detail::assign_op<ast::cond, 3>]);
 
 auto const assign_expr_def =
     cond_expr[detail::assign] >> "=" >>
-        assign_expr[detail::assign_binop<ast::assign>] |
+        assign_expr[detail::assign_op<ast::assign, 2>] |
     cond_expr[detail::assign];
 
 auto const ret_expr_def = assign_expr[detail::assign] |
-                          ("|>" > assign_expr)[detail::assign_sinop<ast::ret>];
+                          ("|>" > assign_expr)[detail::assign_op<ast::ret, 1>];
 
 auto const expression_def = ret_expr[detail::assign];
 

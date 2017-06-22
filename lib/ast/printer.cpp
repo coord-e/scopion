@@ -80,20 +80,13 @@ public:
     _s << "} ";
   }
 
-  template <typename T> auto operator()(const binary_op<T> &o) const -> void {
+  template <typename Op, size_t N>
+  auto operator()(const op<Op, N> &o) const -> void {
     _s << "{ ";
-    boost::apply_visitor(*this, o.lhs);
-    _s << " " << op_to_str(o) << " ";
-    boost::apply_visitor(*this, o.rhs);
-    _s << " }";
-    if (attr(o).lval)
-      _s << "(lhs)";
-  }
-
-  template <typename T> auto operator()(const single_op<T> &o) const -> void {
-    _s << "{ ";
-    _s << op_to_str(o);
-    boost::apply_visitor(*this, o.value);
+    for (auto const &e : ast::val(o).exprs) {
+      boost::apply_visitor(*this, e);
+      _s << " " << op_to_str(o) << " ";
+    }
     _s << " }";
     if (attr(o).lval)
       _s << "(lhs)";
@@ -127,6 +120,7 @@ private:
   std::string op_to_str(single_op<inot> const &) const { return "~"; }
   std::string op_to_str(single_op<inc> const &) const { return "++"; }
   std::string op_to_str(single_op<dec> const &) const { return "--"; }
+  std::string op_to_str(ternary_op<cond> const &) const { return "?:"; }
 }; // class printer
 
 }; // namespace ast

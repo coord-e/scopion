@@ -6,6 +6,7 @@
 
 #include <boost/variant.hpp>
 
+#include <array>
 #include <iostream>
 
 namespace scopion {
@@ -21,36 +22,16 @@ struct expr : expr_base {
 };
 bool operator==(expr const &lhs, expr const &rhs);
 
-template <class Op> struct single_op {
-  expr value;
-  attribute attr;
+template <class Op, size_t N> struct op_base {
+  std::vector<expr> const &exprs;
 
-  single_op(expr const &value_) : value(value_) {}
+  /*template <typename... Args,
+            std::enable_if_t<sizeof...(Args) == N> * = nullptr>
+  op_base(Args... args) : exprs({args...}) {}*/
+  op_base(std::vector<expr> const &args) : exprs(args) {}
 };
-template <class Op>
-bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs);
-
-template <class Op> struct binary_op {
-  expr lhs;
-  expr rhs;
-  attribute attr;
-
-  binary_op(expr const &lhs_, expr const &rhs_) : lhs(lhs_), rhs(rhs_) {}
-};
-template <class Op>
-bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
-
-template <class Op> struct ternary_op {
-  expr first;
-  expr second;
-  expr third;
-  attribute attr;
-
-  ternary_op(expr const &first_, expr const &second_, expr const &third_)
-      : first(first_), second(second_), third(third_) {}
-};
-template <class Op>
-bool operator==(ternary_op<Op> const &lhs, ternary_op<Op> const &rhs);
+template <class Op, size_t N>
+bool operator==(op_base<Op, N> const &lhs, op_base<Op, N> const &rhs);
 
 }; // namespace ast
 }; // namespace scopion
