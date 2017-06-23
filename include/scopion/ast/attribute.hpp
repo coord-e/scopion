@@ -10,6 +10,7 @@ struct attribute {
   boost::iterator_range<std::string::const_iterator> where;
   bool lval = false;
   bool to_call = false;
+  bool survey = false;
 };
 bool operator==(attribute const &lhs, attribute const &rhs);
 

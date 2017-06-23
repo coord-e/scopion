@@ -230,9 +230,8 @@ scoped_value *translator::operator()(ast::function const &fcv) {
   }
 
   for (auto const &line : lines) {
-    boost::apply_visitor(*this,
-                         line); // If lines has function definition, the
-                                // function will be defined twice.
+    auto e = ast::set_survey(line, true);
+    boost::apply_visitor(*this, e);
   }
 
   llvm::Type *ret_type = nullptr;
@@ -260,35 +259,46 @@ scoped_value *translator::operator()(ast::function const &fcv) {
   func->eraseFromParent(); // remove old one
 
   std::vector<llvm::Type *> args_type = {builder_.getInt32Ty()};
-  llvm::Function *newfunc = llvm::Function::Create(
-      llvm::FunctionType::get(ret_type, func_args_type, false),
-      llvm::Function::ExternalLinkage, "", module_.get());
-  llvm::BasicBlock *newentry =
-      llvm::BasicBlock::Create(module_->getContext(),
-                               "entry", // BasicBlockの名前
-                               newfunc);
-  currentScope_ = new scoped_value(newentry, &lines);
-  builder_.SetInsertPoint(newentry);
+  llvm::Function *newfunc;
+  if (ast::attr(fcv).survey) {
+    newfunc = llvm::Function::Create(
+        llvm::FunctionType::get(ret_type, func_args_type, false),
+        llvm::Function::ExternalLinkage);
+  } else { // Create the real content of function if it
+           // isn't in survey
 
-  auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
-  currentScope_->symbols["self"] = new scoped_value{selfptr};
-  builder_.CreateStore(newfunc, selfptr);
+    newfunc = llvm::Function::Create(
+        llvm::FunctionType::get(ret_type, func_args_type, false),
+        llvm::Function::ExternalLinkage, "", module_.get());
 
-  auto it = newfunc->getArgumentList().begin();
-  for (auto const &v : args) {
-    auto aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                                      ast::val(v)); // declare arguments
-    currentScope_->symbols[ast::val(v)] = new scoped_value{aptr};
-    builder_.CreateStore(&(*it), aptr);
-    it++;
-  }
+    llvm::BasicBlock *newentry =
+        llvm::BasicBlock::Create(module_->getContext(),
+                                 "entry", // BasicBlockの名前
+                                 newfunc);
 
-  for (auto const &line : lines) {
-    boost::apply_visitor(*this, line);
-  }
+    currentScope_ = new scoped_value(newentry, &lines);
+    builder_.SetInsertPoint(newentry);
 
-  if (ret_type == builder_.getVoidTy()) {
-    builder_.CreateRetVoid();
+    auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
+    currentScope_->symbols["self"] = new scoped_value{selfptr};
+    builder_.CreateStore(newfunc, selfptr);
+
+    auto it = newfunc->getArgumentList().begin();
+    for (auto const &v : args) {
+      auto aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
+                                        ast::val(v)); // declare arguments
+      currentScope_->symbols[ast::val(v)] = new scoped_value{aptr};
+      builder_.CreateStore(&(*it), aptr);
+      it++;
+    }
+
+    for (auto const &line : lines) {
+      boost::apply_visitor(*this, line);
+    }
+
+    if (ret_type == builder_.getVoidTy()) {
+      builder_.CreateRetVoid();
+    }
   }
 
   currentScope_ = std::move(prevScope);
