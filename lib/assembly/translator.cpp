@@ -14,7 +14,8 @@ namespace assembly {
 translator::translator(std::shared_ptr<llvm::Module> &module,
                        llvm::IRBuilder<> const &builder,
                        std::string const &code)
-    : boost::static_visitor<scoped_value *>(), module_(module), builder_(builder),
+    : boost::static_visitor<scoped_value *>(), module_(module),
+      builder_(builder),
       code_range_(boost::make_iterator_range(code.begin(), code.end())) {
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
@@ -51,15 +52,15 @@ translator::translator(std::shared_ptr<llvm::Module> &module,
   }
 }
 
-scoped_value * translator::operator()(ast::value value) {
+scoped_value *translator::operator()(ast::value value) {
   return boost::apply_visitor(*this, value);
 }
 
-scoped_value * translator::operator()(ast::operators value) {
+scoped_value *translator::operator()(ast::operators value) {
   return boost::apply_visitor(*this, value);
 }
 
-scoped_value * translator::operator()(ast::integer value) {
+scoped_value *translator::operator()(ast::integer value) {
   if (ast::attr(value).lval)
     throw error("An integer constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -72,7 +73,7 @@ scoped_value * translator::operator()(ast::integer value) {
       llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value)));
 }
 
-scoped_value * translator::operator()(ast::boolean value) {
+scoped_value *translator::operator()(ast::boolean value) {
   if (ast::attr(value).lval)
     throw error("A boolean constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -85,7 +86,7 @@ scoped_value * translator::operator()(ast::boolean value) {
       llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value)));
 }
 
-scoped_value * translator::operator()(ast::string const &value) {
+scoped_value *translator::operator()(ast::string const &value) {
   if (ast::attr(value).lval)
     throw error("A string constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -97,7 +98,7 @@ scoped_value * translator::operator()(ast::string const &value) {
   return new scoped_value(builder_.CreateGlobalStringPtr(ast::val(value)));
 }
 
-scoped_value * translator::operator()(ast::variable const &value) {
+scoped_value *translator::operator()(ast::variable const &value) {
   if (ast::attr(value).to_call) {
     auto valp = module_->getFunction(ast::val(value));
     if (valp != nullptr) {
@@ -154,7 +155,7 @@ scoped_value * translator::operator()(ast::variable const &value) {
   }
   assert(false);
 }
-scoped_value * translator::operator()(ast::array const &value) {
+scoped_value *translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
     throw error("An array constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -190,9 +191,11 @@ scoped_value * translator::operator()(ast::array const &value) {
   return new scoped_value(aryPtr);
 }
 
-scoped_value * translator::operator()(ast::arglist const &value) { return nullptr; }
+scoped_value *translator::operator()(ast::arglist const &value) {
+  return nullptr;
+}
 
-scoped_value * translator::operator()(ast::function const &fcv) {
+scoped_value *translator::operator()(ast::function const &fcv) {
   if (ast::attr(fcv).lval)
     throw error("A function constant is not to be assigned",
                 ast::attr(fcv).where, code_range_);
@@ -233,19 +236,22 @@ scoped_value * translator::operator()(ast::function const &fcv) {
   }
 
   llvm::Type *ret_type = nullptr;
-  for (auto itr = entry->getInstList().begin();
-       itr != entry->getInstList().end(); ++itr) {
-    if ((*itr).getOpcode() == llvm::Instruction::Ret) {
-      if ((*itr).getOperand(0)->getType() != ret_type) {
-        if (ret_type == nullptr) {
-          ret_type = (*itr).getOperand(0)->getType();
-        } else {
-          throw error("All return values must have the same type",
-                      ast::attr(fcv).where, code_range_);
+  for (auto const &bb : *func) {
+    for (auto itr = bb.getInstList().begin(); itr != bb.getInstList().end();
+         ++itr) {
+      if ((*itr).getOpcode() == llvm::Instruction::Ret) {
+        if ((*itr).getOperand(0)->getType() != ret_type) {
+          if (ret_type == nullptr) {
+            ret_type = (*itr).getOperand(0)->getType();
+          } else {
+            throw error("All return values must have the same type",
+                        ast::attr(fcv).where, code_range_);
+          }
         }
       }
     }
   }
+
   if (ret_type == nullptr) {
     builder_.CreateRetVoid();
     ret_type = builder_.getVoidTy();
@@ -280,6 +286,7 @@ scoped_value * translator::operator()(ast::function const &fcv) {
   for (auto const &line : lines) {
     boost::apply_visitor(*this, line);
   }
+
   if (ret_type == builder_.getVoidTy()) {
     builder_.CreateRetVoid();
   }
@@ -290,7 +297,7 @@ scoped_value * translator::operator()(ast::function const &fcv) {
   return new scoped_value(newfunc);
 }
 
-scoped_value * translator::operator()(ast::scope const &scv) {
+scoped_value *translator::operator()(ast::scope const &scv) {
   auto bb = llvm::BasicBlock::Create(module_->getContext()); // empty
   auto newsc = new scoped_value(bb, new std::vector<ast::expr>(ast::val(scv)));
 
@@ -298,6 +305,21 @@ scoped_value * translator::operator()(ast::scope const &scv) {
             std::inserter(newsc->symbols, newsc->symbols.end()));
 
   return newsc;
+}
+
+bool translator::apply_bb(scoped_value *v) {
+  assert(v->hasBlock());
+  currentScope_ = v;
+  auto insts = v->getInsts();
+  decltype(insts->begin()) it;
+  for (it = insts->begin(); it != insts->end(); it++) {
+    boost::apply_visitor(*this, *it);
+  }
+  auto cb = builder_.GetInsertBlock();
+  return std::none_of(cb->begin(), cb->end(), [](auto &i) {
+    return i.getOpcode() == llvm::Instruction::Ret ||
+           i.getOpcode() == llvm::Instruction::Br;
+  });
 }
 
 }; // namespace assembly

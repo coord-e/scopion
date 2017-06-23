@@ -175,27 +175,30 @@ scoped_value *translator::apply_op(ast::binary_op<ast::call> const &op,
     auto pb = builder_.GetInsertBlock();
     auto pp = builder_.GetInsertPoint();
 
-    auto nb = llvm::BasicBlock::Create(module_->getContext(), "",
+    auto nb = llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
                                        builder_.GetInsertBlock()->getParent());
 
-    auto theblock = llvm::BasicBlock::Create(
-        module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    auto theblock =
+        llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
+                                 builder_.GetInsertBlock()->getParent());
     builder_.SetInsertPoint(theblock);
     lhs->setBlock(theblock);
     auto prevScope = currentScope_;
-    currentScope_ = lhs;
-    for (auto const &i : *(lhs->getInsts())) {
-      boost::apply_visitor(*this, i);
-    }
 
-    builder_.CreateBr(nb);
+    bool non_rb = apply_bb(lhs);
+    if (non_rb)
+      builder_.CreateBr(nb);
+    else
+      nb->eraseFromParent();
+
     currentScope_ = prevScope;
 
     builder_.SetInsertPoint(pb, pp);
 
     builder_.CreateBr(theblock);
 
-    builder_.SetInsertPoint(nb);
+    if (non_rb)
+      builder_.SetInsertPoint(nb);
 
     return new scoped_value(); // Voidをかえしたいんだけど
   }
@@ -323,40 +326,49 @@ scoped_value *translator::apply_op(ast::ternary_op<ast::cond> const &,
                                    scoped_value *const second,
                                    scoped_value *const third) {
 
-  llvm::BasicBlock *thenbb = llvm::BasicBlock::Create(
-      module_->getContext(), "", builder_.GetInsertBlock()->getParent());
-  llvm::BasicBlock *elsebb = llvm::BasicBlock::Create(
-      module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+  llvm::BasicBlock *thenbb =
+      llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
+                               builder_.GetInsertBlock()->getParent());
+  llvm::BasicBlock *elsebb =
+      llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
+                               builder_.GetInsertBlock()->getParent());
 
   auto pb = builder_.GetInsertBlock();
   auto pp = builder_.GetInsertPoint();
 
-  llvm::BasicBlock *mergebb = llvm::BasicBlock::Create(
-      module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+  llvm::BasicBlock *mergebb =
+      llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
+                               builder_.GetInsertBlock()->getParent());
+
+  bool mergebbShouldBeErased = true;
+
+  auto prevScope = currentScope_;
 
   builder_.SetInsertPoint(thenbb);
   second->setBlock(thenbb);
-  auto prevScope = currentScope_;
-  currentScope_ = second;
-  for (auto const &i : *(second->getInsts())) {
-    boost::apply_visitor(*this, i);
+  if (apply_bb(second)) {
+    builder_.CreateBr(mergebb);
+    mergebbShouldBeErased &= false;
   }
-  builder_.CreateBr(mergebb);
 
   builder_.SetInsertPoint(elsebb);
-  second->setBlock(elsebb);
-  currentScope_ = third;
-  for (auto const &i : *(third->getInsts())) {
-    boost::apply_visitor(*this, i);
+  third->setBlock(elsebb);
+  if (apply_bb(third)) {
+    builder_.CreateBr(mergebb);
+    mergebbShouldBeErased &= false;
   }
-  builder_.CreateBr(mergebb);
 
   currentScope_ = prevScope;
+
+  if (mergebbShouldBeErased)
+    mergebb->eraseFromParent();
+
   builder_.SetInsertPoint(pb, pp);
 
   builder_.CreateCondBr(first->getValue(), thenbb, elsebb);
 
-  builder_.SetInsertPoint(mergebb);
+  if (!mergebbShouldBeErased)
+    builder_.SetInsertPoint(mergebb);
 
   return new scoped_value();
 }

@@ -59,6 +59,11 @@ private:
     v->print(stream);
     return stream.str();
   }
+  inline std::string createNewBBName() {
+    return "__BB_" +
+           std::to_string(builder_.GetInsertBlock()->getParent()->size());
+  }
+  bool apply_bb(scoped_value *v);
   scoped_value *apply_op(ast::binary_op<ast::add> const &,
                          scoped_value *const lhs, scoped_value *const rhs);
   scoped_value *apply_op(ast::binary_op<ast::sub> const &,
