@@ -30,6 +30,7 @@ public:
   scoped_value *operator()(ast::variable const &value);
   scoped_value *operator()(ast::array const &value);
   scoped_value *operator()(ast::arglist const &value);
+  scoped_value *operator()(ast::structure const &value);
   scoped_value *operator()(ast::function const &value);
   scoped_value *operator()(ast::scope const &value);
 

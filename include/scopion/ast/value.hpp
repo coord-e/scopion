@@ -5,6 +5,7 @@
 
 #include <boost/variant.hpp>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -23,6 +24,7 @@ using array = value_wrapper<std::vector<expr>>;
 struct arglist : array {
   using array::array;
 };
+using structure = value_wrapper<std::map<variable, expr>>;
 using function =
     value_wrapper<std::pair<std::vector<variable>, std::vector<expr>>>;
 
@@ -33,8 +35,8 @@ struct scope : array {
 using value = boost::variant<
     integer, boolean, boost::recursive_wrapper<string>,
     boost::recursive_wrapper<variable>, boost::recursive_wrapper<array>,
-    boost::recursive_wrapper<arglist>, boost::recursive_wrapper<function>,
-    boost::recursive_wrapper<scope>>;
+    boost::recursive_wrapper<arglist>, boost::recursive_wrapper<structure>,
+    boost::recursive_wrapper<function>, boost::recursive_wrapper<scope>>;
 
 }; // namespace ast
 }; // namespace scopion

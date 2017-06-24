@@ -4,6 +4,8 @@
 #include "scopion/error.hpp"
 
 #include <algorithm>
+#include <map>
+#include <string>
 
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -193,6 +195,33 @@ scoped_value *translator::operator()(ast::array const &value) {
 
 scoped_value *translator::operator()(ast::arglist const &value) {
   return nullptr;
+}
+
+scoped_value *translator::operator()(ast::structure const &value) {
+  std::vector<scoped_value *> vals;
+  auto strc = new scoped_value();
+
+  for (auto const &m : ast::val(value)) {
+    strc->fields_map.push_back(m.first);
+    vals.push_back(boost::apply_visitor(*this, m.second));
+  }
+
+  std::vector<llvm::Type *> fields;
+  for (auto const &v : vals) {
+    fields.push_back(v->getType());
+  }
+  llvm::StructType *structTy =
+      llvm::StructType::get(module_->getContext(), fields);
+
+  auto ptr = builder_.CreateAlloca(structTy);
+  for (auto const &v : vals | boost::adaptors::indexed()) {
+    auto p = builder_.CreateStructGEP(structTy, ptr, v.index());
+    builder_.CreateStore(v.value()->getValue(), p);
+  }
+
+  strc->setValue(ptr);
+
+  return strc;
 }
 
 scoped_value *translator::operator()(ast::function const &fcv) {

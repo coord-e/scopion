@@ -57,6 +57,18 @@ public:
     }
   }
 
+  auto operator()(structure const &val) const -> void {
+    auto &&ary = ast::val(val);
+    _s << "{ ";
+    for (auto const &i : ary) {
+      (*this)(i.first);
+      _s << ":";
+      boost::apply_visitor(*this, i.second);
+      _s << ", ";
+    }
+    _s << "}";
+  }
+
   auto operator()(function const &val) const -> void {
     _s << "( ";
     for (auto const &arg : ast::val(val).first) {

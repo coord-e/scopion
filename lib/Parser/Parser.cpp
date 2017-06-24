@@ -11,6 +11,7 @@
 
 #include <array>
 #include <type_traits>
+#include <map>
 
 namespace scopion {
 namespace parser {
@@ -43,6 +44,17 @@ auto assign_func = [](auto &&ctx) {
                  });
   x3::_val(ctx) =
       ast::set_where(ast::function({result, lines}), x3::_where(ctx));
+};
+
+auto assign_struct = [](auto &&ctx) {
+  std::map<ast::variable, ast::expr> result;
+  for (auto const &v : x3::_attr(ctx)) {
+    auto &&name = boost::get<ast::variable>(
+        boost::get<ast::value>(boost::fusion::at<boost::mpl::int_<0>>(v)));
+    auto &&val = boost::fusion::at<boost::mpl::int_<1>>(v);
+    result[name] = val;
+  }
+  x3::_val(ctx) = ast::set_where(ast::structure(result), x3::_where(ctx));
 };
 
 auto assign_var = [](auto &&ctx) {
@@ -92,6 +104,7 @@ auto assign_sinop = [](auto &&ctx) {
 struct variable;
 struct string;
 struct array;
+struct structure;
 struct function;
 struct scope;
 
@@ -116,6 +129,7 @@ struct expression;
 x3::rule<variable, ast::expr> const variable("variable");
 x3::rule<string, ast::expr> const string("string");
 x3::rule<array, ast::expr> const array("array");
+x3::rule<structure, ast::expr> const structure("structure");
 x3::rule<function, ast::expr> const function("function");
 x3::rule<scope, ast::expr> const scope("scope");
 
@@ -146,6 +160,10 @@ auto const string_def =
 auto const array_def =
     ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
 
+auto const structure_def =
+    ("[" > *(variable >> ":" >> expression >> -x3::lit(",")) >
+     "]")[detail::assign_struct];
+
 auto const function_def = ((("(" > *(variable >> -x3::lit(","))) >> "){") >
                            *(expression >> ";") > "}")[detail::assign_func];
 
@@ -155,8 +173,8 @@ auto const scope_def =
 auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
                          x3::bool_[detail::assign_as<ast::boolean>] |
                          string[detail::assign] | variable[detail::assign] |
-                         array[detail::assign] | function[detail::assign] |
-                         scope[detail::assign] |
+                         structure[detail::assign] | array[detail::assign] |
+                         function[detail::assign] | scope[detail::assign] |
                          ("(" >> expression >> ")")[detail::assign];
 
 auto const call_expr_def = primary[detail::assign] >>
@@ -235,11 +253,11 @@ auto const ret_expr_def = assign_expr[detail::assign] |
 
 auto const expression_def = ret_expr[detail::assign];
 
-BOOST_SPIRIT_DEFINE(variable, string, array, function, scope, primary,
-                    call_expr, pre_sinop_expr, post_sinop_expr, mul_expr,
-                    shift_expr, cmp_expr, add_expr, iand_expr, ixor_expr,
-                    ior_expr, land_expr, lor_expr, cond_expr, assign_expr,
-                    ret_expr, expression);
+BOOST_SPIRIT_DEFINE(variable, string, array, structure, function, scope,
+                    primary, call_expr, pre_sinop_expr, post_sinop_expr,
+                    mul_expr, shift_expr, cmp_expr, add_expr, iand_expr,
+                    ixor_expr, ior_expr, land_expr, lor_expr, cond_expr,
+                    assign_expr, ret_expr, expression);
 
 struct expression {
 
