@@ -32,6 +32,7 @@ public:
   scoped_value *operator()(ast::arglist const &value);
   scoped_value *operator()(ast::structure const &value);
   scoped_value *operator()(ast::function const &value);
+  scoped_value *operator()(ast::identifier const &value);
   scoped_value *operator()(ast::scope const &value);
 
   template <class Op> scoped_value *operator()(ast::single_op<Op> const &op) {

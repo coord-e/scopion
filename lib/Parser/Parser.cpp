@@ -24,9 +24,10 @@ namespace detail {
 
 auto assign = [](auto &&ctx) { x3::_val(ctx) = x3::_attr(ctx); };
 
-auto assign_str = [](auto &&ctx) {
+template <typename T>
+auto assign_str_as = [](auto &&ctx) {
   std::string str(x3::_attr(ctx).begin(), x3::_attr(ctx).end());
-  x3::_val(ctx) = ast::set_where(ast::string(str), x3::_where(ctx));
+  x3::_val(ctx) = ast::set_where(T(str), x3::_where(ctx));
 };
 
 template <typename T>
@@ -37,30 +38,24 @@ auto assign_as = [](auto &&ctx) {
 auto assign_func = [](auto &&ctx) {
   auto &&args = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
   auto &&lines = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
-  std::vector<ast::variable> result;
-  std::transform(args.begin(), args.end(), std::back_inserter(result),
-                 [](auto &&x) {
-                   return boost::get<ast::variable>(boost::get<ast::value>(x));
-                 });
+  std::vector<ast::identifier> result;
+  std::transform(
+      args.begin(), args.end(), std::back_inserter(result), [](auto &&x) {
+        return boost::get<ast::identifier>(boost::get<ast::value>(x));
+      });
   x3::_val(ctx) =
       ast::set_where(ast::function({result, lines}), x3::_where(ctx));
 };
 
 auto assign_struct = [](auto &&ctx) {
-  std::map<ast::variable, ast::expr> result;
+  std::map<ast::identifier, ast::expr> result;
   for (auto const &v : x3::_attr(ctx)) {
-    auto &&name = boost::get<ast::variable>(
+    auto &&name = boost::get<ast::identifier>(
         boost::get<ast::value>(boost::fusion::at<boost::mpl::int_<0>>(v)));
     auto &&val = boost::fusion::at<boost::mpl::int_<1>>(v);
     result[name] = val;
   }
   x3::_val(ctx) = ast::set_where(ast::structure(result), x3::_where(ctx));
-};
-
-auto assign_var = [](auto &&ctx) {
-  auto &&v = x3::_attr(ctx);
-  x3::_val(ctx) = ast::set_where(ast::variable(std::string(v.begin(), v.end())),
-                                 x3::_where(ctx));
 };
 
 template <typename Op>
@@ -102,6 +97,7 @@ auto assign_sinop = [](auto &&ctx) {
 } // namespace detail
 
 struct variable;
+struct identifier;
 struct string;
 struct array;
 struct structure;
@@ -127,6 +123,7 @@ struct ret_expr;
 struct expression;
 
 x3::rule<variable, ast::expr> const variable("variable");
+x3::rule<identifier, ast::expr> const identifier("identifier");
 x3::rule<string, ast::expr> const string("string");
 x3::rule<array, ast::expr> const array("array");
 x3::rule<structure, ast::expr> const structure("structure");
@@ -151,20 +148,23 @@ x3::rule<assign_expr, ast::expr> const assign_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
 
-auto const variable_def =
-    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_var];
+auto const variable_def = x3::raw[x3::lexeme[x3::alpha > *x3::alnum]]
+                                 [detail::assign_str_as<ast::variable>];
 
-auto const string_def =
-    ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str];
+auto const string_def = ('"' >> x3::lexeme[*(x3::char_ - '"')] >>
+                         '"')[detail::assign_str_as<ast::string>];
+
+auto const identifier_def = x3::raw[x3::lexeme[x3::alpha > *x3::alnum]]
+                                   [detail::assign_str_as<ast::identifier>];
 
 auto const array_def =
     ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
 
 auto const structure_def =
-    ("[" > *(variable >> ":" >> expression >> -x3::lit(",")) >
+    ("[" > *(identifier >> ":" >> expression >> -x3::lit(",")) >
      "]")[detail::assign_struct];
 
-auto const function_def = ((("(" > *(variable >> -x3::lit(","))) >> "){") >
+auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> "){") >
                            *(expression >> ";") > "}")[detail::assign_func];
 
 auto const scope_def =
@@ -253,8 +253,8 @@ auto const ret_expr_def = assign_expr[detail::assign] |
 
 auto const expression_def = ret_expr[detail::assign];
 
-BOOST_SPIRIT_DEFINE(variable, string, array, structure, function, scope,
-                    primary, call_expr, pre_sinop_expr, post_sinop_expr,
+BOOST_SPIRIT_DEFINE(variable, identifier, string, array, structure, function,
+                    scope, primary, call_expr, pre_sinop_expr, post_sinop_expr,
                     mul_expr, shift_expr, cmp_expr, add_expr, iand_expr,
                     ixor_expr, ior_expr, land_expr, lor_expr, cond_expr,
                     assign_expr, ret_expr, expression);

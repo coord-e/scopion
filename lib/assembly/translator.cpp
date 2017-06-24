@@ -157,6 +157,12 @@ scoped_value *translator::operator()(ast::variable const &value) {
   }
   assert(false);
 }
+
+scoped_value *translator::operator()(ast::identifier const &value) {
+  assert(false && "Identifiers cannot be translated directly");
+  return new scoped_value();
+}
+
 scoped_value *translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
     throw error("An array constant is not to be assigned",

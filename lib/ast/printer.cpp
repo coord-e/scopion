@@ -39,6 +39,8 @@ public:
       _s << "(lhs)";
   }
 
+  auto operator()(identifier const &val) const -> void { _s << ast::val(val); }
+
   auto operator()(array const &val) const -> void {
     auto &&ary = ast::val(val);
     _s << "[ ";
