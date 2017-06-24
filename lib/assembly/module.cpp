@@ -55,5 +55,11 @@ llvm::GenericValue module::run() {
   return res;
 }
 
+void module::optimize() {
+  for (auto const &f : module_->getFunctionList()) {
+    f.optForSize();
+  }
+}
+
 }; // namespace assembly
 }; // namespace scopion

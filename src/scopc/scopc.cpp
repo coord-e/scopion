@@ -23,6 +23,7 @@ int main(int argc, char *argv[]) {
         "exe", cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
     p.add<std::string>("output", 'o', "Specify the output path", false,
                        "./a.out");
+    p.add("optimize", 'O', "Enable optimization");
     p.add("help", 'h', "Print this help");
     p.add("version", 'v', "Print version");
     p.footer("filename ...");
@@ -88,6 +89,10 @@ int main(int argc, char *argv[]) {
 
     scopion::assembly::context ctx;
     auto mod = scopion::assembly::module::create(ast, ctx, outpath);
+
+    if (p.exist("optimize")) {
+      mod->optimize();
+    }
 
     if (outtype == "ir") {
       std::ofstream f(outpath);
