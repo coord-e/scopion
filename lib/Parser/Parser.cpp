@@ -118,6 +118,7 @@ struct ior_expr;
 struct land_expr;
 struct lor_expr;
 struct cond_expr;
+struct dot_expr;
 struct assign_expr;
 struct ret_expr;
 struct expression;
@@ -144,6 +145,7 @@ x3::rule<ior_expr, ast::expr> const ior_expr("expression");
 x3::rule<land_expr, ast::expr> const land_expr("expression");
 x3::rule<lor_expr, ast::expr> const lor_expr("expression");
 x3::rule<cond_expr, ast::expr> const cond_expr("expression");
+x3::rule<dot_expr, ast::expr> const dot_expr("expression");
 x3::rule<assign_expr, ast::expr> const assign_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
@@ -177,7 +179,10 @@ auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
                          function[detail::assign] | scope[detail::assign] |
                          ("(" >> expression >> ")")[detail::assign];
 
-auto const call_expr_def = primary[detail::assign] >>
+auto const dot_expr_def = primary[detail::assign] >>
+                          *(("." > identifier)[detail::assign_binop<ast::dot>]);
+
+auto const call_expr_def = dot_expr[detail::assign] >>
                            *(("(" > *(expression >> -x3::lit(",")) >
                               ")")[detail::assign_binop<ast::call>] |
                              ("[" > expression >
@@ -254,10 +259,10 @@ auto const ret_expr_def = assign_expr[detail::assign] |
 auto const expression_def = ret_expr[detail::assign];
 
 BOOST_SPIRIT_DEFINE(variable, identifier, string, array, structure, function,
-                    scope, primary, call_expr, pre_sinop_expr, post_sinop_expr,
-                    mul_expr, shift_expr, cmp_expr, add_expr, iand_expr,
-                    ixor_expr, ior_expr, land_expr, lor_expr, cond_expr,
-                    assign_expr, ret_expr, expression);
+                    scope, primary, dot_expr, call_expr, pre_sinop_expr,
+                    post_sinop_expr, mul_expr, shift_expr, cmp_expr, add_expr,
+                    iand_expr, ixor_expr, ior_expr, land_expr, lor_expr,
+                    cond_expr, assign_expr, ret_expr, expression);
 
 struct expression {
 

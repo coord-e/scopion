@@ -22,7 +22,6 @@ class scoped_value {
 
 public:
   std::map<std::string, scoped_value *> symbols;
-  std::vector<std::string> fields_map;
 
   scoped_value() {}
 
@@ -32,7 +31,6 @@ public:
   scoped_value(llvm::Value *val, llvm::BasicBlock *block,
                std::vector<ast::expr> const *insts)
       : value_(val), block_(block), insts_(insts) {}
-  scoped_value(std::vector<std::string> map_) : fields_map(map_) {}
 
   llvm::Value *getValue() {
     if (value_ != nullptr)
@@ -73,8 +71,6 @@ public:
   inline bool hasBlock() const { return block_ != nullptr; }
 
   inline bool hasValue() const { return value_ != nullptr; }
-
-  inline bool isStruct() const { return !fields_map.empty(); }
 }; // namespace scopion
 }; // namespace assembly
 }; // namespace scopion

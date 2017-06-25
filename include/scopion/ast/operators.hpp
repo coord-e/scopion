@@ -30,6 +30,7 @@ struct ltq;
 struct assign;
 struct call;
 struct cond;
+struct dot;
 struct at;
 
 struct ret;
@@ -65,6 +66,7 @@ using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<single_op<ret>>,
                                  boost::recursive_wrapper<binary_op<call>>,
                                  boost::recursive_wrapper<binary_op<at>>,
+                                 boost::recursive_wrapper<binary_op<dot>>,
                                  boost::recursive_wrapper<single_op<load>>,
                                  boost::recursive_wrapper<single_op<lnot>>,
                                  boost::recursive_wrapper<single_op<inot>>,

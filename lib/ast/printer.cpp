@@ -135,6 +135,7 @@ private:
   std::string op_to_str(binary_op<assign> const &) const { return "="; }
   std::string op_to_str(binary_op<call> const &) const { return "()"; }
   std::string op_to_str(binary_op<at> const &) const { return "[]"; }
+  std::string op_to_str(binary_op<dot> const &) const { return "."; }
   std::string op_to_str(single_op<load> const &) const { return "*"; }
   std::string op_to_str(single_op<ret> const &) const { return "|>"; }
   std::string op_to_str(single_op<lnot> const &) const { return "!"; }

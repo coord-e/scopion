@@ -5,6 +5,9 @@
 
 #include <boost/range/adaptor/indexed.hpp>
 
+#include <algorithm>
+#include <iostream>
+
 namespace scopion {
 namespace assembly {
 
@@ -145,8 +148,9 @@ scoped_value *translator::apply_op(ast::binary_op<ast::assign> const &op,
       throw error("Cannot assign the value of void type", ast::attr(op).where,
                   code_range_);
     auto lhsa = builder_.CreateAlloca(rhs->getType(), nullptr, ast::val(lvar));
-    currentScope_->symbols[ast::val(lvar)] = new scoped_value{lhsa};
     builder_.CreateStore(rhs->getValue(), lhsa);
+    rhs->setValue(lhsa);
+    currentScope_->symbols[ast::val(lvar)] = rhs;
     return new scoped_value(builder_.CreateLoad(lhsa));
   } else {
     if (lhs->getType()->isPointerTy()) {
@@ -279,6 +283,50 @@ scoped_value *translator::apply_op(ast::binary_op<ast::at> const &op,
     return new scoped_value(ep);
   else
     return new scoped_value(builder_.CreateLoad(ep));
+}
+
+scoped_value *translator::apply_op(ast::binary_op<ast::dot> const &op,
+                                   scoped_value *lhs, scoped_value *const rhs) {
+  auto id =
+      ast::val(boost::get<ast::identifier>(boost::get<ast::value>(op.rhs)));
+
+  if (!lhs->getType()->isPointerTy())
+    throw error("Cannot get \"" + id + "\" from non-pointer type " +
+                    getNameString(lhs->getType()),
+                ast::attr(op).where, code_range_);
+
+  auto lval = lhs->getType()->getPointerElementType()->isPointerTy()
+                  ? builder_.CreateLoad(lhs->getValue())
+                  : lhs->getValue();
+
+  auto &typeString = getNameString(lval->getType());
+
+  if (!lval->getType()->getPointerElementType()->isStructTy())
+    throw error("Cannot get \"" + id + "\" from non-structure type " +
+                    typeString,
+                ast::attr(op).where, code_range_);
+
+  std::string structName;
+  std::copy(typeString.begin() + 1, typeString.end() - 1,
+            std::back_inserter(structName)); // %TYPENAME* -> TYPENAME
+  auto &themap = fields_map[structName];
+
+  auto it = std::find(themap.cbegin(), themap.cend(), id);
+  if (it == themap.end()) {
+    auto &structContentStr = getNameString(module_->getTypeByName(structName));
+    throw error("No member named \"" + id + "\" in the structure of" +
+                    structContentStr.erase(0, structContentStr.find("=") + 1),
+                ast::attr(op).where,
+                code_range_); // %TYPENAME = type {...} -> type {...}
+  }
+
+  auto ptr = builder_.CreateStructGEP(lval->getType()->getPointerElementType(),
+                                      lval, std::distance(themap.cbegin(), it));
+
+  if (ast::attr(op).lval)
+    return new scoped_value(ptr);
+  else
+    return new scoped_value(builder_.CreateLoad(ptr));
 }
 
 scoped_value *translator::apply_op(ast::single_op<ast::load> const &op,

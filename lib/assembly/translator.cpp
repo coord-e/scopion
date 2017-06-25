@@ -143,7 +143,9 @@ scoped_value *translator::operator()(ast::variable const &value) {
       if (ast::attr(value).lval) {
         return valp;
       } else {
-        return new scoped_value(builder_.CreateLoad(valp->getValue()));
+        auto np = new scoped_value(*valp);
+        np->setValue(builder_.CreateLoad(valp->getValue()));
+        return np;
       }
     } catch (std::out_of_range &) {
       if (ast::attr(value).lval) {
@@ -159,8 +161,7 @@ scoped_value *translator::operator()(ast::variable const &value) {
 }
 
 scoped_value *translator::operator()(ast::identifier const &value) {
-  assert(false && "Identifiers cannot be translated directly");
-  return new scoped_value();
+  return nullptr;
 }
 
 scoped_value *translator::operator()(ast::array const &value) {
@@ -205,19 +206,22 @@ scoped_value *translator::operator()(ast::arglist const &value) {
 
 scoped_value *translator::operator()(ast::structure const &value) {
   std::vector<scoped_value *> vals;
+  std::vector<llvm::Type *> fields;
+  auto structName = createNewStructName();
+
   auto strc = new scoped_value();
 
   for (auto const &m : ast::val(value)) {
-    strc->fields_map.push_back(m.first);
-    vals.push_back(boost::apply_visitor(*this, m.second));
+    fields_map[structName].push_back(ast::val(m.first));
+    auto vp = boost::apply_visitor(*this, m.second);
+    fields.push_back(vp->getType());
+
+    vals.push_back(vp);
   }
 
-  std::vector<llvm::Type *> fields;
-  for (auto const &v : vals) {
-    fields.push_back(v->getType());
-  }
   llvm::StructType *structTy =
-      llvm::StructType::get(module_->getContext(), fields);
+      llvm::StructType::create(module_->getContext(), structName);
+  structTy->setBody(fields);
 
   auto ptr = builder_.CreateAlloca(structTy);
   for (auto const &v : vals | boost::adaptors::indexed()) {

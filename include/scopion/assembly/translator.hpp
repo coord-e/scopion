@@ -16,6 +16,8 @@ class translator : public boost::static_visitor<scoped_value *> {
   llvm::IRBuilder<> builder_;
   boost::iterator_range<std::string::const_iterator> const code_range_;
   scoped_value *currentScope_;
+  std::map<std::string, std::vector<std::string>> fields_map;
+  uint64_t structCount = 0;
 
 public:
   translator(std::shared_ptr<llvm::Module> &module,
@@ -65,6 +67,9 @@ private:
     return "__BB_" +
            std::to_string(builder_.GetInsertBlock()->getParent()->size());
   }
+  inline std::string createNewStructName() {
+    return "__STRUCT_" + std::to_string(structCount++);
+  }
   bool apply_bb(scoped_value *v);
   scoped_value *apply_op(ast::binary_op<ast::add> const &,
                          scoped_value *const lhs, scoped_value *const rhs);
@@ -107,6 +112,8 @@ private:
   scoped_value *apply_op(ast::binary_op<ast::call> const &, scoped_value *lhs,
                          scoped_value *const rhs);
   scoped_value *apply_op(ast::binary_op<ast::at> const &,
+                         scoped_value *const lhs, scoped_value *const rhs);
+  scoped_value *apply_op(ast::binary_op<ast::dot> const &,
                          scoped_value *const lhs, scoped_value *const rhs);
   scoped_value *apply_op(ast::single_op<ast::load> const &,
                          scoped_value *const value);
