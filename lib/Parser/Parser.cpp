@@ -163,7 +163,7 @@ auto const array_def =
     ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
 
 auto const structure_def =
-    ("[" > *(identifier >> ":" >> expression >> -x3::lit(",")) >
+    ("[" >> *(identifier >> ":" >> expression >> -x3::lit(",")) >>
      "]")[detail::assign_struct];
 
 auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> "){") >
