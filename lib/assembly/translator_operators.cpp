@@ -299,7 +299,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::dot> const &op,
                   ? builder_.CreateLoad(lhs->getValue())
                   : lhs->getValue();
 
-  auto &typeString = getNameString(lval->getType());
+  auto typeString = getNameString(lval->getType());
 
   if (!lval->getType()->getPointerElementType()->isStructTy())
     throw error("Cannot get \"" + id + "\" from non-structure type " +
@@ -313,7 +313,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::dot> const &op,
 
   auto it = std::find(themap.cbegin(), themap.cend(), id);
   if (it == themap.end()) {
-    auto &structContentStr = getNameString(module_->getTypeByName(structName));
+    auto structContentStr = getNameString(module_->getTypeByName(structName));
     throw error("No member named \"" + id + "\" in the structure of" +
                     structContentStr.erase(0, structContentStr.find("=") + 1),
                 ast::attr(op).where,
