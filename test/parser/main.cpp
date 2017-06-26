@@ -30,6 +30,15 @@ TEST_F(parserTest, funcVal) {
                                          {{}, {ast::integer(1)}})}})));
 }
 
+TEST_F(parserTest, structVal) {
+  EXPECT_EQ(parser::parse("(){[a:10,b:\"koko\"];}").ast,
+            ast::expr(ast::function(
+                {{},
+                 std::vector<ast::expr>{ast::structure(
+                     {{ast::identifier("a"), ast::integer(10)},
+                      {ast::identifier("b"), ast::string("koko")}})}})));
+}
+
 TEST_F(parserTest, arrayVal) {
   EXPECT_EQ(
       parser::parse("(){[1,2,3];}").ast,

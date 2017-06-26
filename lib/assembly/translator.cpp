@@ -4,6 +4,8 @@
 #include "scopion/error.hpp"
 
 #include <algorithm>
+#include <map>
+#include <string>
 
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -141,7 +143,9 @@ scoped_value *translator::operator()(ast::variable const &value) {
       if (ast::attr(value).lval) {
         return valp;
       } else {
-        return new scoped_value(builder_.CreateLoad(valp->getValue()));
+        auto np = new scoped_value(*valp);
+        np->setValue(builder_.CreateLoad(valp->getValue()));
+        return np;
       }
     } catch (std::out_of_range &) {
       if (ast::attr(value).lval) {
@@ -155,6 +159,11 @@ scoped_value *translator::operator()(ast::variable const &value) {
   }
   assert(false);
 }
+
+scoped_value *translator::operator()(ast::identifier const &value) {
+  return nullptr;
+}
+
 scoped_value *translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
     throw error("An array constant is not to be assigned",
@@ -193,6 +202,36 @@ scoped_value *translator::operator()(ast::array const &value) {
 
 scoped_value *translator::operator()(ast::arglist const &value) {
   return nullptr;
+}
+
+scoped_value *translator::operator()(ast::structure const &value) {
+  std::vector<scoped_value *> vals;
+  std::vector<llvm::Type *> fields;
+  auto structName = createNewStructName();
+
+  auto strc = new scoped_value();
+
+  for (auto const &m : ast::val(value)) {
+    fields_map[structName].push_back(ast::val(m.first));
+    auto vp = boost::apply_visitor(*this, m.second);
+    fields.push_back(vp->getType());
+
+    vals.push_back(vp);
+  }
+
+  llvm::StructType *structTy =
+      llvm::StructType::create(module_->getContext(), structName);
+  structTy->setBody(fields);
+
+  auto ptr = builder_.CreateAlloca(structTy);
+  for (auto const &v : vals | boost::adaptors::indexed()) {
+    auto p = builder_.CreateStructGEP(structTy, ptr, v.index());
+    builder_.CreateStore(v.value()->getValue(), p);
+  }
+
+  strc->setValue(ptr);
+
+  return strc;
 }
 
 scoped_value *translator::operator()(ast::function const &fcv) {

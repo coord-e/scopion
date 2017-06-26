@@ -39,6 +39,8 @@ public:
       _s << "(lhs)";
   }
 
+  auto operator()(identifier const &val) const -> void { _s << ast::val(val); }
+
   auto operator()(array const &val) const -> void {
     auto &&ary = ast::val(val);
     _s << "[ ";
@@ -55,6 +57,18 @@ public:
       boost::apply_visitor(*this, i);
       _s << ", ";
     }
+  }
+
+  auto operator()(structure const &val) const -> void {
+    auto &&ary = ast::val(val);
+    _s << "{ ";
+    for (auto const &i : ary) {
+      (*this)(i.first);
+      _s << ":";
+      boost::apply_visitor(*this, i.second);
+      _s << ", ";
+    }
+    _s << "}";
   }
 
   auto operator()(function const &val) const -> void {
@@ -121,6 +135,7 @@ private:
   std::string op_to_str(binary_op<assign> const &) const { return "="; }
   std::string op_to_str(binary_op<call> const &) const { return "()"; }
   std::string op_to_str(binary_op<at> const &) const { return "[]"; }
+  std::string op_to_str(binary_op<dot> const &) const { return "."; }
   std::string op_to_str(single_op<load> const &) const { return "*"; }
   std::string op_to_str(single_op<ret> const &) const { return "|>"; }
   std::string op_to_str(single_op<lnot> const &) const { return "!"; }

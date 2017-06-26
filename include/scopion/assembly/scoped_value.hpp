@@ -16,19 +16,18 @@ namespace scopion {
 namespace assembly {
 
 class scoped_value {
-  llvm::Value *value_;
-  llvm::BasicBlock *block_;
-  std::vector<ast::expr> const *insts_;
+  llvm::Value *value_ = nullptr;
+  llvm::BasicBlock *block_ = nullptr;
+  std::vector<ast::expr> const *insts_ = nullptr;
 
 public:
   std::map<std::string, scoped_value *> symbols;
 
-  scoped_value() : value_(nullptr), block_(nullptr), insts_(nullptr) {}
+  scoped_value() {}
 
   scoped_value(llvm::BasicBlock *block, std::vector<ast::expr> const *insts)
-      : value_(nullptr), block_(block), insts_(insts) {}
-  scoped_value(llvm::Value *val)
-      : value_(val), block_(nullptr), insts_(nullptr) {}
+      : block_(block), insts_(insts) {}
+  scoped_value(llvm::Value *val) : value_(val) {}
   scoped_value(llvm::Value *val, llvm::BasicBlock *block,
                std::vector<ast::expr> const *insts)
       : value_(val), block_(block), insts_(insts) {}
