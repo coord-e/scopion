@@ -23,7 +23,7 @@ public:
                                         std::string const &name = "");
 
   std::string irgen();
-  void optimize();
+  void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
   llvm::GenericValue run();
 
 private:
