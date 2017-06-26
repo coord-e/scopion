@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     cmdline::parser p;
     p.add<std::string>(
         "type", 't', "Specify the type of output (ir, ast, asm, obj)", false,
-        "exe", cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
+        "obj", cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
     p.add<std::string>("output", 'o', "Specify the output path", false,
                        "./a.out");
     p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1,
