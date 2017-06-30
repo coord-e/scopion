@@ -52,9 +52,9 @@ template <class Op> struct ternary_op {
 template <class Op>
 bool operator==(ternary_op<Op> const &lhs, ternary_op<Op> const &rhs);
 
+std::ostream &operator<<(std::ostream &os, expr const &tree);
+
 }; // namespace ast
 }; // namespace scopion
-
-std::ostream &operator<<(std::ostream &os, scopion::ast::expr const &tree);
 
 #endif
