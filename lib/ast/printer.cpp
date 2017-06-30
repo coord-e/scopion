@@ -113,6 +113,19 @@ public:
       _s << "(lhs)";
   }
 
+  template <typename T> auto operator()(const ternary_op<T> &o) const -> void {
+    _s << "{ ";
+    auto ops = op_to_str(o);
+    boost::apply_visitor(*this, o.first);
+    _s << " " << ops.first << " ";
+    boost::apply_visitor(*this, o.second);
+    _s << " " << ops.second << " ";
+    boost::apply_visitor(*this, o.third);
+    _s << " }";
+    if (attr(o).lval)
+      _s << "(lhs)";
+  }
+
 private:
   std::string op_to_str(binary_op<add> const &) const { return "+"; }
   std::string op_to_str(binary_op<sub> const &) const { return "-"; }
@@ -142,6 +155,9 @@ private:
   std::string op_to_str(single_op<inot> const &) const { return "~"; }
   std::string op_to_str(single_op<inc> const &) const { return "++"; }
   std::string op_to_str(single_op<dec> const &) const { return "--"; }
+  decltype(auto) op_to_str(ternary_op<cond> const &) const {
+    return std::pair<std::string, std::string>("?", ":");
+  }
 }; // class printer
 
 std::ostream &operator<<(std::ostream &os, expr const &tree) {
