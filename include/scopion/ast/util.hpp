@@ -7,6 +7,8 @@
 
 #include <boost/variant.hpp>
 
+#include <string>
+
 namespace scopion {
 namespace ast {
 
@@ -56,6 +58,31 @@ struct set_to_call_visitor : boost::static_visitor<expr> {
   }
 };
 
+struct set_attr_visitor : boost::static_visitor<expr> {
+  std::string const &key;
+  std::string const &val;
+
+  set_attr_visitor(std::string const &key_, std::string const &val_)
+      : key(key_), val(val_) {}
+
+  template <typename T> expr operator()(T value) const {
+    attr(value).attributes[key] = val;
+    return value;
+  }
+
+  ast::expr operator()(expr val) const {
+    return boost::apply_visitor(*this, val);
+  }
+
+  ast::expr operator()(value val) const {
+    return boost::apply_visitor(*this, val);
+  }
+
+  ast::expr operator()(operators val) const {
+    return boost::apply_visitor(*this, val);
+  }
+};
+
 template <typename T> T &val(value_wrapper<T> &w) { return w.value; }
 
 template <typename T> const T &val(value_wrapper<T> const &w) {
@@ -71,6 +98,11 @@ template <typename T> expr set_lval(T t, bool val) {
 
 template <typename T> expr set_to_call(T t, bool val) {
   return set_to_call_visitor(val)(t);
+}
+
+template <typename T>
+expr set_attr(T t, std::string const &key, std::string const &val) {
+  return set_attr_visitor(key, val)(t);
 }
 
 template <typename T, typename RangeT> T set_where(T val, RangeT range) {

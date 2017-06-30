@@ -94,6 +94,21 @@ auto assign_sinop = [](auto &&ctx) {
       ast::set_where(ast::single_op<Op>(x3::_attr(ctx)), x3::_where(ctx));
 };
 
+auto assign_attr = [](auto &&ctx) {
+  for (auto const &v : x3::_attr(ctx)) {
+    auto &&key = boost::fusion::at<boost::mpl::int_<0>>(v);
+    // ast::identifier
+    auto &&val = boost::fusion::at<boost::mpl::int_<1>>(v);
+    // ast::attribute_val
+    std::string keystr =
+        ast::val(boost::get<ast::identifier>(boost::get<ast::value>(key)));
+    std::string valstr = val ? ast::val(boost::get<ast::attribute_val>(
+                                   boost::get<ast::value>(*val)))
+                             : "";
+    x3::_val(ctx) = ast::set_attr(x3::_val(ctx), keystr, valstr);
+  }
+};
+
 } // namespace detail
 
 struct variable;
@@ -104,7 +119,10 @@ struct structure;
 struct function;
 struct scope;
 
+struct attribute_val;
+
 struct primary;
+struct attr_expr;
 struct call_expr;
 struct pre_sinop_expr;
 struct post_sinop_expr;
@@ -131,7 +149,10 @@ x3::rule<structure, ast::expr> const structure("structure");
 x3::rule<function, ast::expr> const function("function");
 x3::rule<scope, ast::expr> const scope("scope");
 
+x3::rule<attribute_val, ast::expr> const attribute_val("attribute val");
+
 x3::rule<primary, ast::expr> const primary("literal");
+x3::rule<attr_expr, ast::expr> const attr_expr("expression");
 x3::rule<call_expr, ast::expr> const call_expr("expression");
 x3::rule<pre_sinop_expr, ast::expr> const pre_sinop_expr("expression");
 x3::rule<post_sinop_expr, ast::expr> const post_sinop_expr("expression");
@@ -172,6 +193,9 @@ auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> "){") >
 auto const scope_def =
     ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
 
+auto const attribute_val_def =
+    x3::raw[x3::lexeme[*x3::alnum]][detail::assign_str_as<ast::attribute_val>];
+
 auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
                          x3::bool_[detail::assign_as<ast::boolean>] |
                          string[detail::assign] | variable[detail::assign] |
@@ -182,7 +206,12 @@ auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
 auto const dot_expr_def = primary[detail::assign] >>
                           *(("." > identifier)[detail::assign_binop<ast::dot>]);
 
-auto const call_expr_def = dot_expr[detail::assign] >>
+auto const attr_expr_def = dot_expr[detail::assign] >>
+                           *("(" >> *(identifier >> -("=" > attribute_val) >>
+                                      -x3::lit(",")) >>
+                             ")")[detail::assign_attr];
+
+auto const call_expr_def = attr_expr[detail::assign] >>
                            *(("(" > *(expression >> -x3::lit(",")) >
                               ")")[detail::assign_binop<ast::call>] |
                              ("[" > expression >
@@ -259,10 +288,11 @@ auto const ret_expr_def = assign_expr[detail::assign] |
 auto const expression_def = ret_expr[detail::assign];
 
 BOOST_SPIRIT_DEFINE(variable, identifier, string, array, structure, function,
-                    scope, primary, dot_expr, call_expr, pre_sinop_expr,
-                    post_sinop_expr, mul_expr, shift_expr, cmp_expr, add_expr,
-                    iand_expr, ixor_expr, ior_expr, land_expr, lor_expr,
-                    cond_expr, assign_expr, ret_expr, expression);
+                    scope, attribute_val, primary, dot_expr, attr_expr,
+                    call_expr, pre_sinop_expr, post_sinop_expr, mul_expr,
+                    shift_expr, cmp_expr, add_expr, iand_expr, ixor_expr,
+                    ior_expr, land_expr, lor_expr, cond_expr, assign_expr,
+                    ret_expr, expression);
 
 struct expression {
 

@@ -23,6 +23,9 @@ struct variable : string {
 struct identifier : string {
   using string::string;
 };
+struct attribute_val : string {
+  using string::string;
+};
 using array = value_wrapper<std::vector<expr>>;
 struct arglist : array {
   using array::array;
@@ -40,7 +43,7 @@ using value = boost::variant<
     boost::recursive_wrapper<variable>, boost::recursive_wrapper<identifier>,
     boost::recursive_wrapper<array>, boost::recursive_wrapper<arglist>,
     boost::recursive_wrapper<structure>, boost::recursive_wrapper<function>,
-    boost::recursive_wrapper<scope>>;
+    boost::recursive_wrapper<scope>, boost::recursive_wrapper<attribute_val>>;
 
 }; // namespace ast
 }; // namespace scopion
