@@ -95,18 +95,16 @@ auto assign_sinop = [](auto &&ctx) {
 };
 
 auto assign_attr = [](auto &&ctx) {
-  for (auto const &v : x3::_attr(ctx)) {
-    auto &&key = boost::fusion::at<boost::mpl::int_<0>>(v);
-    // ast::identifier
-    auto &&val = boost::fusion::at<boost::mpl::int_<1>>(v);
-    // ast::attribute_val
-    std::string keystr =
-        ast::val(boost::get<ast::identifier>(boost::get<ast::value>(key)));
-    std::string valstr = val ? ast::val(boost::get<ast::attribute_val>(
-                                   boost::get<ast::value>(*val)))
-                             : "";
-    x3::_val(ctx) = ast::set_attr(x3::_val(ctx), keystr, valstr);
-  }
+  auto &&key = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
+  // ast::identifier
+  auto &&val = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
+  // ast::attribute_val
+  std::string keystr =
+      ast::val(boost::get<ast::identifier>(boost::get<ast::value>(key)));
+  std::string valstr = val ? ast::val(boost::get<ast::attribute_val>(
+                                 boost::get<ast::value>(*val)))
+                           : "";
+  x3::_val(ctx) = ast::set_attr(x3::_val(ctx), keystr, valstr);
 };
 
 } // namespace detail
@@ -207,9 +205,8 @@ auto const dot_expr_def = primary[detail::assign] >>
                           *(("." > identifier)[detail::assign_binop<ast::dot>]);
 
 auto const attr_expr_def = dot_expr[detail::assign] >>
-                           *("(" >> *(identifier >> -("=" > attribute_val) >>
-                                      -x3::lit(",")) >>
-                             ")")[detail::assign_attr];
+                           *("#" >> identifier >>
+                             -(":" > attribute_val))[detail::assign_attr];
 
 auto const call_expr_def = attr_expr[detail::assign] >>
                            *(("(" > *(expression >> -x3::lit(",")) >
