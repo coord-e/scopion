@@ -12,14 +12,6 @@ public:
     return boost::apply_visitor(*this, exp);
   }
 
-  template <typename Op> bool operator()(ast::binary_op<Op> op) const {
-    if (with.type() != typeid(op))
-      return false;
-    compare_expr<ast::expr_base> nr(boost::get<ast::binary_op<Op>>(with).rhs);
-    compare_expr<ast::expr_base> nl(boost::get<ast::binary_op<Op>>(with).lhs);
-    return boost::apply_visitor(nr, op.rhs) && boost::apply_visitor(nl, op.lhs);
-  }
-
   bool operator()(ast::value value) const {
     if (with.type() != typeid(value))
       return false;
