@@ -20,9 +20,11 @@ int main(int argc, char *argv[]) {
     cmdline::parser p;
     p.add<std::string>(
         "type", 't', "Specify the type of output (ir, ast, asm, obj)", false,
-        "exe", cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
+        "obj", cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
     p.add<std::string>("output", 'o', "Specify the output path", false,
                        "./a.out");
+    p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1,
+               cmdline::range(1, 3));
     p.add("help", 'h', "Print this help");
     p.add("version", 'v', "Print version");
     p.footer("filename ...");
@@ -88,6 +90,11 @@ int main(int argc, char *argv[]) {
 
     scopion::assembly::context ctx;
     auto mod = scopion::assembly::module::create(ast, ctx, outpath);
+
+    if (p.exist("optimize")) {
+      auto opt = p.get<int>("optimize");
+      mod->optimize(opt, opt);
+    }
 
     if (outtype == "ir") {
       std::ofstream f(outpath);
