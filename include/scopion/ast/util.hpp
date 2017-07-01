@@ -200,6 +200,19 @@ template <typename T, typename RangeT> T set_where(T val, RangeT range) {
   return val;
 }
 
+template <typename Dest,
+          std::enable_if_t<std::is_convertible<Dest, value>::value> * = nullptr>
+Dest unpack(expr t) {
+  return boost::get<Dest>(boost::get<ast::value>(t));
+}
+
+template <
+    typename Dest,
+    std::enable_if_t<std::is_convertible<Dest, operators>::value> * = nullptr>
+Dest unpack(expr t) {
+  return boost::get<Dest>(boost::get<ast::operators>(t));
+}
+
 }; // namespace ast
 }; // namespace scopion
 

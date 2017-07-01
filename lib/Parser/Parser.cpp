@@ -39,10 +39,8 @@ auto assign_func = [](auto &&ctx) {
   auto &&args = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
   auto &&lines = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
   std::vector<ast::identifier> result;
-  std::transform(
-      args.begin(), args.end(), std::back_inserter(result), [](auto &&x) {
-        return boost::get<ast::identifier>(boost::get<ast::value>(x));
-      });
+  std::transform(args.begin(), args.end(), std::back_inserter(result),
+                 [](auto &&x) { return ast::unpack<ast::identifier>(x); });
   x3::_val(ctx) =
       ast::set_where(ast::function({result, lines}), x3::_where(ctx));
 };
@@ -50,8 +48,8 @@ auto assign_func = [](auto &&ctx) {
 auto assign_struct = [](auto &&ctx) {
   std::map<ast::identifier, ast::expr> result;
   for (auto const &v : x3::_attr(ctx)) {
-    auto &&name = boost::get<ast::identifier>(
-        boost::get<ast::value>(boost::fusion::at<boost::mpl::int_<0>>(v)));
+    auto &&name =
+        ast::unpack<ast::identifier>(boost::fusion::at<boost::mpl::int_<0>>(v));
     auto &&val = boost::fusion::at<boost::mpl::int_<1>>(v);
     result[name] = val;
   }
@@ -99,11 +97,9 @@ auto assign_attr = [](auto &&ctx) {
   // ast::identifier
   auto &&val = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
   // ast::attribute_val
-  std::string keystr =
-      ast::val(boost::get<ast::identifier>(boost::get<ast::value>(key)));
-  std::string valstr = val ? ast::val(boost::get<ast::attribute_val>(
-                                 boost::get<ast::value>(*val)))
-                           : "";
+  std::string keystr = ast::val(ast::unpack<ast::identifier>(key));
+  std::string valstr =
+      val ? ast::val(ast::unpack<ast::attribute_val>(*val)) : "";
   x3::_val(ctx) = ast::set_attr(x3::_val(ctx), keystr, valstr);
 };
 
