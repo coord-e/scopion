@@ -34,7 +34,8 @@ public:
 };
 
 bool operator==(attribute const &lhs, attribute const &rhs) {
-  return (lhs.lval == rhs.lval) && (lhs.to_call == rhs.to_call);
+  return (lhs.lval == rhs.lval) && (lhs.to_call == rhs.to_call) &&
+         (lhs.attributes == rhs.attributes);
 }
 
 template <class T>
