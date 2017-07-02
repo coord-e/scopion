@@ -47,7 +47,7 @@ public:
   template <class Op> scoped_value *operator()(ast::ternary_op<Op> const &op) {
     scoped_value *first = boost::apply_visitor(*this, ast::val(op).exprs[0]);
     scoped_value *second = boost::apply_visitor(*this, ast::val(op).exprs[1]);
-    scoped_value *third = boost::apply_visitor(*this, ast::val(op).exprs[3]);
+    scoped_value *third = boost::apply_visitor(*this, ast::val(op).exprs[2]);
 
     return apply_op(op, first, second, third);
   }

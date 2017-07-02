@@ -212,7 +212,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::call> const &op,
                 ast::attr(op).where, code_range_);
 
   auto &&arglist =
-      boost::get<ast::arglist>(boost::get<ast::value>(ast::val(op).exprs[2]));
+      boost::get<ast::arglist>(boost::get<ast::value>(ast::val(op).exprs[1]));
   if (lhs->getType()->getPointerElementType()->getFunctionNumParams() !=
       ast::val(arglist).size())
     throw error("The number of arguments doesn't match: required " +
