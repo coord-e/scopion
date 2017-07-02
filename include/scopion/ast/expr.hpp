@@ -6,8 +6,10 @@
 
 #include <boost/variant.hpp>
 
-#include <array>
+#include <initializer_list>
 #include <iostream>
+#include <type_traits>
+#include <vector>
 
 namespace scopion {
 namespace ast {
@@ -23,11 +25,9 @@ struct expr : expr_base {
 bool operator==(expr const &lhs, expr const &rhs);
 
 template <class Op, size_t N> struct op_base {
-  std::vector<expr> const &exprs;
+  std::vector<expr> exprs;
 
-  /*template <typename... Args,
-            std::enable_if_t<sizeof...(Args) == N> * = nullptr>
-  op_base(Args... args) : exprs({args...}) {}*/
+  op_base(std::initializer_list<expr> args) : exprs(args) {}
   op_base(std::vector<expr> const &args) : exprs(args) {}
 };
 template <class Op, size_t N>

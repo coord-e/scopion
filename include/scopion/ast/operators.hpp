@@ -42,6 +42,7 @@ struct dec;
 
 template <class Op, size_t N> struct op_base;
 template <class Op, size_t N> using op = value_wrapper<op_base<Op, N>>;
+
 template <class Op> using single_op = op<Op, 1>;
 template <class Op> using binary_op = op<Op, 2>;
 template <class Op> using ternary_op = op<Op, 3>;

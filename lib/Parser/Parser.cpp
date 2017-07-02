@@ -55,43 +55,39 @@ auto assign_var = [](auto &&ctx) {
 template <typename Op, size_t N>
 auto assign_op = [](auto &&ctx) {
   static_assert(N >= 3, "Wrong number of terms");
-  std::array<ast::expr, N> ary;
-  ary[0] = x3::_val(ctx);
-  for (auto const &v : x3::_attr(ctx) | boost::adaptors::indexed()) {
-    ary[v.index() + 1] = v.value();
-  }
+  std::vector<ast::expr> ary;
+  ary.push_back(x3::_val(ctx));
+  boost::fusion::for_each(x3::_attr(ctx),
+                          [&ary](auto &&v) { ary.push_back(v); });
   x3::_val(ctx) = ast::set_where(ast::op<Op, N>(ary), x3::_where(ctx));
 };
 
 template <typename Op>
 auto assign_op<Op, 2> = [](auto &&ctx) {
   x3::_val(ctx) = ast::set_where(
-      ast::binary_op<Op>(ast::op_base<Op, 2>({x3::_val(ctx), x3::_attr(ctx)})),
-      x3::_where(ctx));
+      ast::binary_op<Op>({x3::_val(ctx), x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <typename Op>
 auto assign_op<Op, 1> = [](auto &&ctx) {
   x3::_val(ctx) =
-      ast::set_where(ast::single_op<Op>(ast::op_base<Op, 1>({x3::_attr(ctx)})),
-                     x3::_where(ctx));
+      ast::set_where(ast::single_op<Op>({x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <>
 auto assign_op<ast::assign, 2> = [](auto &&ctx) {
   x3::_val(ctx) =
-      ast::set_where(ast::binary_op<ast::assign>(ast::op_base<ast::assign, 2>(
-                         {ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)})),
+      ast::set_where(ast::binary_op<ast::assign>(
+                         {ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)}),
                      x3::_where(ctx));
 };
 
 template <>
 auto assign_op<ast::call, 2> = [](auto &&ctx) {
-  x3::_val(ctx) =
-      ast::set_where(ast::binary_op<ast::call>(ast::op<ast::call, 2>(
-                         {ast::set_to_call(x3::_val(ctx), true),
-                          ast::arglist(x3::_attr(ctx))})),
-                     x3::_where(ctx));
+  x3::_val(ctx) = ast::set_where(
+      ast::binary_op<ast::call>({ast::set_to_call(x3::_val(ctx), true),
+                                 ast::arglist(x3::_attr(ctx))}),
+      x3::_where(ctx));
 };
 
 } // namespace detail
