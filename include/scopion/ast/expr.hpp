@@ -6,10 +6,11 @@
 
 #include <boost/variant.hpp>
 
+#include <algorithm>
+#include <array>
 #include <initializer_list>
 #include <iostream>
 #include <type_traits>
-#include <vector>
 
 namespace scopion {
 namespace ast {
@@ -25,10 +26,14 @@ struct expr : expr_base {
 bool operator==(expr const &lhs, expr const &rhs);
 
 template <class Op, size_t N> struct op_base {
-  std::vector<expr> exprs;
+  std::array<expr, N> exprs;
 
-  op_base(std::initializer_list<expr> args) : exprs(args) {}
-  op_base(std::vector<expr> const &args) : exprs(args) {}
+  op_base(std::initializer_list<expr> args) {
+    assert(N == args.size() &&
+           "Initialization with wrong number of expression");
+    std::copy(args.begin(), args.end(), exprs.begin());
+  }
+  op_base(std::array<expr, N> const &args) : exprs(args) {}
 
   inline expr const &operator[](size_t idx) const { return exprs[idx]; }
 };

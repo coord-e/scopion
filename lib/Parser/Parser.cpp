@@ -55,10 +55,10 @@ auto assign_var = [](auto &&ctx) {
 template <typename Op, size_t N>
 auto assign_op = [](auto &&ctx) {
   static_assert(N >= 3, "Wrong number of terms");
-  std::vector<ast::expr> ary;
-  ary.push_back(x3::_val(ctx));
-  boost::fusion::for_each(x3::_attr(ctx),
-                          [&ary](auto &&v) { ary.push_back(v); });
+  std::array<ast::expr, N> ary;
+  auto it = ary.begin();
+  *it = x3::_val(ctx);
+  boost::fusion::for_each(x3::_attr(ctx), [&it](auto &&v) { *(++it) = v; });
   x3::_val(ctx) = ast::set_where(ast::op<Op, N>(ary), x3::_where(ctx));
 };
 
