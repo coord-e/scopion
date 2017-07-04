@@ -6,7 +6,11 @@
 
 #include <boost/variant.hpp>
 
+#include <algorithm>
+#include <array>
+#include <initializer_list>
 #include <iostream>
+#include <type_traits>
 
 namespace scopion {
 namespace ast {
@@ -21,36 +25,20 @@ struct expr : expr_base {
 };
 bool operator==(expr const &lhs, expr const &rhs);
 
-template <class Op> struct single_op {
-  expr value;
-  attribute attr;
+template <class Op, size_t N> struct op_base {
+  std::array<expr, N> exprs;
 
-  single_op(expr const &value_) : value(value_) {}
+  op_base(std::initializer_list<expr> args) {
+    assert(N == args.size() &&
+           "Initialization with wrong number of expression");
+    std::copy(args.begin(), args.end(), exprs.begin());
+  }
+  op_base(std::array<expr, N> const &args) : exprs(args) {}
+
+  inline expr const &operator[](size_t idx) const { return exprs[idx]; }
 };
-template <class Op>
-bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs);
-
-template <class Op> struct binary_op {
-  expr lhs;
-  expr rhs;
-  attribute attr;
-
-  binary_op(expr const &lhs_, expr const &rhs_) : lhs(lhs_), rhs(rhs_) {}
-};
-template <class Op>
-bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs);
-
-template <class Op> struct ternary_op {
-  expr first;
-  expr second;
-  expr third;
-  attribute attr;
-
-  ternary_op(expr const &first_, expr const &second_, expr const &third_)
-      : first(first_), second(second_), third(third_) {}
-};
-template <class Op>
-bool operator==(ternary_op<Op> const &lhs, ternary_op<Op> const &rhs);
+template <class Op, size_t N>
+bool operator==(op_base<Op, N> const &lhs, op_base<Op, N> const &rhs);
 
 std::ostream &operator<<(std::ostream &os, expr const &tree);
 

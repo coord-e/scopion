@@ -3,6 +3,8 @@
 
 #include "scopion/ast/attribute.hpp"
 
+#include <type_traits>
+
 namespace scopion {
 namespace ast {
 
@@ -12,9 +14,10 @@ public:
   attribute attr;
 
   value_wrapper(T const &val) : value(val) {}
+  template <typename U,
+            std::enable_if_t<std::is_constructible<T, U>::value> * = nullptr>
+  value_wrapper(U const &val) : value(T(val)) {}
   value_wrapper() : value(T()) {}
-
-  operator T() const { return value; }
 };
 template <class T>
 bool operator==(value_wrapper<T> const &lhs, value_wrapper<T> const &rhs);

@@ -94,20 +94,13 @@ public:
     _s << "} ";
   }
 
-  template <typename T> auto operator()(const binary_op<T> &o) const -> void {
+  template <typename Op, size_t N>
+  auto operator()(const op<Op, N> &o) const -> void {
     _s << "{ ";
-    boost::apply_visitor(*this, o.lhs);
-    _s << " " << op_to_str(o) << " ";
-    boost::apply_visitor(*this, o.rhs);
-    _s << " }";
-    if (attr(o).lval)
-      _s << "(lhs)";
-  }
-
-  template <typename T> auto operator()(const single_op<T> &o) const -> void {
-    _s << "{ ";
-    _s << op_to_str(o);
-    boost::apply_visitor(*this, o.value);
+    for (auto const &e : ast::val(o).exprs) {
+      boost::apply_visitor(*this, e);
+      _s << " " << op_to_str(o) << " ";
+    }
     _s << " }";
     if (attr(o).lval)
       _s << "(lhs)";
@@ -116,11 +109,11 @@ public:
   template <typename T> auto operator()(const ternary_op<T> &o) const -> void {
     _s << "{ ";
     auto ops = op_to_str(o);
-    boost::apply_visitor(*this, o.first);
+    boost::apply_visitor(*this, ast::val(o)[0]);
     _s << " " << ops.first << " ";
-    boost::apply_visitor(*this, o.second);
+    boost::apply_visitor(*this, ast::val(o)[1]);
     _s << " " << ops.second << " ";
-    boost::apply_visitor(*this, o.third);
+    boost::apply_visitor(*this, ast::val(o)[2]);
     _s << " }";
     if (attr(o).lval)
       _s << "(lhs)";

@@ -12,6 +12,18 @@ public:
     return boost::apply_visitor(*this, exp);
   }
 
+  template <typename Op, size_t N> bool operator()(ast::op<Op, N> o) const {
+    if (with.type() != typeid(o))
+      return false;
+    for (size_t i = 0; i < N; i++) {
+      if (!boost::apply_visitor(compare_expr<ast::expr_base>(ast::val(
+                                    boost::get<ast::op<Op, N>>(with))[i]),
+                                ast::val(o)[i]))
+        return false;
+    }
+    return true;
+  }
+
   bool operator()(ast::value value) const {
     if (with.type() != typeid(value))
       return false;
@@ -47,19 +59,9 @@ bool operator==(expr const &lhs, expr const &rhs) {
   return boost::apply_visitor(compare_expr<expr>(lhs), rhs);
 }
 
-template <class Op>
-bool operator==(single_op<Op> const &lhs, single_op<Op> const &rhs) {
-  return (lhs.value == rhs.value) && (ast::attr(lhs) == ast::attr(rhs));
-}
-template <class Op>
-bool operator==(binary_op<Op> const &lhs, binary_op<Op> const &rhs) {
-  return (lhs.rhs == rhs.rhs) && (lhs.lhs == rhs.lhs) &&
-         (ast::attr(lhs) == ast::attr(rhs));
-}
-template <class Op>
-bool operator==(ternary_op<Op> const &lhs, ternary_op<Op> const &rhs) {
-  return (lhs.first == rhs.first) && (lhs.second == rhs.second) &&
-         (lhs.third == rhs.third) && (ast::attr(lhs) == ast::attr(rhs));
+template <typename Op, size_t N>
+bool operator==(op_base<Op, N> const &lhs, op_base<Op, N> const &rhs) {
+  return lhs.exprs == rhs.exprs;
 }
 
 } // namespace ast

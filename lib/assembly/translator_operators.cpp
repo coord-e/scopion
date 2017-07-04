@@ -139,7 +139,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::ltq> const &op,
 scoped_value *translator::apply_op(ast::binary_op<ast::assign> const &op,
                                    scoped_value *const lhs, scoped_value *rhs) {
   if (!lhs) { // first appear in the block (only variable)
-    auto &&lvar = ast::unpack<ast::variable>(op.lhs);
+    auto &&lvar = ast::unpack<ast::variable>(ast::val(op)[0]);
     if (rhs->hasBlock()) {
       currentScope_->symbols[ast::val(lvar)] = rhs; // aliasing
       return rhs;
@@ -217,7 +217,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::call> const &op,
                     getNameString(lhs->getType()),
                 ast::attr(op).where, code_range_);
 
-  auto &&arglist = ast::unpack<ast::arglist>(op.rhs);
+  auto &&arglist = ast::unpack<ast::arglist>(ast::val(op)[1]);
   if (lhs->getType()->getPointerElementType()->getFunctionNumParams() !=
       ast::val(arglist).size())
     throw error("The number of arguments doesn't match: required " +
@@ -287,8 +287,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::at> const &op,
 
 scoped_value *translator::apply_op(ast::binary_op<ast::dot> const &op,
                                    scoped_value *lhs, scoped_value *const rhs) {
-  auto id =
-      ast::val(ast::unpack<ast::identifier>(op.rhs));
+  auto id = ast::val(ast::unpack<ast::identifier>(ast::val(op)[0]));
 
   if (!lhs->getType()->isPointerTy())
     throw error("Cannot get \"" + id + "\" from non-pointer type " +

@@ -3,6 +3,7 @@
 
 #include "scopion/ast/attribute.hpp"
 #include "scopion/ast/expr.hpp"
+#include "scopion/ast/value_wrapper.hpp"
 
 #include <boost/variant.hpp>
 
@@ -40,9 +41,12 @@ struct inot;
 struct inc;
 struct dec;
 
-template <class Op> struct single_op;
-template <class Op> struct binary_op;
-template <class Op> struct ternary_op;
+template <class Op, size_t N> struct op_base;
+template <class Op, size_t N> using op = value_wrapper<op_base<Op, N>>;
+
+template <class Op> using single_op = op<Op, 1>;
+template <class Op> using binary_op = op<Op, 2>;
+template <class Op> using ternary_op = op<Op, 3>;
 
 using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<sub>>,
