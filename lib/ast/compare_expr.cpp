@@ -18,8 +18,8 @@ public:
     for (size_t i = 0; i < N; i++) {
       if (!boost::apply_visitor(
               compare_expr<ast::expr_base>(
-                  ast::val(boost::get<ast::op<Op, N>>(with)).exprs[i]),
-              ast::val(o).exprs[i]))
+                  ast::val(boost::get<ast::op<Op, N>>(with))[i]),
+              ast::val(o)[i]))
         return false;
     }
     return true;

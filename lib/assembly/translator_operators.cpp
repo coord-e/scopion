@@ -137,7 +137,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::assign> const &op,
                                    scoped_value *const lhs, scoped_value *rhs) {
   if (!lhs) { // first appear in the block (only variable)
     auto &&lvar = boost::get<ast::variable>(
-        boost::get<ast::value>(ast::val(op).exprs[0]));
+        boost::get<ast::value>(ast::val(op)[0]));
     if (rhs->hasBlock()) {
       currentScope_->symbols[ast::val(lvar)] = rhs; // aliasing
       return rhs;
@@ -212,7 +212,7 @@ scoped_value *translator::apply_op(ast::binary_op<ast::call> const &op,
                 ast::attr(op).where, code_range_);
 
   auto &&arglist =
-      boost::get<ast::arglist>(boost::get<ast::value>(ast::val(op).exprs[1]));
+      boost::get<ast::arglist>(boost::get<ast::value>(ast::val(op)[1]));
   if (lhs->getType()->getPointerElementType()->getFunctionNumParams() !=
       ast::val(arglist).size())
     throw error("The number of arguments doesn't match: required " +

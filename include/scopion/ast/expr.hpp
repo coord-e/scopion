@@ -29,6 +29,8 @@ template <class Op, size_t N> struct op_base {
 
   op_base(std::initializer_list<expr> args) : exprs(args) {}
   op_base(std::vector<expr> const &args) : exprs(args) {}
+
+  inline expr const &operator[](size_t idx) const { return exprs[idx]; }
 };
 template <class Op, size_t N>
 bool operator==(op_base<Op, N> const &lhs, op_base<Op, N> const &rhs);

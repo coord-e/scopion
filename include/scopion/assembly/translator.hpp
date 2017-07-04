@@ -34,20 +34,20 @@ public:
   scoped_value *operator()(ast::scope const &value);
 
   template <class Op> scoped_value *operator()(ast::single_op<Op> const &op) {
-    return apply_op(op, boost::apply_visitor(*this, ast::val(op).exprs[0]));
+    return apply_op(op, boost::apply_visitor(*this, ast::val(op)[0]));
   }
 
   template <class Op> scoped_value *operator()(ast::binary_op<Op> const &op) {
-    scoped_value *lhs = boost::apply_visitor(*this, ast::val(op).exprs[0]);
-    scoped_value *rhs = boost::apply_visitor(*this, ast::val(op).exprs[1]);
+    scoped_value *lhs = boost::apply_visitor(*this, ast::val(op)[0]);
+    scoped_value *rhs = boost::apply_visitor(*this, ast::val(op)[1]);
 
     return apply_op(op, lhs, rhs);
   }
 
   template <class Op> scoped_value *operator()(ast::ternary_op<Op> const &op) {
-    scoped_value *first = boost::apply_visitor(*this, ast::val(op).exprs[0]);
-    scoped_value *second = boost::apply_visitor(*this, ast::val(op).exprs[1]);
-    scoped_value *third = boost::apply_visitor(*this, ast::val(op).exprs[2]);
+    scoped_value *first = boost::apply_visitor(*this, ast::val(op)[0]);
+    scoped_value *second = boost::apply_visitor(*this, ast::val(op)[1]);
+    scoped_value *third = boost::apply_visitor(*this, ast::val(op)[2]);
 
     return apply_op(op, first, second, third);
   }
