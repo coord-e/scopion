@@ -16,13 +16,13 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Wextra -Wno-unused-parameter -DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50")
+set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Weverything -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50")
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0 -fsanitize=address")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 set(CCMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native")
 
 include_directories(include)
-include_directories(extsrc/include)
+include_directories(SYSTEM extsrc/include)
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(Boost COMPONENTS system filesystem REQUIRED)
@@ -30,7 +30,7 @@ find_package(Boost COMPONENTS system filesystem REQUIRED)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-include_directories(${LLVM_INCLUDE_DIRS})
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS}) # LLVM headers have a lot of warnings with -Weverything
 add_definitions(${LLVM_DEFINITIONS})
 llvm_map_components_to_libnames(LLVM_LIBRARIES all)
 
