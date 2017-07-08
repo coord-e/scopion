@@ -23,12 +23,15 @@ template <typename T> const attribute &attr(T const &w) { return w.attr; }
 
 namespace visitors_ {
 
-struct setter_visitor : boost::static_visitor<expr> {
+class setter_visitor : boost::static_visitor<expr> {
+protected:
+  std::function<void(attribute &)> f_;
 
-  virtual void process(attribute &val) const {}
+public:
+  template <typename T> setter_visitor(T f) : f_(f) {}
 
   template <typename T> expr operator()(T val) const {
-    process(attr(val));
+    f_(attr(val));
     return val;
   }
 
@@ -44,22 +47,23 @@ struct setter_visitor : boost::static_visitor<expr> {
 struct setter_recursive_visitor : setter_visitor {
 
   using setter_visitor::operator();
+  using setter_visitor::setter_visitor;
 
   template <typename Op> expr operator()(single_op<Op> val) const {
-    process(attr(val));
+    f_(attr(val));
     val.value = boost::apply_visitor(*this, val.value);
     return val;
   }
 
   template <typename Op> expr operator()(binary_op<Op> val) const {
-    process(attr(val));
+    f_(attr(val));
     val.lhs = boost::apply_visitor(*this, val.lhs);
     val.rhs = boost::apply_visitor(*this, val.rhs);
     return val;
   }
 
   template <typename Op> expr operator()(ternary_op<Op> val) const {
-    process(attr(val));
+    f_(attr(val));
     val.first = boost::apply_visitor(*this, val.first);
     val.second = boost::apply_visitor(*this, val.second);
     val.third = boost::apply_visitor(*this, val.third);
@@ -67,65 +71,27 @@ struct setter_recursive_visitor : setter_visitor {
   }
 };
 
-struct set_lval_visitor : setter_recursive_visitor {
-  using setter_recursive_visitor::operator();
-
-  const bool v;
-
-  set_lval_visitor(bool v_) : v(v_) {}
-
-  virtual void process(attribute &val) const { val.lval = v; }
-};
-
-struct set_to_call_visitor : setter_recursive_visitor {
-  using setter_recursive_visitor::operator();
-
-  const bool v;
-
-  set_to_call_visitor(bool v_) : v(v_) {}
-
-  virtual void process(attribute &val) const { val.to_call = v; }
-};
-
-struct set_survey_visitor : setter_recursive_visitor {
-  using setter_recursive_visitor::operator();
-
-  const bool v;
-
-  set_survey_visitor(bool v_) : v(v_) {}
-
-  virtual void process(attribute &val) const { val.survey = v; }
-};
-
-struct set_attr_visitor : setter_visitor {
-  using setter_visitor::operator();
-
-  std::string const &key;
-  std::string const &val;
-
-  set_attr_visitor(std::string const &key_, std::string const &val_)
-      : key(key_), val(val_) {}
-
-  virtual void process(attribute &v) const { v.attributes[key] = val; }
-};
-
 }; // namespace visitors_
 
 template <typename T> expr set_lval(T t, bool val) {
-  return visitors_::set_lval_visitor(val)(t);
+  return visitors_::setter_recursive_visitor(
+      [val](attribute &attr) { attr.lval = val; })(t);
 }
 
 template <typename T> expr set_to_call(T t, bool val) {
-  return visitors_::set_to_call_visitor(val)(t);
+  return visitors_::setter_recursive_visitor(
+      [val](attribute &attr) { attr.to_call = val; })(t);
 }
 
 template <typename T> expr set_survey(T t, bool val) {
-  return visitors_::set_survey_visitor(val)(t);
+  return visitors_::setter_recursive_visitor(
+      [val](attribute &attr) { attr.survey = val; })(t);
 }
 
 template <typename T>
 expr set_attr(T t, std::string const &key, std::string const &val) {
-  return visitors_::set_attr_visitor(key, val)(t);
+  return visitors_::setter_visitor(
+      [key, val](attribute &attr) { attr.attributes[key] = val; })(t);
 }
 
 template <typename T, typename RangeT> T set_where(T val, RangeT range) {

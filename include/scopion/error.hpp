@@ -22,7 +22,7 @@ public:
       : std::runtime_error(message), where(where_), code(code_), level(level_) {
   }
 
-  uint32_t line_number() const {
+  uint64_t line_number() const {
     return std::count(code.begin(), where.begin(), '\n');
   }
   str_range_t line_range() const {
@@ -35,7 +35,7 @@ public:
     auto r = line_range();
     return std::string(r.begin(), r.end());
   }
-  uint16_t distance() const {
+  uint64_t distance() const {
     auto r = line_range();
     return std::distance(r.begin(), where.begin());
   }
