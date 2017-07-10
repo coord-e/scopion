@@ -189,9 +189,10 @@ scoped_value *translator::operator()(ast::array const &value) {
 
   auto aryType = llvm::ArrayType::get(t, ary.size());
   auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
-  for (auto const &v : values | boost::adaptors::indexed()) {
-    std::vector<llvm::Value *> idxList = {builder_.getInt32(0),
-                                          builder_.getInt32(v.index())};
+  for (auto const v : values | boost::adaptors::indexed()) {
+    std::vector<llvm::Value *> idxList = {
+        builder_.getInt32(0),
+        builder_.getInt32(static_cast<uint32_t>(v.index()))};
     auto p = builder_.CreateInBoundsGEP(aryType, aryPtr,
                                         llvm::ArrayRef<llvm::Value *>(idxList));
 
@@ -224,8 +225,9 @@ scoped_value *translator::operator()(ast::structure const &value) {
   structTy->setBody(fields);
 
   auto ptr = builder_.CreateAlloca(structTy);
-  for (auto const &v : vals | boost::adaptors::indexed()) {
-    auto p = builder_.CreateStructGEP(structTy, ptr, v.index());
+  for (auto const v : vals | boost::adaptors::indexed()) {
+    auto p = builder_.CreateStructGEP(structTy, ptr,
+                                      static_cast<uint32_t>(v.index()));
     builder_.CreateStore(v.value()->getValue(), p);
   }
 

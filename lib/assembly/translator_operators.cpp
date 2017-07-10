@@ -227,11 +227,11 @@ scoped_value *translator::apply_op(ast::binary_op<ast::call> const &op,
                     " but supplied " + std::to_string(ast::val(arglist).size()),
                 ast::attr(op).where, code_range_);
   std::vector<llvm::Value *> args;
-  for (auto const &arg : ast::val(arglist) | boost::adaptors::indexed()) {
+  for (auto const arg : ast::val(arglist) | boost::adaptors::indexed()) {
     auto v = boost::apply_visitor(*this, arg.value());
     auto expected =
         lhs->getType()->getPointerElementType()->getFunctionParamType(
-            arg.index());
+            static_cast<uint32_t>(arg.index()));
     if (v->getType() != expected)
       throw error("The type of argument " + std::to_string(arg.index() + 1) +
                       " doesn't match: expected " + getNameString(expected) +
@@ -319,8 +319,9 @@ scoped_value *translator::apply_op(ast::binary_op<ast::dot> const &op,
                 code_range_); // %TYPENAME = type {...} -> type {...}
   }
 
-  auto ptr = builder_.CreateStructGEP(lval->getType()->getPointerElementType(),
-                                      lval, std::distance(themap.cbegin(), it));
+  auto ptr = builder_.CreateStructGEP(
+      lval->getType()->getPointerElementType(), lval,
+      static_cast<uint32_t>(std::distance(themap.cbegin(), it)));
 
   if (ast::attr(op).lval)
     return new scoped_value(ptr);

@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     auto mod = scopion::assembly::module::create(ast, ctx, outpath);
 
     if (p.exist("optimize")) {
-      auto opt = p.get<int>("optimize");
+      auto opt = static_cast<uint8_t>(p.get<int>("optimize"));
       mod->optimize(opt, opt);
     }
 
