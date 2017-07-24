@@ -14,11 +14,10 @@ namespace scopion {
 namespace assembly {
 
 translator::translator(std::shared_ptr<llvm::Module> &module,
-                       llvm::IRBuilder<> const &builder,
-                       std::string const &code)
-    : boost::static_visitor<scoped_value *>(), module_(module),
-      builder_(builder),
+                       llvm::IRBuilder<> &builder, std::string const &code)
+    : boost::static_visitor<value_t>(), module_(module), builder_(builder),
       code_range_(boost::make_iterator_range(code.begin(), code.end())) {
+  auto ib = builder_.GetInsertBlock();
   {
     std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
 
@@ -101,8 +100,8 @@ value_t translator::operator()(ast::string const &value) {
 
 value_t translator::operator()(ast::variable const &value) {
   if (ast::attr(value).to_call) { // in case of function
-    auto valp = module_->getFunction(
-        ast::val(value));  // find globally declared function
+    // find globally declared function
+    auto valp = module_->getFunction(ast::val(value));
     if (valp != nullptr) { // found
       return valp;
     } else {
