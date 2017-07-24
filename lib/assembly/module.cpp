@@ -32,17 +32,18 @@ std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
       llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
       llvm::Function::ExternalLinkage, "main", mod.get());
 
+  translator tr(mod, builder, tree.code);
+
   builder.SetInsertPoint(
       llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 
-  translator tr(mod, builder, tree.code);
   auto val = boost::apply_visitor(tr, tree.ast);
 
-  builder.CreateCall(val->getValue(), llvm::ArrayRef<llvm::Value *>({}));
+  // builder.CreateCall(val->getValue(), llvm::ArrayRef<llvm::Value *>({}));
 
   builder.CreateRet(builder.getInt32(0));
 
-  return std::unique_ptr<module>(new module(mod, val->getValue()));
+  return std::unique_ptr<module>(new module(mod, val));
 }
 
 std::string module::irgen() {

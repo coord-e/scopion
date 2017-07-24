@@ -1,5 +1,5 @@
-#include "scopion/assembly/scoped_value.hpp"
 #include "scopion/assembly/translator.hpp"
+#include "scopion/assembly/value.hpp"
 
 #include "scopion/error.hpp"
 
@@ -52,17 +52,18 @@ translator::translator(std::shared_ptr<llvm::Module> &module,
     builder_.CreateCall(module_->getFunction("printf"), args);
     builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0, true));
   }
+  builder_.SetInsertPoint(ib);
 }
 
-scoped_value *translator::operator()(ast::value value) {
+value_t translator::operator()(ast::value value) {
   return boost::apply_visitor(*this, value);
 }
 
-scoped_value *translator::operator()(ast::operators value) {
+value_t translator::operator()(ast::operators value) {
   return boost::apply_visitor(*this, value);
 }
 
-scoped_value *translator::operator()(ast::integer value) {
+value_t translator::operator()(ast::integer value) {
   if (ast::attr(value).lval)
     throw error("An integer constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -71,11 +72,10 @@ scoped_value *translator::operator()(ast::integer value) {
     throw error("An integer constant is not to be called",
                 ast::attr(value).where, code_range_);
 
-  return new scoped_value(
-      llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value)));
+  return llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value));
 }
 
-scoped_value *translator::operator()(ast::boolean value) {
+value_t translator::operator()(ast::boolean value) {
   if (ast::attr(value).lval)
     throw error("A boolean constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -84,11 +84,10 @@ scoped_value *translator::operator()(ast::boolean value) {
     throw error("A boolean constant is not to be called",
                 ast::attr(value).where, code_range_);
 
-  return new scoped_value(
-      llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value)));
+  return llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value));
 }
 
-scoped_value *translator::operator()(ast::string const &value) {
+value_t translator::operator()(ast::string const &value) {
   if (ast::attr(value).lval)
     throw error("A string constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -97,22 +96,21 @@ scoped_value *translator::operator()(ast::string const &value) {
     throw error("A string constant is not to be called", ast::attr(value).where,
                 code_range_);
 
-  return new scoped_value(builder_.CreateGlobalStringPtr(ast::val(value)));
+  return builder_.CreateGlobalStringPtr(ast::val(value));
 }
 
-scoped_value *translator::operator()(ast::variable const &value) {
-  if (ast::attr(value).to_call) {
-    auto valp = module_->getFunction(ast::val(value));
-    if (valp != nullptr) {
-      return new scoped_value(valp);
+value_t translator::operator()(ast::variable const &value) {
+  if (ast::attr(value).to_call) { // in case of function
+    auto valp = module_->getFunction(
+        ast::val(value));  // find globally declared function
+    if (valp != nullptr) { // found
+      return valp;
     } else {
       try {
-        auto varp = currentScope_->symbols.at(ast::val(value));
+        auto varp = getSymbols(currentScope_).at(ast::val(value));
 
-        if (varp->hasBlock()) {
-          return varp;
-        } else {
-          auto vval = varp->getValue();
+        if (varp.type() == typeid(llvm::Value *)) { // llvm value
+          auto vval = get_v(varp, value);
           if (!vval->getType()->isPointerTy())
             throw error("Variable \"" + ast::val(value) +
                             "\" should be a pointer but " +
@@ -123,32 +121,35 @@ scoped_value *translator::operator()(ast::variable const &value) {
                     ->getPointerElementType()
                     ->getPointerElementType()
                     ->isFunctionTy()) {
-              return new scoped_value(builder_.CreateLoad(vval));
+              return builder_.CreateLoad(vval);
             }
           }
           throw error(
               "Variable \"" + ast::val(value) + "\" is not a function but " +
                   getNameString(vval->getType()->getPointerElementType()),
               ast::attr(value).where, code_range_);
-        }
+        } else // lazy value
+          return varp;
       } catch (std::out_of_range &) {
         throw error("Function \"" + ast::val(value) +
                         "\" has not declared in this scope",
                     ast::attr(value).where, code_range_);
       }
     }
-  } else {
+  } else { // not function (normal variable)
     try {
-      auto valp = currentScope_->symbols.at(ast::val(value));
-      if (ast::attr(value).lval) {
+      auto valp = getSymbols(currentScope_).at(ast::val(value));
+      if (ast::attr(value).lval) { // to be assigned
         return valp;
       } else {
-        auto np = new scoped_value(*valp);
-        np->setValue(builder_.CreateLoad(valp->getValue()));
-        return np;
+        if (valp.type() == typeid(llvm::Value *))
+          return builder_.CreateLoad(get_v(valp, value));
+        else // lazy value
+          return valp;
       }
     } catch (std::out_of_range &) {
       if (ast::attr(value).lval) {
+        // not found in symbols & to be assigned -> declaration
         return nullptr;
       } else {
         throw error("\"" + ast::val(value) +
@@ -160,11 +161,9 @@ scoped_value *translator::operator()(ast::variable const &value) {
   assert(false);
 }
 
-scoped_value *translator::operator()(ast::identifier const &value) {
-  return nullptr;
-}
+value_t translator::operator()(ast::identifier const &value) { return nullptr; }
 
-scoped_value *translator::operator()(ast::array const &value) {
+value_t translator::operator()(ast::array const &value) {
   if (ast::attr(value).lval)
     throw error("An array constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -174,10 +173,11 @@ scoped_value *translator::operator()(ast::array const &value) {
                 code_range_);
 
   auto &ary = ast::val(value);
-  std::vector<scoped_value *> values;
+  std::vector<llvm::Value *> values;
   for (auto const &elm : ary) {
     // Convert exprs to llvm::Value* and store it into new vector
-    values.push_back(boost::apply_visitor(*this, elm));
+    value_t v = boost::apply_visitor(*this, elm);
+    values.push_back(get_v(v, value));
   }
 
   auto t = values.empty() ? builder_.getVoidTy() : values[0]->getType();
@@ -196,25 +196,21 @@ scoped_value *translator::operator()(ast::array const &value) {
     auto p = builder_.CreateInBoundsGEP(aryType, aryPtr,
                                         llvm::ArrayRef<llvm::Value *>(idxList));
 
-    builder_.CreateStore(v.value()->getValue(), p);
+    builder_.CreateStore(get_v(v.value(), value), p);
   }
-  return new scoped_value(aryPtr);
+  return aryPtr;
 }
 
-scoped_value *translator::operator()(ast::arglist const &value) {
-  return nullptr;
-}
+value_t translator::operator()(ast::arglist const &value) { return nullptr; }
 
-scoped_value *translator::operator()(ast::structure const &value) {
-  std::vector<scoped_value *> vals;
+value_t translator::operator()(ast::structure const &value) {
+  std::vector<value_t> vals;
   std::vector<llvm::Type *> fields;
   auto structName = createNewStructName();
 
-  auto strc = new scoped_value();
-
   for (auto const &m : ast::val(value)) {
     fields_map[structName].push_back(ast::val(m.first));
-    auto vp = boost::apply_visitor(*this, m.second);
+    auto vp = get_v(boost::apply_visitor(*this, m.second), value);
     fields.push_back(vp->getType());
 
     vals.push_back(vp);
@@ -228,15 +224,13 @@ scoped_value *translator::operator()(ast::structure const &value) {
   for (auto const v : vals | boost::adaptors::indexed()) {
     auto p = builder_.CreateStructGEP(structTy, ptr,
                                       static_cast<uint32_t>(v.index()));
-    builder_.CreateStore(v.value()->getValue(), p);
+    builder_.CreateStore(get_v(v.value(), value), p);
   }
 
-  strc->setValue(ptr);
-
-  return strc;
+  return ptr;
 }
 
-scoped_value *translator::operator()(ast::function const &fcv) {
+value_t translator::operator()(ast::function const &fcv) {
   if (ast::attr(fcv).lval)
     throw error("A function constant is not to be assigned",
                 ast::attr(fcv).where, code_range_);
@@ -244,126 +238,35 @@ scoped_value *translator::operator()(ast::function const &fcv) {
   auto &args = ast::val(fcv).first;
   auto &lines = ast::val(fcv).second;
 
-  std::vector<llvm::Type *> func_args_type(args.size(), builder_.getInt32Ty());
-  llvm::FunctionType *func_type =
-      llvm::FunctionType::get(builder_.getVoidTy(), func_args_type, false);
-  llvm::Function *func = llvm::Function::Create(
-      func_type, llvm::Function::ExternalLinkage, "", module_.get());
-  llvm::BasicBlock *entry =
-      llvm::BasicBlock::Create(module_->getContext(),
-                               "entryf", // BasicBlockの名前
-                               func);
-  auto prevScope = std::move(currentScope_);
-  currentScope_ = new scoped_value(entry, &lines);
-
-  auto pb = builder_.GetInsertBlock();
-  auto pp = builder_.GetInsertPoint();
-
-  builder_.SetInsertPoint(entry); // entryの開始
-
-  currentScope_->symbols["self"] =
-      new scoped_value{builder_.CreateAlloca(func->getType(), nullptr, "self")};
-
-  for (auto const &v : args) {
-    currentScope_->symbols[ast::val(v)] =
-        new scoped_value{builder_.CreateAlloca(
-            builder_.getInt32Ty(), nullptr, ast::val(v))}; // declare arguments
+  llvm::FunctionType *func_type = llvm::FunctionType::get(
+      builder_.getVoidTy(),
+      std::vector<llvm::Type *>(args.size(), builder_.getInt32Ty()), false);
+  llvm::Function *func =
+      llvm::Function::Create(func_type, llvm::Function::ExternalLinkage);
+  auto lv = lazy_value<llvm::Function>(func, lines);
+  for (auto const arg : args | boost::adaptors::indexed()) {
+    lv.symbols[std::to_string(arg.index()) + ":" + ast::val(arg.value())] =
+        nullptr; // add number prefixes to remember the order
   }
-
-  for (auto const &line : lines) {
-    auto e = ast::set_survey(line, true);
-    boost::apply_visitor(*this, e);
-  }
-
-  llvm::Type *ret_type = nullptr;
-  for (auto const &bb : *func) {
-    for (auto itr = bb.getInstList().begin(); itr != bb.getInstList().end();
-         ++itr) {
-      if ((*itr).getOpcode() == llvm::Instruction::Ret) {
-        if ((*itr).getOperand(0)->getType() != ret_type) {
-          if (ret_type == nullptr) {
-            ret_type = (*itr).getOperand(0)->getType();
-          } else {
-            throw error("All return values must have the same type",
-                        ast::attr(fcv).where, code_range_);
-          }
-        }
-      }
-    }
-  }
-
-  if (ret_type == nullptr) {
-    builder_.CreateRetVoid();
-    ret_type = builder_.getVoidTy();
-  }
-
-  func->eraseFromParent(); // remove old one
-
-  std::vector<llvm::Type *> args_type = {builder_.getInt32Ty()};
-  llvm::Function *newfunc;
-  if (ast::attr(fcv).survey) {
-    newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, func_args_type, false),
-        llvm::Function::ExternalLinkage);
-  } else { // Create the real content of function if it
-           // isn't in survey
-
-    newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, func_args_type, false),
-        llvm::Function::ExternalLinkage, "", module_.get());
-
-    llvm::BasicBlock *newentry =
-        llvm::BasicBlock::Create(module_->getContext(),
-                                 "entry", // BasicBlockの名前
-                                 newfunc);
-
-    currentScope_ = new scoped_value(newentry, &lines);
-    builder_.SetInsertPoint(newentry);
-
-    auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
-    currentScope_->symbols["self"] = new scoped_value{selfptr};
-    builder_.CreateStore(newfunc, selfptr);
-
-    auto it = newfunc->getArgumentList().begin();
-    for (auto const &v : args) {
-      auto aptr = builder_.CreateAlloca(builder_.getInt32Ty(), nullptr,
-                                        ast::val(v)); // declare arguments
-      currentScope_->symbols[ast::val(v)] = new scoped_value{aptr};
-      builder_.CreateStore(&(*it), aptr);
-      it++;
-    }
-
-    for (auto const &line : lines) {
-      boost::apply_visitor(*this, line);
-    }
-
-    if (ret_type == builder_.getVoidTy()) {
-      builder_.CreateRetVoid();
-    }
-  }
-
-  currentScope_ = std::move(prevScope);
-  builder_.SetInsertPoint(pb, pp); // entryを抜ける
-
-  return new scoped_value(newfunc);
+  return lv;
 }
 
-scoped_value *translator::operator()(ast::scope const &scv) {
+value_t translator::operator()(ast::scope const &scv) {
   auto bb = llvm::BasicBlock::Create(module_->getContext()); // empty
-  auto newsc = new scoped_value(bb, new std::vector<ast::expr>(ast::val(scv)));
+  auto newsc = lazy_value<llvm::BasicBlock>(bb, ast::val(scv));
 
-  std::copy(currentScope_->symbols.begin(), currentScope_->symbols.end(),
-            std::inserter(newsc->symbols, newsc->symbols.end()));
+  std::copy(getSymbols(currentScope_).begin(), getSymbols(currentScope_).end(),
+            std::inserter(newsc.symbols, newsc.symbols.end()));
 
   return newsc;
 }
 
-bool translator::apply_bb(scoped_value *v) {
-  assert(v->hasBlock());
+bool translator::apply_bb(value_t v) {
+  assert(v.type() == typeid(lazy_value<llvm::BasicBlock>));
   currentScope_ = v;
-  auto insts = v->getInsts();
-  decltype(insts->begin()) it;
-  for (it = insts->begin(); it != insts->end(); it++) {
+  auto vv = boost::get<lazy_value<llvm::BasicBlock>>(v);
+  auto insts = vv.getInsts();
+  for (auto it = insts.begin(); it != insts.end(); it++) {
     boost::apply_visitor(*this, *it);
   }
   auto cb = builder_.GetInsertBlock();
