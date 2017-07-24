@@ -54,19 +54,6 @@ std::string module::irgen() {
   return result;
 }
 
-llvm::GenericValue module::run() {
-  llvm::InitializeNativeTarget();
-  auto funcptr = llvm::cast<llvm::Function>(val);
-  std::unique_ptr<llvm::ExecutionEngine> engine(
-      llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module_.get()))
-          .setEngineKind(llvm::EngineKind::Either)
-          .create());
-  engine->finalizeObject();
-  auto res = engine->runFunction(funcptr, std::vector<llvm::GenericValue>(1));
-  engine->removeModule(module_.get());
-  return res;
-}
-
 void module::optimize(uint8_t optLevel, uint8_t sizeLevel) {
   llvm::legacy::PassManager *pm = new llvm::legacy::PassManager();
   llvm::legacy::FunctionPassManager *fpm =
