@@ -111,9 +111,10 @@ value_t translator::apply_op(ast::binary_op<ast::ltq> const &op,
 
 value_t translator::apply_op(ast::binary_op<ast::assign> const &op,
                              value_t const lhs, value_t const rhs) {
-  auto &lvar = ast::unpack<ast::variable>(ast::val(op)[0]);
 
-  if (rhs.type() != typeid(llvm::Value *)) {         // If rhs is lazy value
+  if (rhs.type() != typeid(llvm::Value *)) { // If rhs is lazy value
+    auto lvar =
+        ast::unpack<ast::variable>(ast::val(op)[0]); // auto6 lvar = not working
     getSymbols(currentScope_)[ast::val(lvar)] = rhs; // just aliasing
     return rhs;
   }
@@ -121,6 +122,8 @@ value_t translator::apply_op(ast::binary_op<ast::assign> const &op,
   auto lval = get_v(lhs, op);
   auto rval = get_v(rhs, op);
   if (!lval) { // first appear in the block (variable declaration)
+    auto lvar =
+        ast::unpack<ast::variable>(ast::val(op)[0]); // auto6 lvar = not working
     if (rval->getType()->isVoidTy())
       throw error("Cannot assign the value of void type", ast::attr(op).where,
                   code_range_);
