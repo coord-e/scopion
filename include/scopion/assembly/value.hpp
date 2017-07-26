@@ -35,7 +35,9 @@ public:
 
   T *getValue() const noexcept { return block_; }
 
-  auto getInsts() const { return insts_; }
+  auto getInsts() const noexcept { return insts_; }
+
+  T *operator->() const noexcept { return block_; }
 };
 
 }; // namespace assembly

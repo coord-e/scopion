@@ -413,6 +413,7 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
                     " but supplied " + std::to_string(ast::val(arglist).size()),
                 ast::attr(astv).where, code_range_);
 
+  assert(value.symbols.size() == ast::val(arglist).size());
   std::vector<std::string> arg_names;
   for (auto const arg : value.symbols | boost::adaptors::indexed()) {
     std::string::const_iterator it;
@@ -421,22 +422,26 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
     arg_names.push_back(std::string(std::next(it), arg.value().first.cend()));
   }
 
-  std::vector<llvm::Value *> arg_values;
+  std::vector<value_t> arg_values;
   std::vector<llvm::Type *> arg_types;
+  std::vector<llvm::Type *> arg_types_for_func;
 
   std::transform(ast::val(arglist).begin(), ast::val(arglist).end(),
-                 std::back_inserter(arg_values), [this, &astv](auto &x) {
-                   return get_v(boost::apply_visitor(*this, x), astv);
-                 });
+                 std::back_inserter(arg_values),
+                 [this](auto &x) { return boost::apply_visitor(*this, x); });
 
-  std::transform(arg_values.begin(), arg_values.end(),
-                 std::back_inserter(arg_types),
-                 [](auto &x) { return x->getType(); });
+  for (auto const &arg_value : arg_values) {
+    auto type = get_v(arg_value, astv)->getType();
+    if (arg_value.type() == typeid(llvm::Value *))
+      arg_types_for_func.push_back(type);
+    arg_types.push_back(type);
+  }
 
   llvm::FunctionType *func_type =
-      llvm::FunctionType::get(builder_.getVoidTy(), arg_types, false);
-  llvm::Function *func = llvm::Function::Create(
-      func_type, llvm::Function::ExternalLinkage, "", module_.get());
+      llvm::FunctionType::get(builder_.getVoidTy(), arg_types_for_func, false);
+  llvm::Function *func =
+      llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
+                             value->getName(), module_.get());
   llvm::BasicBlock *entry =
       llvm::BasicBlock::Create(module_->getContext(),
                                "entry_survey", // BasicBlockの名前
@@ -453,9 +458,14 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
       builder_.CreateAlloca(func->getType(), nullptr, "self");
 
   for (auto const &arg_name : arg_names | boost::adaptors::indexed()) {
-    getSymbols(currentScope_)[arg_name.value()] =
-        builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
-                              arg_name.value()); // declare arguments
+    if (arg_values[arg_name.index()].type() == typeid(llvm::Value *)) {
+      getSymbols(currentScope_)[arg_name.value()] =
+          builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
+                                arg_name.value()); // declare arguments
+    } else {
+      getSymbols(currentScope_)[arg_name.value()] =
+          arg_values[arg_name.index()];
+    }
   }
 
   for (auto const &line : value.getInsts()) {
@@ -480,7 +490,7 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
     }
   }
 
-  if (ret_type == nullptr) {
+  if (!ret_type) {
     builder_.CreateRetVoid();
     ret_type = builder_.getVoidTy();
   }
@@ -490,14 +500,14 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
   llvm::Function *newfunc;
   if (ast::attr(astv).survey) {
     newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, arg_types, false),
+        llvm::FunctionType::get(ret_type, arg_types_for_func, false),
         llvm::Function::ExternalLinkage);
   } else { // Create the real content of function if it
            // isn't in survey
 
     newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, arg_types, false),
-        llvm::Function::ExternalLinkage, "", module_.get());
+        llvm::FunctionType::get(ret_type, arg_types_for_func, false),
+        llvm::Function::ExternalLinkage, value->getName(), module_.get());
 
     llvm::BasicBlock *newentry =
         llvm::BasicBlock::Create(module_->getContext(),
@@ -513,18 +523,25 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
 
     auto it = newfunc->getArgumentList().begin();
     for (auto const &arg_name : arg_names | boost::adaptors::indexed()) {
-      auto aptr = builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
-                                        arg_name.value()); // declare arguments
-      getSymbols(currentScope_)[arg_name.value()] = aptr;
-      builder_.CreateStore(&(*it), aptr);
-      it++;
+      auto argv = arg_values[arg_name.index()];
+      if (argv.type() == typeid(llvm::Value *)) {
+        auto aptr =
+            builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
+                                  arg_name.value()); // declare arguments
+        getSymbols(currentScope_)[arg_name.value()] = aptr;
+        builder_.CreateStore(&(*it), aptr);
+        it++;
+      } else {
+        std::cout << arg_name.value() << " is lazy" << std::endl;
+        getSymbols(currentScope_)[arg_name.value()] = argv;
+      }
     }
 
     for (auto const &line : value.getInsts()) {
       boost::apply_visitor(*this, line);
     }
 
-    if (ret_type == builder_.getVoidTy()) {
+    if (ret_type->isVoidTy()) {
       builder_.CreateRetVoid();
     }
   }
@@ -534,8 +551,15 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
 
   // value.getValue()->eraseFromParent();
 
+  std::vector<llvm::Value *> arg_llvm_values;
+
+  for (auto const &arg_value : arg_values) {
+    if (arg_value.type() == typeid(llvm::Value *))
+      arg_llvm_values.push_back(get_v(arg_value, astv));
+  }
+
   return builder_.CreateCall(newfunc,
-                             llvm::ArrayRef<llvm::Value *>(arg_values));
+                             llvm::ArrayRef<llvm::Value *>(arg_llvm_values));
 }
 
 }; // namespace assembly

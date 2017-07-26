@@ -19,6 +19,7 @@ class translator : public boost::static_visitor<value_t> {
   boost::iterator_range<std::string::const_iterator> const code_range_;
   value_t currentScope_;
   std::map<std::string, std::vector<std::string>> fields_map;
+  std::map<std::string, value_t> lazy_map_;
   uint64_t structCount_ = 0;
 
 public:
@@ -72,9 +73,10 @@ private:
     if (v.type() == typeid(llvm::Value *)) {
       return boost::get<llvm::Value *>(v);
     } else {
-      throw error("Cannot implicitly evaluate the lazy value",
-                  ast::attr(astv).where, code_range_);
-      return nullptr;
+      if (v.type() == typeid(lazy_value<llvm::Function>))
+        return boost::get<lazy_value<llvm::Function>>(v).getValue();
+      else // if (v.type() == typeid(lazy_value<llvm::BasicBlock>))
+        return boost::get<lazy_value<llvm::BasicBlock>>(v).getValue();
     }
   }
   template <typename T> std::string getNameString(T *v) {
@@ -90,6 +92,20 @@ private:
   inline std::string createNewStructName() {
     return "__STRUCT_" + std::to_string(structCount_++);
   }
+  template <typename T> std::string createAndRegisterLazyName(lazy_value<T> v) {
+    std::string name = "__LAZY_" + std::to_string(lazy_map_.size());
+    lazy_map_[name] = v;
+    v->setName(name);
+    return name;
+  }
+  value_t getLazyIfExists(llvm::Value *v) {
+    try {
+      return lazy_map_.at(v->getName());
+    } catch (std::out_of_range &) {
+      return v;
+    }
+  }
+
   bool apply_bb(value_t v);
 
   value_t apply_op(ast::binary_op<ast::add> const &, value_t const lhs,

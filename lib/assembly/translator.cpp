@@ -242,7 +242,11 @@ value_t translator::operator()(ast::function const &fcv) {
       std::vector<llvm::Type *>(args.size(), builder_.getInt32Ty()), false);
   llvm::Function *func =
       llvm::Function::Create(func_type, llvm::Function::ExternalLinkage);
+
   auto lv = lazy_value<llvm::Function>(func, lines);
+
+  createAndRegisterLazyName(lv);
+
   for (auto const arg : args | boost::adaptors::indexed()) {
     lv.symbols[std::to_string(arg.index()) + ":" + ast::val(arg.value())] =
         nullptr; // add number prefixes to remember the order
@@ -256,6 +260,8 @@ value_t translator::operator()(ast::scope const &scv) {
 
   std::copy(getSymbols(currentScope_).begin(), getSymbols(currentScope_).end(),
             std::inserter(newsc.symbols, newsc.symbols.end()));
+
+  createAndRegisterLazyName(newsc);
 
   return newsc;
 }
