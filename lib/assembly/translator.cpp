@@ -109,7 +109,7 @@ value_t translator::operator()(ast::variable const &value) {
         auto varp = getSymbols(currentScope_).at(ast::val(value));
 
         if (varp.type() == typeid(llvm::Value *)) { // llvm value
-          auto vval = get_v(varp, value);
+          auto vval = get_v(varp);
           if (!vval->getType()->isPointerTy())
             throw error("Variable \"" + ast::val(value) +
                             "\" should be a pointer but " +
@@ -142,7 +142,7 @@ value_t translator::operator()(ast::variable const &value) {
         return valp;
       } else {
         if (valp.type() == typeid(llvm::Value *))
-          return builder_.CreateLoad(get_v(valp, value));
+          return builder_.CreateLoad(get_v(valp));
         else // lazy value
           return valp;
       }
@@ -176,7 +176,7 @@ value_t translator::operator()(ast::array const &value) {
   for (auto const &elm : ary) {
     // Convert exprs to llvm::Value* and store it into new vector
     value_t v = boost::apply_visitor(*this, elm);
-    values.push_back(get_v(v, value));
+    values.push_back(get_v(v));
   }
 
   auto t = values.empty() ? builder_.getVoidTy() : values[0]->getType();
@@ -195,7 +195,7 @@ value_t translator::operator()(ast::array const &value) {
     auto p = builder_.CreateInBoundsGEP(aryType, aryPtr,
                                         llvm::ArrayRef<llvm::Value *>(idxList));
 
-    builder_.CreateStore(get_v(v.value(), value), p);
+    builder_.CreateStore(get_v(v.value()), p);
   }
   return aryPtr;
 }
@@ -209,7 +209,7 @@ value_t translator::operator()(ast::structure const &value) {
 
   for (auto const &m : ast::val(value)) {
     fields_map[structName].push_back(ast::val(m.first));
-    auto vp = get_v(boost::apply_visitor(*this, m.second), value);
+    auto vp = get_v(boost::apply_visitor(*this, m.second));
     fields.push_back(vp->getType());
 
     vals.push_back(vp);
@@ -223,7 +223,7 @@ value_t translator::operator()(ast::structure const &value) {
   for (auto const v : vals | boost::adaptors::indexed()) {
     auto p = builder_.CreateStructGEP(structTy, ptr,
                                       static_cast<uint32_t>(v.index()));
-    builder_.CreateStore(get_v(v.value(), value), p);
+    builder_.CreateStore(get_v(v.value()), p);
   }
 
   return ptr;

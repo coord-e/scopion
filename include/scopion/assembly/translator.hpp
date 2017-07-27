@@ -68,8 +68,7 @@ private:
     else // if (v.type() == typeid(lazy_value<llvm::BasicBlock>))
       return boost::get<lazy_value<llvm::BasicBlock>>(v).symbols;
   }
-  template <typename T>
-  llvm::Value *get_v(value_t v, ast::value_wrapper<T> astv) {
+  llvm::Value *get_v(value_t v) {
     if (v.type() == typeid(llvm::Value *)) {
       return boost::get<llvm::Value *>(v);
     } else {

@@ -13,100 +13,100 @@ namespace assembly {
 
 value_t translator::apply_op(ast::binary_op<ast::add> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateAdd(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateAdd(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::sub> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateSub(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateSub(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::mul> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateMul(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateMul(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::div> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateSDiv(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateSDiv(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::rem> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateSRem(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateSRem(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::shl> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateShl(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateShl(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::shr> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateLShr(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateLShr(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::iand> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateAnd(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateAnd(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::ior> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateOr(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateOr(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::ixor> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateXor(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateXor(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::land> const &op,
                              value_t const lhs, value_t const rhs) {
   return builder_.CreateAnd(
-      builder_.CreateICmpNE(get_v(lhs, op),
+      builder_.CreateICmpNE(get_v(lhs),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.CreateICmpNE(
-          get_v(rhs, op), llvm::Constant::getNullValue(builder_.getInt1Ty())));
+          get_v(rhs), llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::lor> const &op,
                              value_t const lhs, value_t const rhs) {
   return builder_.CreateOr(
-      builder_.CreateICmpNE(get_v(lhs, op),
+      builder_.CreateICmpNE(get_v(lhs),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.CreateICmpNE(
-          get_v(rhs, op), llvm::Constant::getNullValue(builder_.getInt1Ty())));
+          get_v(rhs), llvm::Constant::getNullValue(builder_.getInt1Ty())));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::eeq> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpEQ(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateICmpEQ(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::neq> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpNE(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateICmpNE(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::gt> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSGT(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateICmpSGT(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::lt> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSLT(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateICmpSLT(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::gtq> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSGE(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateICmpSGE(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::ltq> const &op,
                              value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSLE(get_v(lhs, op), get_v(rhs, op));
+  return builder_.CreateICmpSLE(get_v(lhs), get_v(rhs));
 }
 
 value_t translator::apply_op(ast::binary_op<ast::assign> const &op,
@@ -119,8 +119,8 @@ value_t translator::apply_op(ast::binary_op<ast::assign> const &op,
     return rhs;
   }
 
-  auto lval = get_v(lhs, op);
-  auto rval = get_v(rhs, op);
+  auto lval = get_v(lhs);
+  auto rval = get_v(rhs);
   if (!lval) { // first appear in the block (variable declaration)
     auto lvar =
         ast::unpack<ast::variable>(ast::val(op)[0]); // auto6 lvar = not working
@@ -154,7 +154,7 @@ value_t translator::apply_op(ast::binary_op<ast::assign> const &op,
 value_t translator::apply_op(ast::binary_op<ast::call> const &op, value_t lhs,
                              value_t const rhs) {
   if (lhs.type() == typeid(llvm::Value *)) {
-    auto lval = get_v(lhs, op);
+    auto lval = get_v(lhs);
     if (!lval->getType()->isPointerTy()) {
       throw error("Cannot call a non-pointer value", ast::attr(op).where,
                   code_range_);
@@ -167,8 +167,8 @@ value_t translator::apply_op(ast::binary_op<ast::call> const &op, value_t lhs,
       std::vector<llvm::Value *> arg_values;
 
       std::transform(ast::val(arglist).begin(), ast::val(arglist).end(),
-                     std::back_inserter(arg_values), [this, &op](auto &x) {
-                       return get_v(boost::apply_visitor(*this, x), op);
+                     std::back_inserter(arg_values), [this](auto &x) {
+                       return get_v(boost::apply_visitor(*this, x));
                      });
       return builder_.CreateCall(lval,
                                  llvm::ArrayRef<llvm::Value *>(arg_values));
@@ -185,10 +185,10 @@ value_t translator::apply_op(ast::binary_op<ast::call> const &op, value_t lhs,
 
 value_t translator::apply_op(ast::binary_op<ast::at> const &op,
                              value_t const lhs, value_t const rhs) {
-  auto r = get_v(rhs, op);
+  auto r = get_v(rhs);
   auto rval = r->getType()->isPointerTy() ? builder_.CreateLoad(r) : r;
 
-  auto lval = get_v(lhs, op);
+  auto lval = get_v(lhs);
 
   if (!rval->getType()->isIntegerTy()) {
     throw error("Array's index must be integer, not " +
@@ -202,7 +202,7 @@ value_t translator::apply_op(ast::binary_op<ast::at> const &op,
   }
 
   if (!lval->getType()->getPointerElementType()->isArrayTy()) {
-    lval = builder_.CreateLoad(get_v(lval, op));
+    lval = builder_.CreateLoad(get_v(lval));
 
     if (!lval->getType()->getPointerElementType()->isArrayTy()) {
       throw error("Cannot get element from non-array type " +
@@ -224,7 +224,7 @@ value_t translator::apply_op(ast::binary_op<ast::at> const &op,
 
 value_t translator::apply_op(ast::binary_op<ast::dot> const &op, value_t lhs,
                              value_t const rhs) {
-  auto lval = get_v(lhs, op);
+  auto lval = get_v(lhs);
 
   auto id = ast::val(ast::unpack<ast::identifier>(ast::val(op)[0]));
 
@@ -270,7 +270,7 @@ value_t translator::apply_op(ast::binary_op<ast::dot> const &op, value_t lhs,
 
 value_t translator::apply_op(ast::single_op<ast::load> const &op,
                              value_t const value) {
-  auto vv = get_v(value, op);
+  auto vv = get_v(value);
   if (!vv->getType()->isPointerTy())
     throw error("Cannot load from non-pointer type " +
                     getNameString(vv->getType()),
@@ -280,30 +280,30 @@ value_t translator::apply_op(ast::single_op<ast::load> const &op,
 
 value_t translator::apply_op(ast::single_op<ast::ret> const &op,
                              value_t const value) {
-  return builder_.CreateRet(get_v(value, op));
+  return builder_.CreateRet(get_v(value));
 }
 
 value_t translator::apply_op(ast::single_op<ast::lnot> const &op,
                              value_t const value) {
   return builder_.CreateXor(
-      builder_.CreateICmpNE(get_v(value, op),
+      builder_.CreateICmpNE(get_v(value),
                             llvm::Constant::getNullValue(builder_.getInt1Ty())),
       builder_.getInt32(1));
 }
 
 value_t translator::apply_op(ast::single_op<ast::inot> const &op,
                              value_t const value) {
-  return builder_.CreateXor(get_v(value, op), builder_.getInt32(1));
+  return builder_.CreateXor(get_v(value), builder_.getInt32(1));
 }
 
 value_t translator::apply_op(ast::single_op<ast::inc> const &op,
                              value_t const value) {
-  return builder_.CreateAdd(get_v(value, op), builder_.getInt32(1));
+  return builder_.CreateAdd(get_v(value), builder_.getInt32(1));
 }
 
 value_t translator::apply_op(ast::single_op<ast::dec> const &op,
                              value_t const value) {
-  return builder_.CreateSub(get_v(value, op), builder_.getInt32(1));
+  return builder_.CreateSub(get_v(value), builder_.getInt32(1));
 }
 
 value_t translator::apply_op(ast::ternary_op<ast::cond> const &op,
@@ -357,7 +357,7 @@ value_t translator::apply_op(ast::ternary_op<ast::cond> const &op,
 
   builder_.SetInsertPoint(pb, pp);
 
-  builder_.CreateCondBr(get_v(first, op), thenbb, elsebb);
+  builder_.CreateCondBr(get_v(first), thenbb, elsebb);
 
   if (!mergebbShouldBeErased)
     builder_.SetInsertPoint(mergebb);
@@ -434,7 +434,7 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
                  [this](auto &x) { return boost::apply_visitor(*this, x); });
 
   for (auto const &arg_value : arg_values) {
-    auto type = get_v(arg_value, astv)->getType();
+    auto type = get_v(arg_value)->getType();
     if (arg_value.type() == typeid(llvm::Value *))
       arg_types_for_func.push_back(type);
     arg_types.push_back(type);
@@ -558,7 +558,7 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
 
   for (auto const &arg_value : arg_values) {
     if (arg_value.type() == typeid(llvm::Value *))
-      arg_llvm_values.push_back(get_v(arg_value, astv));
+      arg_llvm_values.push_back(get_v(arg_value));
   }
 
   return builder_.CreateCall(newfunc,
