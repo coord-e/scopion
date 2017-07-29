@@ -338,6 +338,7 @@ value_t translator::apply_op(ast::ternary_op<ast::cond> const &op,
 
   builder_.SetInsertPoint(thenbb);
   secondv.setValue(thenbb);
+  currentScope_ = secondv;
   if (apply_bb(secondv)) {
     builder_.CreateBr(mergebb);
     mergebbShouldBeErased &= false;
@@ -345,6 +346,7 @@ value_t translator::apply_op(ast::ternary_op<ast::cond> const &op,
 
   builder_.SetInsertPoint(elsebb);
   thirdv.setValue(elsebb);
+  currentScope_ = thirdv;
   if (apply_bb(thirdv)) {
     builder_.CreateBr(mergebb);
     mergebbShouldBeErased &= false;
@@ -381,6 +383,7 @@ llvm::Value *translator::apply_lazy(lazy_value<llvm::BasicBlock> value,
   value.setValue(theblock);
   auto prevScope = currentScope_;
 
+  currentScope_ = value;
   bool non_rb = apply_bb(value);
   if (non_rb)
     builder_.CreateBr(nb);

@@ -105,7 +105,7 @@ private:
     }
   }
 
-  bool apply_bb(value_t v);
+  bool apply_bb(lazy_value<llvm::BasicBlock> v);
 
   value_t apply_op(ast::binary_op<ast::add> const &, value_t const lhs,
                    value_t const rhs);

@@ -266,10 +266,7 @@ value_t translator::operator()(ast::scope const &scv) {
   return newsc;
 }
 
-bool translator::apply_bb(value_t v) {
-  assert(v.type() == typeid(lazy_value<llvm::BasicBlock>));
-  currentScope_ = v;
-  auto vv = boost::get<lazy_value<llvm::BasicBlock>>(v);
+bool translator::apply_bb(lazy_value<llvm::BasicBlock> vv) {
   auto insts = vv.getInsts();
   for (auto it = insts.begin(); it != insts.end(); it++) {
     boost::apply_visitor(*this, *it);
