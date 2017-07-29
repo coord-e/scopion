@@ -36,6 +36,8 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES all)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
+include(cmake/clang-format.cmake)
+
 if(NOT WITHOUT_TEST)
    enable_testing()
    include(cmake/gtest.cmake)

@@ -1,0 +1,9 @@
+﻿---
+BasedOnStyle: Chromium
+AccessModifierOffset: '-2'
+AlignConsecutiveAssignments: 'true'
+BreakBeforeBraces: Linux
+Standard: Cpp11
+UseTab: Never
+
+...
