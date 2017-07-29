@@ -101,14 +101,14 @@ template <typename T, typename RangeT> T set_where(T val, RangeT range) {
 
 template <typename Dest,
           std::enable_if_t<std::is_convertible<Dest, value>::value> * = nullptr>
-Dest unpack(expr t) {
+Dest &unpack(expr t) {
   return boost::get<Dest>(boost::get<value>(t));
 }
 
 template <
     typename Dest,
     std::enable_if_t<std::is_convertible<Dest, operators>::value> * = nullptr>
-Dest unpack(expr t) {
+Dest &unpack(expr t) {
   return boost::get<Dest>(boost::get<operators>(t));
 }
 

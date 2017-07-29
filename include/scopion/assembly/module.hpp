@@ -16,7 +16,7 @@ class module {
   std::shared_ptr<llvm::Module> module_;
 
 public:
-  llvm::Value *val;
+  value_t val;
 
   static std::unique_ptr<module> create(parser::parsed const &tree,
                                         context &ctx,
@@ -24,10 +24,9 @@ public:
 
   std::string irgen();
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
-  llvm::GenericValue run();
 
 private:
-  module(std::shared_ptr<llvm::Module> &module, llvm::Value *val_)
+  module(std::shared_ptr<llvm::Module> &module, value_t val_)
       : module_(std::move(module)), val(val_) {}
 };
 
