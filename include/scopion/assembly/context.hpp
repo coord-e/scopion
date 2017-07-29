@@ -3,14 +3,15 @@
 
 #include <llvm/IR/LLVMContext.h>
 
-namespace scopion {
-namespace assembly {
-
+namespace scopion
+{
+namespace assembly
+{
 struct context {
   llvm::LLVMContext llvmcontext;
 };
 
-}; // namespace assembly
-}; // namespace scopion
+};  // namespace assembly
+};  // namespace scopion
 
 #endif

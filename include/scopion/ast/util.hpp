@@ -9,28 +9,49 @@
 
 #include <string>
 
-namespace scopion {
-namespace ast {
-
-template <typename T> T &val(value_wrapper<T> &w) { return w.value; }
-
-template <typename T> const T &val(value_wrapper<T> const &w) {
+namespace scopion
+{
+namespace ast
+{
+template <typename T>
+T& val(value_wrapper<T>& w)
+{
   return w.value;
 }
 
-template <typename T> attribute &attr(T &w) { return w.attr; }
-template <typename T> const attribute &attr(T const &w) { return w.attr; }
+template <typename T>
+const T& val(value_wrapper<T> const& w)
+{
+  return w.value;
+}
 
-namespace visitors_ {
+template <typename T>
+attribute& attr(T& w)
+{
+  return w.attr;
+}
+template <typename T>
+const attribute& attr(T const& w)
+{
+  return w.attr;
+}
 
-class setter_visitor : boost::static_visitor<expr> {
+namespace visitors_
+{
+class setter_visitor : boost::static_visitor<expr>
+{
 protected:
-  std::function<void(attribute &)> f_;
+  std::function<void(attribute&)> f_;
 
 public:
-  template <typename T> setter_visitor(T f) : f_(f) {}
+  template <typename T>
+  setter_visitor(T f) : f_(f)
+  {
+  }
 
-  template <typename T> expr operator()(T val) const {
+  template <typename T>
+  expr operator()(T val) const
+  {
     f_(attr(val));
     return val;
   }
@@ -39,80 +60,97 @@ public:
 
   expr operator()(value val) const { return boost::apply_visitor(*this, val); }
 
-  expr operator()(operators val) const {
+  expr operator()(operators val) const
+  {
     return boost::apply_visitor(*this, val);
   }
 };
 
 struct setter_recursive_visitor : setter_visitor {
-
   using setter_visitor::operator();
   using setter_visitor::setter_visitor;
 
-  template <typename Op> expr operator()(single_op<Op> val) const {
+  template <typename Op>
+  expr operator()(single_op<Op> val) const
+  {
     f_(attr(val));
     val.value = boost::apply_visitor(*this, val.value);
     return val;
   }
 
-  template <typename Op> expr operator()(binary_op<Op> val) const {
+  template <typename Op>
+  expr operator()(binary_op<Op> val) const
+  {
     f_(attr(val));
     val.lhs = boost::apply_visitor(*this, val.lhs);
     val.rhs = boost::apply_visitor(*this, val.rhs);
     return val;
   }
 
-  template <typename Op> expr operator()(ternary_op<Op> val) const {
+  template <typename Op>
+  expr operator()(ternary_op<Op> val) const
+  {
     f_(attr(val));
-    val.first = boost::apply_visitor(*this, val.first);
+    val.first  = boost::apply_visitor(*this, val.first);
     val.second = boost::apply_visitor(*this, val.second);
-    val.third = boost::apply_visitor(*this, val.third);
+    val.third  = boost::apply_visitor(*this, val.third);
     return val;
   }
 };
 
-}; // namespace visitors_
+};  // namespace visitors_
 
-template <typename T> expr set_lval(T t, bool val) {
+template <typename T>
+expr set_lval(T t, bool val)
+{
   return visitors_::setter_recursive_visitor(
-      [val](attribute &attr) { attr.lval = val; })(t);
-}
-
-template <typename T> expr set_to_call(T t, bool val) {
-  return visitors_::setter_recursive_visitor(
-      [val](attribute &attr) { attr.to_call = val; })(t);
-}
-
-template <typename T> expr set_survey(T t, bool val) {
-  return visitors_::setter_recursive_visitor(
-      [val](attribute &attr) { attr.survey = val; })(t);
+      [val](attribute& attr) { attr.lval = val; })(t);
 }
 
 template <typename T>
-expr set_attr(T t, std::string const &key, std::string const &val) {
-  return visitors_::setter_visitor(
-      [key, val](attribute &attr) { attr.attributes[key] = val; })(t);
+expr set_to_call(T t, bool val)
+{
+  return visitors_::setter_recursive_visitor(
+      [val](attribute& attr) { attr.to_call = val; })(t);
 }
 
-template <typename T, typename RangeT> T set_where(T val, RangeT range) {
+template <typename T>
+expr set_survey(T t, bool val)
+{
+  return visitors_::setter_recursive_visitor(
+      [val](attribute& attr) { attr.survey = val; })(t);
+}
+
+template <typename T>
+expr set_attr(T t, std::string const& key, std::string const& val)
+{
+  return visitors_::setter_visitor(
+      [key, val](attribute& attr) { attr.attributes[key] = val; })(t);
+}
+
+template <typename T, typename RangeT>
+T set_where(T val, RangeT range)
+{
   attr(val).where = range;
   return val;
 }
 
 template <typename Dest,
-          std::enable_if_t<std::is_convertible<Dest, value>::value> * = nullptr>
-Dest &unpack(expr t) {
+          std::enable_if_t<std::is_convertible<Dest, value>::value>* = nullptr>
+Dest& unpack(expr t)
+{
   return boost::get<Dest>(boost::get<value>(t));
 }
 
 template <
     typename Dest,
-    std::enable_if_t<std::is_convertible<Dest, operators>::value> * = nullptr>
-Dest &unpack(expr t) {
+    std::enable_if_t<std::is_convertible<Dest, operators>::value>* = nullptr>
+Dest& unpack(expr t)
+{
   return boost::get<Dest>(boost::get<operators>(t));
 }
 
-}; // namespace ast
-}; // namespace scopion
+};  // namespace ast
+};  // namespace scopion
 
 #endif

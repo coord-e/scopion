@@ -10,42 +10,47 @@
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/range/iterator_range.hpp>
 
-namespace scopion {
-namespace assembly {
-
-translator::translator(std::shared_ptr<llvm::Module> &module,
-                       llvm::IRBuilder<> &builder, std::string const &code)
-    : boost::static_visitor<value_t>(), module_(module), builder_(builder),
-      code_range_(boost::make_iterator_range(code.begin(), code.end())) {
+namespace scopion
+{
+namespace assembly
+{
+translator::translator(std::shared_ptr<llvm::Module>& module,
+                       llvm::IRBuilder<>& builder,
+                       std::string const& code)
+    : boost::static_visitor<value_t>(),
+      module_(module),
+      builder_(builder),
+      code_range_(boost::make_iterator_range(code.begin(), code.end()))
+{
   auto ib = builder_.GetInsertBlock();
   {
-    std::vector<llvm::Type *> args = {builder_.getInt8Ty()->getPointerTo()};
+    std::vector<llvm::Type*> args = {builder_.getInt8Ty()->getPointerTo()};
 
     module_->getOrInsertFunction(
         "printf",
         llvm::FunctionType::get(builder_.getInt32Ty(),
-                                llvm::ArrayRef<llvm::Type *>(args), true));
+                                llvm::ArrayRef<llvm::Type*>(args), true));
     module_->getOrInsertFunction(
         "puts",
         llvm::FunctionType::get(builder_.getInt32Ty(),
-                                llvm::ArrayRef<llvm::Type *>(args), true));
+                                llvm::ArrayRef<llvm::Type*>(args), true));
   }
   {
-    std::vector<llvm::Type *> func_args_type;
+    std::vector<llvm::Type*> func_args_type;
     func_args_type.push_back(builder_.getInt32Ty());
 
-    llvm::FunctionType *llvm_func_type = llvm::FunctionType::get(
+    llvm::FunctionType* llvm_func_type = llvm::FunctionType::get(
         builder_.getInt32Ty(), func_args_type, /*可変長引数=*/false);
-    llvm::Function *llvm_func =
+    llvm::Function* llvm_func =
         llvm::Function::Create(llvm_func_type, llvm::Function::ExternalLinkage,
                                "printn", module_.get());
 
-    llvm::BasicBlock *entry =
+    llvm::BasicBlock* entry =
         llvm::BasicBlock::Create(module_->getContext(),
-                                 "entry_printn", // BasicBlockの名前
+                                 "entry_printn",  // BasicBlockの名前
                                  llvm_func);
-    builder_.SetInsertPoint(entry); // entryの開始
-    std::vector<llvm::Value *> args = {
+    builder_.SetInsertPoint(entry);  // entryの開始
+    std::vector<llvm::Value*> args = {
         builder_.CreateGlobalStringPtr("%d\n"),
         &(*(llvm_func->getArgumentList().begin()))};
     builder_.CreateCall(module_->getFunction("printf"), args);
@@ -54,15 +59,18 @@ translator::translator(std::shared_ptr<llvm::Module> &module,
   builder_.SetInsertPoint(ib);
 }
 
-value_t translator::operator()(ast::value value) {
+value_t translator::operator()(ast::value value)
+{
   return boost::apply_visitor(*this, value);
 }
 
-value_t translator::operator()(ast::operators value) {
+value_t translator::operator()(ast::operators value)
+{
   return boost::apply_visitor(*this, value);
 }
 
-value_t translator::operator()(ast::integer value) {
+value_t translator::operator()(ast::integer value)
+{
   if (ast::attr(value).lval)
     throw error("An integer constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -74,7 +82,8 @@ value_t translator::operator()(ast::integer value) {
   return llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value));
 }
 
-value_t translator::operator()(ast::boolean value) {
+value_t translator::operator()(ast::boolean value)
+{
   if (ast::attr(value).lval)
     throw error("A boolean constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -86,7 +95,8 @@ value_t translator::operator()(ast::boolean value) {
   return llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value));
 }
 
-value_t translator::operator()(ast::string const &value) {
+value_t translator::operator()(ast::string const& value)
+{
   if (ast::attr(value).lval)
     throw error("A string constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -98,17 +108,18 @@ value_t translator::operator()(ast::string const &value) {
   return builder_.CreateGlobalStringPtr(ast::val(value));
 }
 
-value_t translator::operator()(ast::variable const &value) {
-  if (ast::attr(value).to_call) { // in case of function
+value_t translator::operator()(ast::variable const& value)
+{
+  if (ast::attr(value).to_call) {  // in case of function
     // find globally declared function
     auto valp = module_->getFunction(ast::val(value));
-    if (valp != nullptr) { // found
+    if (valp != nullptr) {  // found
       return valp;
     } else {
       try {
         auto varp = getSymbols(currentScope_).at(ast::val(value));
 
-        if (varp.type() == typeid(llvm::Value *)) { // llvm value
+        if (varp.type() == typeid(llvm::Value*)) {  // llvm value
           auto vval = get_v(varp);
           if (!vval->getType()->isPointerTy())
             throw error("Variable \"" + ast::val(value) +
@@ -127,42 +138,46 @@ value_t translator::operator()(ast::variable const &value) {
               "Variable \"" + ast::val(value) + "\" is not a function but " +
                   getNameString(vval->getType()->getPointerElementType()),
               ast::attr(value).where, code_range_);
-        } else // lazy value
+        } else  // lazy value
           return varp;
-      } catch (std::out_of_range &) {
+      } catch (std::out_of_range&) {
         throw error("Function \"" + ast::val(value) +
                         "\" has not declared in this scope",
                     ast::attr(value).where, code_range_);
       }
     }
-  } else { // not function (normal variable)
+  } else {  // not function (normal variable)
     try {
       auto valp = getSymbols(currentScope_).at(ast::val(value));
-      if (ast::attr(value).lval) { // to be assigned
+      if (ast::attr(value).lval) {  // to be assigned
         return valp;
       } else {
-        if (valp.type() == typeid(llvm::Value *))
+        if (valp.type() == typeid(llvm::Value*))
           return builder_.CreateLoad(get_v(valp));
-        else // lazy value
+        else  // lazy value
           return valp;
       }
-    } catch (std::out_of_range &) {
+    } catch (std::out_of_range&) {
       if (ast::attr(value).lval) {
         // not found in symbols & to be assigned -> declaration
         return nullptr;
       } else {
-        throw error("\"" + ast::val(value) +
-                        "\" has not declared in this scope",
-                    ast::attr(value).where, code_range_);
+        throw error(
+            "\"" + ast::val(value) + "\" has not declared in this scope",
+            ast::attr(value).where, code_range_);
       }
     }
   }
   assert(false);
 }
 
-value_t translator::operator()(ast::identifier const &value) { return nullptr; }
+value_t translator::operator()(ast::identifier const& value)
+{
+  return nullptr;
+}
 
-value_t translator::operator()(ast::array const &value) {
+value_t translator::operator()(ast::array const& value)
+{
   if (ast::attr(value).lval)
     throw error("An array constant is not to be assigned",
                 ast::attr(value).where, code_range_);
@@ -171,9 +186,9 @@ value_t translator::operator()(ast::array const &value) {
     throw error("An array constant is not to be called", ast::attr(value).where,
                 code_range_);
 
-  auto &ary = ast::val(value);
-  std::vector<llvm::Value *> values;
-  for (auto const &elm : ary) {
+  auto& ary = ast::val(value);
+  std::vector<llvm::Value*> values;
+  for (auto const& elm : ary) {
     // Convert exprs to llvm::Value* and store it into new vector
     value_t v = boost::apply_visitor(*this, elm);
     values.push_back(get_v(v));
@@ -182,32 +197,36 @@ value_t translator::operator()(ast::array const &value) {
   auto t = values.empty() ? builder_.getVoidTy() : values[0]->getType();
   // check if the type of all elements of array is same
   if (!std::all_of(values.begin(), values.end(),
-                   [&t](auto &&v) { return t == v->getType(); }))
+                   [&t](auto&& v) { return t == v->getType(); }))
     throw error("all elements of array must have the same type",
                 ast::attr(value).where, code_range_);
 
   auto aryType = llvm::ArrayType::get(t, ary.size());
-  auto aryPtr = builder_.CreateAlloca(aryType); // Allocate necessary memory
+  auto aryPtr  = builder_.CreateAlloca(aryType);  // Allocate necessary memory
   for (auto const v : values | boost::adaptors::indexed()) {
-    std::vector<llvm::Value *> idxList = {
+    std::vector<llvm::Value*> idxList = {
         builder_.getInt32(0),
         builder_.getInt32(static_cast<uint32_t>(v.index()))};
     auto p = builder_.CreateInBoundsGEP(aryType, aryPtr,
-                                        llvm::ArrayRef<llvm::Value *>(idxList));
+                                        llvm::ArrayRef<llvm::Value*>(idxList));
 
     builder_.CreateStore(get_v(v.value()), p);
   }
   return aryPtr;
 }
 
-value_t translator::operator()(ast::arglist const &value) { return nullptr; }
+value_t translator::operator()(ast::arglist const& value)
+{
+  return nullptr;
+}
 
-value_t translator::operator()(ast::structure const &value) {
+value_t translator::operator()(ast::structure const& value)
+{
   std::vector<value_t> vals;
-  std::vector<llvm::Type *> fields;
+  std::vector<llvm::Type*> fields;
   auto structName = createNewStructName();
 
-  for (auto const &m : ast::val(value)) {
+  for (auto const& m : ast::val(value)) {
     fields_map[structName].push_back(ast::val(m.first));
     auto vp = get_v(boost::apply_visitor(*this, m.second));
     fields.push_back(vp->getType());
@@ -215,7 +234,7 @@ value_t translator::operator()(ast::structure const &value) {
     vals.push_back(vp);
   }
 
-  llvm::StructType *structTy =
+  llvm::StructType* structTy =
       llvm::StructType::create(module_->getContext(), structName);
   structTy->setBody(fields);
 
@@ -229,18 +248,19 @@ value_t translator::operator()(ast::structure const &value) {
   return ptr;
 }
 
-value_t translator::operator()(ast::function const &fcv) {
+value_t translator::operator()(ast::function const& fcv)
+{
   if (ast::attr(fcv).lval)
     throw error("A function constant is not to be assigned",
                 ast::attr(fcv).where, code_range_);
 
-  auto &args = ast::val(fcv).first;
-  auto &lines = ast::val(fcv).second;
+  auto& args  = ast::val(fcv).first;
+  auto& lines = ast::val(fcv).second;
 
-  llvm::FunctionType *func_type = llvm::FunctionType::get(
+  llvm::FunctionType* func_type = llvm::FunctionType::get(
       builder_.getVoidTy(),
-      std::vector<llvm::Type *>(args.size(), builder_.getInt32Ty()), false);
-  llvm::Function *func =
+      std::vector<llvm::Type*>(args.size(), builder_.getInt32Ty()), false);
+  llvm::Function* func =
       llvm::Function::Create(func_type, llvm::Function::ExternalLinkage);
 
   auto lv = lazy_value<llvm::Function>(func, lines);
@@ -249,13 +269,14 @@ value_t translator::operator()(ast::function const &fcv) {
 
   for (auto const arg : args | boost::adaptors::indexed()) {
     lv.symbols[std::to_string(arg.index()) + ":" + ast::val(arg.value())] =
-        nullptr; // add number prefixes to remember the order
+        nullptr;  // add number prefixes to remember the order
   }
   return lv;
 }
 
-value_t translator::operator()(ast::scope const &scv) {
-  auto bb = llvm::BasicBlock::Create(module_->getContext()); // empty
+value_t translator::operator()(ast::scope const& scv)
+{
+  auto bb    = llvm::BasicBlock::Create(module_->getContext());  // empty
   auto newsc = lazy_value<llvm::BasicBlock>(bb, ast::val(scv));
 
   std::copy(getSymbols(currentScope_).begin(), getSymbols(currentScope_).end(),
@@ -266,17 +287,18 @@ value_t translator::operator()(ast::scope const &scv) {
   return newsc;
 }
 
-bool translator::apply_bb(lazy_value<llvm::BasicBlock> vv) {
+bool translator::apply_bb(lazy_value<llvm::BasicBlock> vv)
+{
   auto insts = vv.getInsts();
   for (auto it = insts.begin(); it != insts.end(); it++) {
     boost::apply_visitor(*this, *it);
   }
   auto cb = builder_.GetInsertBlock();
-  return std::none_of(cb->begin(), cb->end(), [](auto &i) {
+  return std::none_of(cb->begin(), cb->end(), [](auto& i) {
     return i.getOpcode() == llvm::Instruction::Ret ||
            i.getOpcode() == llvm::Instruction::Br;
   });
 }
 
-}; // namespace assembly
-}; // namespace scopion
+};  // namespace assembly
+};  // namespace scopion

@@ -18,17 +18,19 @@
 #include <llvm/Transforms/IPO/Inliner.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
-namespace scopion {
-namespace assembly {
-
-std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
-                                       std::string const &name) {
-
+namespace scopion
+{
+namespace assembly
+{
+std::unique_ptr<module> module::create(parser::parsed const& tree,
+                                       context& ctx,
+                                       std::string const& name)
+{
   std::shared_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
   llvm::IRBuilder<> builder(mod->getContext());
 
-  std::vector<llvm::Type *> args_type = {builder.getInt32Ty()};
-  auto main_func = llvm::Function::Create(
+  std::vector<llvm::Type*> args_type = {builder.getInt32Ty()};
+  auto main_func                     = llvm::Function::Create(
       llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
       llvm::Function::ExternalLinkage, "main", mod.get());
 
@@ -46,7 +48,8 @@ std::unique_ptr<module> module::create(parser::parsed const &tree, context &ctx,
   return std::unique_ptr<module>(new module(mod, val));
 }
 
-std::string module::irgen() {
+std::string module::irgen()
+{
   std::string result;
   llvm::raw_string_ostream stream(result);
 
@@ -54,29 +57,30 @@ std::string module::irgen() {
   return result;
 }
 
-void module::optimize(uint8_t optLevel, uint8_t sizeLevel) {
-  llvm::legacy::PassManager *pm = new llvm::legacy::PassManager();
-  llvm::legacy::FunctionPassManager *fpm =
+void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
+{
+  llvm::legacy::PassManager* pm = new llvm::legacy::PassManager();
+  llvm::legacy::FunctionPassManager* fpm =
       new llvm::legacy::FunctionPassManager(module_.get());
   llvm::PassManagerBuilder builder;
-  builder.OptLevel = optLevel;
+  builder.OptLevel  = optLevel;
   builder.SizeLevel = sizeLevel;
-  builder.Inliner = llvm::createFunctionInliningPass(optLevel, sizeLevel);
+  builder.Inliner   = llvm::createFunctionInliningPass(optLevel, sizeLevel);
   builder.DisableUnitAtATime = false;
   builder.DisableUnrollLoops = false;
-  builder.LoopVectorize = true;
-  builder.SLPVectorize = true;
+  builder.LoopVectorize      = true;
+  builder.SLPVectorize       = true;
   builder.populateModulePassManager(*pm);
   builder.populateFunctionPassManager(*fpm);
   pm->run(*module_);
 
   fpm->doInitialization();
-  for (auto &f : module_->getFunctionList()) {
+  for (auto& f : module_->getFunctionList()) {
     fpm->run(f);
     f.optForSize();
   }
   fpm->doFinalization();
 }
 
-}; // namespace assembly
-}; // namespace scopion
+};  // namespace assembly
+};  // namespace scopion

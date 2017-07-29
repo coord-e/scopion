@@ -3,7 +3,7 @@
 
 #include "scopion/assembly/context.hpp"
 #include "scopion/assembly/module.hpp"
-#include "scopion/assembly/value.hpp"
 #include "scopion/assembly/translator.hpp"
+#include "scopion/assembly/value.hpp"
 
-#endif // SCOPION_ASSEMBLY_H_
+#endif  // SCOPION_ASSEMBLY_H_

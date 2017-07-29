@@ -15,7 +15,8 @@
 
 namespace fs = boost::filesystem;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
   try {
     cmdline::parser p;
     p.add<std::string>(
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
       return 0;
     }
 
-    auto &outtype = p.get<std::string>("type");
+    auto& outtype = p.get<std::string>("type");
 
     std::string code((std::istreambuf_iterator<char>(ifs)),
                      std::istreambuf_iterator<char>());
@@ -103,7 +104,7 @@ int main(int argc, char *argv[]) {
       return 0;
     }
 
-    char *tmpname = strdup("/tmp/tmpfileXXXXXX");
+    char* tmpname = strdup("/tmp/tmpfileXXXXXX");
     mkstemp(tmpname);
     std::string tmpstr(tmpname);
     std::ofstream f(tmpstr);
@@ -117,7 +118,7 @@ int main(int argc, char *argv[]) {
     }
 
     system(("gcc " + tmpstr + ".s -o " + std::string(outpath)).c_str());
-  } catch (scopion::error const &e) {
+  } catch (scopion::error const& e) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray
               << "[ERROR]" << rang::style::reset << rang::fg::red << " @"
               << e.line_number() << rang::style::reset << ": " << e.what()

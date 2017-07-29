@@ -2,35 +2,43 @@
 
 #include "scopion/scopion.hpp"
 
-namespace {
-
+namespace
+{
 using namespace scopion;
 
-class parserTest : public ::testing::Test {};
+class parserTest : public ::testing::Test
+{
+};
 
-TEST_F(parserTest, intVal) {
+TEST_F(parserTest, intVal)
+{
   EXPECT_EQ(parser::parse("(){1;}").ast,
             ast::expr(ast::function({{}, {ast::integer(1)}})));
 }
 
-TEST_F(parserTest, strVal) {
+TEST_F(parserTest, strVal)
+{
   EXPECT_EQ(parser::parse("(){\"test\";}").ast,
             ast::expr(ast::function({{}, {ast::string("test")}})));
 }
 
-TEST_F(parserTest, boolVal) {
+TEST_F(parserTest, boolVal)
+{
   EXPECT_EQ(parser::parse("(){true;}").ast,
             ast::expr(ast::function({{}, {ast::boolean(true)}})));
 }
 
-TEST_F(parserTest, funcVal) {
-  EXPECT_EQ(parser::parse("(){(){1;};}").ast,
-            ast::expr(ast::function({{},
-                                     std::vector<ast::expr>{ast::function(
-                                         {{}, {ast::integer(1)}})}})));
+TEST_F(parserTest, funcVal)
+{
+  EXPECT_EQ(
+      parser::parse("(){(){1;};}").ast,
+      ast::expr(ast::function(
+          {{},
+           std::vector<ast::expr>{ast::function({{}, {ast::integer(1)}})}})));
 }
 
-TEST_F(parserTest, structVal) {
+TEST_F(parserTest, structVal)
+{
   EXPECT_EQ(parser::parse("(){[a:10,b:\"koko\"];}").ast,
             ast::expr(ast::function(
                 {{},
@@ -39,15 +47,17 @@ TEST_F(parserTest, structVal) {
                       {ast::identifier("b"), ast::string("koko")}})}})));
 }
 
-TEST_F(parserTest, arrayVal) {
+TEST_F(parserTest, arrayVal)
+{
   EXPECT_EQ(
       parser::parse("(){[1,2,3];}").ast,
       ast::expr(ast::function({{},
                                {ast::array({ast::integer(1), ast::integer(2),
                                             ast::integer(3)})}})));
-} // namespace
+}  // namespace
 
-TEST_F(parserTest, addSubOp) {
+TEST_F(parserTest, addSubOp)
+{
   EXPECT_EQ(
       parser::parse("(){1+1;}").ast,
       ast::expr(ast::function(
@@ -58,9 +68,10 @@ TEST_F(parserTest, addSubOp) {
       ast::expr(ast::function(
           {{},
            {ast::binary_op<ast::sub>({ast::integer(1), ast::integer(1)})}})));
-} // namespace
+}  // namespace
 
-TEST_F(parserTest, mulDivOp) {
+TEST_F(parserTest, mulDivOp)
+{
   EXPECT_EQ(
       parser::parse("(){1*1;}").ast,
       ast::expr(ast::function(
@@ -73,7 +84,8 @@ TEST_F(parserTest, mulDivOp) {
            {ast::binary_op<ast::div>({ast::integer(1), ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, remOp) {
+TEST_F(parserTest, remOp)
+{
   EXPECT_EQ(
       parser::parse("(){1%1;}").ast,
       ast::expr(ast::function(
@@ -81,7 +93,8 @@ TEST_F(parserTest, remOp) {
            {ast::binary_op<ast::rem>({ast::integer(1), ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, shiftOp) {
+TEST_F(parserTest, shiftOp)
+{
   EXPECT_EQ(
       parser::parse("(){1<<1;}").ast,
       ast::expr(ast::function(
@@ -94,7 +107,8 @@ TEST_F(parserTest, shiftOp) {
            {ast::binary_op<ast::shr>({ast::integer(1), ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, andOrXorOp) {
+TEST_F(parserTest, andOrXorOp)
+{
   EXPECT_EQ(
       parser::parse("(){1&&1;}").ast,
       ast::expr(ast::function(
@@ -122,7 +136,8 @@ TEST_F(parserTest, andOrXorOp) {
            {ast::binary_op<ast::ior>({ast::integer(1), ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, compareOp) {
+TEST_F(parserTest, compareOp)
+{
   EXPECT_EQ(
       parser::parse("(){1==1;}").ast,
       ast::expr(ast::function(
@@ -155,7 +170,8 @@ TEST_F(parserTest, compareOp) {
            {ast::binary_op<ast::ltq>({ast::integer(1), ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, assignOp) {
+TEST_F(parserTest, assignOp)
+{
   EXPECT_EQ(
       parser::parse("(){a=1;}").ast,
       ast::expr(ast::function(
@@ -164,7 +180,8 @@ TEST_F(parserTest, assignOp) {
                {ast::set_lval(ast::variable("a"), true), ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, sinOp) {
+TEST_F(parserTest, sinOp)
+{
   EXPECT_EQ(parser::parse("(){|>1;}").ast,
             ast::expr(ast::function(
                 {{}, {ast::single_op<ast::ret>({ast::integer(1)})}})));
@@ -191,7 +208,8 @@ TEST_F(parserTest, sinOp) {
                 {{}, {ast::single_op<ast::load>({ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, callOp) {
+TEST_F(parserTest, callOp)
+{
   EXPECT_EQ(
       parser::parse("(){a(1);}").ast,
       ast::expr(ast::function({{},
@@ -200,7 +218,8 @@ TEST_F(parserTest, callOp) {
                                     ast::arglist({ast::integer(1)})})}})));
 }
 
-TEST_F(parserTest, atOp) {
+TEST_F(parserTest, atOp)
+{
   EXPECT_EQ(
       parser::parse("(){a[1];}").ast,
       ast::expr(ast::function(
@@ -208,7 +227,8 @@ TEST_F(parserTest, atOp) {
            {ast::binary_op<ast::at>({ast::variable("a"), ast::integer(1)})}})));
 }
 
-TEST_F(parserTest, priority) {
+TEST_F(parserTest, priority)
+{
   EXPECT_EQ(
       parser::parse("(){|>a=1||1&&1|1^1&1>1>>1+1**1++;}").ast,
       ast::expr(ast::function(
@@ -239,6 +259,6 @@ TEST_F(parserTest, priority) {
                                                                      load>({ast::single_op<
                                                                  ast::inc>({ast::integer(
                                                                  1)})})})})})})})})})})})})})}})));
-} // namespace
+}  // namespace
 
-} // namespace
+}  // namespace

@@ -7,9 +7,10 @@
 
 #include <boost/variant.hpp>
 
-namespace scopion {
-namespace ast {
-
+namespace scopion
+{
+namespace ast
+{
 struct add;
 struct sub;
 struct mul;
@@ -41,12 +42,17 @@ struct inot;
 struct inc;
 struct dec;
 
-template <class Op, size_t N> struct op_base;
-template <class Op, size_t N> using op = value_wrapper<op_base<Op, N>>;
+template <class Op, size_t N>
+struct op_base;
+template <class Op, size_t N>
+using op = value_wrapper<op_base<Op, N>>;
 
-template <class Op> using single_op = op<Op, 1>;
-template <class Op> using binary_op = op<Op, 2>;
-template <class Op> using ternary_op = op<Op, 3>;
+template <class Op>
+using single_op = op<Op, 1>;
+template <class Op>
+using binary_op = op<Op, 2>;
+template <class Op>
+using ternary_op = op<Op, 3>;
 
 using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<sub>>,
@@ -77,7 +83,7 @@ using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<single_op<inc>>,
                                  boost::recursive_wrapper<single_op<dec>>,
                                  boost::recursive_wrapper<ternary_op<cond>>>;
-}; // namespace ast
-}; // namespace scopion
+};  // namespace ast
+};  // namespace scopion
 
 #endif

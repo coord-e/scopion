@@ -5,13 +5,16 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/variant.hpp>
 
-namespace {
-
+namespace
+{
 using namespace scopion;
 
-class assemblyTest : public ::testing::Test {};
+class assemblyTest : public ::testing::Test
+{
+};
 
-TEST_F(assemblyTest, variable) {
+TEST_F(assemblyTest, variable)
+{
   auto tree = ast::function(
       {{},
        {ast::binary_op<ast::assign>(
@@ -41,4 +44,4 @@ entry:
   EXPECT_EQ(str, stream.str());
 }
 
-} // namespace
+}  // namespace

@@ -8,4 +8,4 @@
 #include "scopion/ast/value.hpp"
 #include "scopion/ast/value_wrapper.hpp"
 
-#endif // SCOPION_AST_H_
+#endif  // SCOPION_AST_H_

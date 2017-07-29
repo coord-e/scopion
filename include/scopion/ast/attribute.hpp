@@ -6,19 +6,20 @@
 #include <string>
 #include <unordered_map>
 
-namespace scopion {
-namespace ast {
-
+namespace scopion
+{
+namespace ast
+{
 struct attribute {
   boost::iterator_range<std::string::const_iterator> where;
   std::unordered_map<std::string, std::string> attributes;
-  bool lval = false;
+  bool lval    = false;
   bool to_call = false;
-  bool survey = false;
+  bool survey  = false;
 };
-bool operator==(attribute const &lhs, attribute const &rhs);
+bool operator==(attribute const& lhs, attribute const& rhs);
 
-}; // namespace ast
-}; // namespace scopion
+};  // namespace ast
+};  // namespace scopion
 
 #endif

@@ -12,35 +12,42 @@
 #include <map>
 #include <vector>
 
-namespace scopion {
-namespace assembly {
-
-template <typename T> class lazy_value;
+namespace scopion
+{
+namespace assembly
+{
+template <typename T>
+class lazy_value;
 
 using value_t = boost::variant<lazy_value<llvm::Function>,
-                               lazy_value<llvm::BasicBlock>, llvm::Value *>;
+                               lazy_value<llvm::BasicBlock>,
+                               llvm::Value*>;
 
-template <typename T> class lazy_value {
-  T *block_ = nullptr;
+template <typename T>
+class lazy_value
+{
+  T* block_ = nullptr;
   std::vector<ast::expr> insts_;
 
 public:
   std::map<std::string, value_t> symbols;
 
   lazy_value() {}
-  lazy_value(T *block, std::vector<ast::expr> const insts)
-      : block_(block), insts_(insts) {}
+  lazy_value(T* block, std::vector<ast::expr> const insts)
+      : block_(block), insts_(insts)
+  {
+  }
 
-  void setValue(T *value) noexcept { block_ = value; }
+  void setValue(T* value) noexcept { block_ = value; }
 
-  T *getValue() const noexcept { return block_; }
+  T* getValue() const noexcept { return block_; }
 
   auto getInsts() const noexcept { return insts_; }
 
-  T *operator->() const noexcept { return block_; }
+  T* operator->() const noexcept { return block_; }
 };
 
-}; // namespace assembly
-}; // namespace scopion
+};  // namespace assembly
+};  // namespace scopion
 
 #endif

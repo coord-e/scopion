@@ -9,28 +9,32 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/IR/Module.h>
 
-namespace scopion {
-namespace assembly {
-
-class module {
+namespace scopion
+{
+namespace assembly
+{
+class module
+{
   std::shared_ptr<llvm::Module> module_;
 
 public:
   value_t val;
 
-  static std::unique_ptr<module> create(parser::parsed const &tree,
-                                        context &ctx,
-                                        std::string const &name = "");
+  static std::unique_ptr<module> create(parser::parsed const& tree,
+                                        context& ctx,
+                                        std::string const& name = "");
 
   std::string irgen();
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
 private:
-  module(std::shared_ptr<llvm::Module> &module, value_t val_)
-      : module_(std::move(module)), val(val_) {}
+  module(std::shared_ptr<llvm::Module>& module, value_t val_)
+      : module_(std::move(module)), val(val_)
+  {
+  }
 };
 
-}; // namespace assembly
-}; // namespace scopion
+};  // namespace assembly
+};  // namespace scopion
 
 #endif
