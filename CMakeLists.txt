@@ -21,6 +21,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0 -fsanitize=address")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 set(CCMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native")
 
+set(CMAKE_CXX_CLANG_TIDY
+    clang-tidy
+      -checks=-*,google-readability-casting
+      -fix
+      -fix-errors
+      -header-filter=${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 include_directories(include)
 include_directories(SYSTEM extsrc/include)
 
