@@ -74,7 +74,7 @@ bool operator==(expr const& lhs, expr const& rhs)
 template <typename Op, size_t N>
 bool operator==(op_base<Op, N> const& lhs, op_base<Op, N> const& rhs)
 {
-  return lhs.exprs == rhs.exprs;
+  return lhs.exprs_ == rhs.exprs_;
 }
 
 }  // namespace ast

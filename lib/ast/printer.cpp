@@ -110,9 +110,9 @@ public:
   auto operator()(const op<Op, N>& o) const -> void
   {
     _s << "{ ";
-    for (auto const& e : ast::val(o).exprs) {
+    for (auto const& e : ast::val(o)) {
       boost::apply_visitor(*this, e);
-      _s << " " << op_to_str(o) << " ";
+      _s << " " << op_str<Op> << " ";
     }
     _s << " }";
     if (attr(o).lval)
@@ -123,49 +123,15 @@ public:
   auto operator()(const ternary_op<T>& o) const -> void
   {
     _s << "{ ";
-    auto ops = op_to_str(o);
+    auto ops = op_str<T>;
     boost::apply_visitor(*this, ast::val(o)[0]);
-    _s << " " << ops.first << " ";
+    _s << " " << ops[0] << " ";
     boost::apply_visitor(*this, ast::val(o)[1]);
-    _s << " " << ops.second << " ";
+    _s << " " << ops[1] << " ";
     boost::apply_visitor(*this, ast::val(o)[2]);
     _s << " }";
     if (attr(o).lval)
       _s << "(lhs)";
-  }
-
-private:
-  std::string op_to_str(binary_op<add> const&) const { return "+"; }
-  std::string op_to_str(binary_op<sub> const&) const { return "-"; }
-  std::string op_to_str(binary_op<mul> const&) const { return "*"; }
-  std::string op_to_str(binary_op<div> const&) const { return "/"; }
-  std::string op_to_str(binary_op<rem> const&) const { return "%"; }
-  std::string op_to_str(binary_op<shl> const&) const { return "<<"; }
-  std::string op_to_str(binary_op<shr> const&) const { return ">>"; }
-  std::string op_to_str(binary_op<iand> const&) const { return "&"; }
-  std::string op_to_str(binary_op<ior> const&) const { return "|"; }
-  std::string op_to_str(binary_op<ixor> const&) const { return "^"; }
-  std::string op_to_str(binary_op<land> const&) const { return "&&"; }
-  std::string op_to_str(binary_op<lor> const&) const { return "||"; }
-  std::string op_to_str(binary_op<eeq> const&) const { return "=="; }
-  std::string op_to_str(binary_op<neq> const&) const { return "!="; }
-  std::string op_to_str(binary_op<gt> const&) const { return ">"; }
-  std::string op_to_str(binary_op<lt> const&) const { return "<"; }
-  std::string op_to_str(binary_op<gtq> const&) const { return ">="; }
-  std::string op_to_str(binary_op<ltq> const&) const { return "<="; }
-  std::string op_to_str(binary_op<assign> const&) const { return "="; }
-  std::string op_to_str(binary_op<call> const&) const { return "()"; }
-  std::string op_to_str(binary_op<at> const&) const { return "[]"; }
-  std::string op_to_str(binary_op<dot> const&) const { return "."; }
-  std::string op_to_str(single_op<load> const&) const { return "*"; }
-  std::string op_to_str(single_op<ret> const&) const { return "|>"; }
-  std::string op_to_str(single_op<lnot> const&) const { return "!"; }
-  std::string op_to_str(single_op<inot> const&) const { return "~"; }
-  std::string op_to_str(single_op<inc> const&) const { return "++"; }
-  std::string op_to_str(single_op<dec> const&) const { return "--"; }
-  decltype(auto) op_to_str(ternary_op<cond> const&) const
-  {
-    return std::pair<std::string, std::string>("?", ":");
   }
 };  // class printer
 

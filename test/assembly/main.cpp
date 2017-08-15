@@ -24,10 +24,8 @@ TEST_F(assemblyTest, variable)
 
   assembly::context ctx;
   auto res = scopion::assembly::module::create(parser::parsed(tree, ""), ctx,
-                                               "testing");
-  std::string string;
-  llvm::raw_string_ostream stream(string);
-  res->val->print(stream);
+                                               "testing")
+                 ->irgen();
   auto str = R"(
 define i32 @1() {
 entry:
@@ -41,7 +39,7 @@ entry:
   ret i32 %2
 }
 )";
-  EXPECT_EQ(str, stream.str());
+  EXPECT_EQ(str, res);
 }
 
 }  // namespace

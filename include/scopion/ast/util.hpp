@@ -13,6 +13,68 @@ namespace scopion
 {
 namespace ast
 {
+template <typename Op>
+static constexpr auto op_str = "";
+
+template <>
+static constexpr auto op_str<add> = "+";
+template <>
+static constexpr auto op_str<sub> = "-";
+template <>
+static constexpr auto op_str<mul> = "*";
+template <>
+static constexpr auto op_str<div> = "/";
+template <>
+static constexpr auto op_str<rem> = "%";
+template <>
+static constexpr auto op_str<shl> = "<<";
+template <>
+static constexpr auto op_str<shr> = ">>";
+template <>
+static constexpr auto op_str<iand> = "&";
+template <>
+static constexpr auto op_str<ior> = "|";
+template <>
+static constexpr auto op_str<ixor> = "^";
+template <>
+static constexpr auto op_str<land> = "&&";
+template <>
+static constexpr auto op_str<lor> = "||";
+template <>
+static constexpr auto op_str<eeq> = "==";
+template <>
+static constexpr auto op_str<neq> = "!=";
+template <>
+static constexpr auto op_str<gt> = ">";
+template <>
+static constexpr auto op_str<lt> = "<";
+template <>
+static constexpr auto op_str<gtq> = ">=";
+template <>
+static constexpr auto op_str<ltq> = "<=";
+template <>
+static constexpr auto op_str<assign> = "=";
+template <>
+static constexpr auto op_str<call> = "()";
+template <>
+static constexpr auto op_str<at> = "[]";
+template <>
+static constexpr auto op_str<dot> = ".";
+template <>
+static constexpr auto op_str<load> = "*";
+template <>
+static constexpr auto op_str<ret> = "|>";
+template <>
+static constexpr auto op_str<lnot> = "!";
+template <>
+static constexpr auto op_str<inot> = "~";
+template <>
+static constexpr auto op_str<inc> = "++";
+template <>
+static constexpr auto op_str<dec> = "--";
+template <>
+static constexpr auto op_str<cond> = "?:";
+
 template <typename T>
 T& val(value_wrapper<T>& w)
 {
@@ -70,30 +132,12 @@ struct setter_recursive_visitor : setter_visitor {
   using setter_visitor::operator();
   using setter_visitor::setter_visitor;
 
-  template <typename Op>
-  expr operator()(single_op<Op> val) const
+  template <typename Op, size_t N>
+  expr operator()(op<Op, N> val) const
   {
     f_(attr(val));
-    val.value = boost::apply_visitor(*this, val.value);
-    return val;
-  }
-
-  template <typename Op>
-  expr operator()(binary_op<Op> val) const
-  {
-    f_(attr(val));
-    val.lhs = boost::apply_visitor(*this, val.lhs);
-    val.rhs = boost::apply_visitor(*this, val.rhs);
-    return val;
-  }
-
-  template <typename Op>
-  expr operator()(ternary_op<Op> val) const
-  {
-    f_(attr(val));
-    val.first  = boost::apply_visitor(*this, val.first);
-    val.second = boost::apply_visitor(*this, val.second);
-    val.third  = boost::apply_visitor(*this, val.third);
+    std::for_each(val.begin(), val.end(),
+                  [this](auto& x) { x = boost::apply_visitor(*this, x); });
     return val;
   }
 };

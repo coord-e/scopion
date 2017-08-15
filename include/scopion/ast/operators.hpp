@@ -43,7 +43,7 @@ struct inc;
 struct dec;
 
 template <class Op, size_t N>
-struct op_base;
+class op_base;
 template <class Op, size_t N>
 using op = value_wrapper<op_base<Op, N>>;
 
