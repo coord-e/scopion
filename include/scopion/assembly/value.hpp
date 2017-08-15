@@ -1,11 +1,14 @@
 #ifndef SCOPION_ASSEMBLY_VALUE_H_
 #define SCOPION_ASSEMBLY_VALUE_H_
 
+#include "scopion/ast/expr.hpp"
+#include "scopion/ast/util.hpp"
 #include "scopion/ast/value.hpp"
 
 #include <boost/variant.hpp>
 
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 
 #include <cassert>
@@ -16,35 +19,64 @@ namespace scopion
 {
 namespace assembly
 {
-template <typename T>
-class lazy_value;
-
-using value_t = boost::variant<lazy_value<llvm::Function>,
-                               lazy_value<llvm::BasicBlock>,
-                               llvm::Value*>;
-
-template <typename T>
-class lazy_value
+class value
 {
-  T* block_ = nullptr;
-  std::vector<ast::expr> insts_;
+  llvm::Value* llvm_value_ = nullptr;
+  value* parent_           = nullptr;
+  ast::expr ast_value_;
+  std::map<std::string, std::pair<size_t, value*>> fields_;
+  std::map<std::string, value*> symbols_;
+  bool is_lazy_;
+  bool is_void_;
 
 public:
-  std::map<std::string, value_t> symbols;
-
-  lazy_value() {}
-  lazy_value(T* block, std::vector<ast::expr> const insts)
-      : block_(block), insts_(insts)
+  value(llvm::Value* llvm_value, ast::expr ast_value, bool is_lazy = false)
+      : llvm_value_(llvm_value),
+        ast_value_(ast_value),
+        is_lazy_(is_lazy),
+        is_void_(false)
   {
   }
+  value() : is_void_(true) {}
 
-  void setValue(T* value) noexcept { block_ = value; }
+  value(value const&) = delete;
+  value& operator=(value const&) = delete;
 
-  T* getValue() const noexcept { return block_; }
+  value* copyWithNewLLVMValue(llvm::Value* v) const
+  {
+    assert(v != llvm_value_);
+    auto newval         = new value();
+    newval->llvm_value_ = v;
+    newval->parent_     = parent_;
+    newval->ast_value_  = ast_value_;
+    newval->fields_     = fields_;
+    newval->symbols_    = symbols_;
+    newval->is_lazy_    = is_lazy_;
+    newval->is_void_    = is_void_;
+    return newval;
+  }
+  std::type_info const& type() const { return ast_value_.type(); }
+  bool isLazy() const { return is_lazy_; }
+  void isLazy(bool tf) { is_lazy_ = tf; }
+  bool isFundamental() const { return !llvm_value_->getType()->isStructTy(); }
+  bool isVoid() const
+  {
+    return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_;
+  }
+  value* getParent() const { return parent_; }
+  void setParent(value* parent) { parent_ = parent; }
+  ast::expr& getAst() { return ast_value_; };
+  ast::expr const& getAst() const { return ast_value_; }
+  llvm::Value* getLLVM() const { return llvm_value_; }
+  void setLLVM(llvm::Value* const val) { llvm_value_ = val; }
 
-  auto getInsts() const noexcept { return insts_; }
-
-  T* operator->() const noexcept { return block_; }
+  std::map<std::string, value*>& symbols() { return symbols_; }
+  std::map<std::string, value*> const& symbols() const { return symbols_; }
+  std::map<std::string, std::pair<size_t, value*>>& fields() { return fields_; }
+  std::map<std::string, std::pair<size_t, value*>> const& fields() const
+  {
+    return fields_;
+  }
 };
 
 };  // namespace assembly

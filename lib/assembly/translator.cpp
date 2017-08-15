@@ -17,10 +17,11 @@ namespace assembly
 translator::translator(std::shared_ptr<llvm::Module>& module,
                        llvm::IRBuilder<>& builder,
                        std::string const& code)
-    : boost::static_visitor<value_t>(),
+    : boost::static_visitor<value*>(),
       module_(module),
       builder_(builder),
-      code_range_(boost::make_iterator_range(code.begin(), code.end()))
+      code_range_(boost::make_iterator_range(code.begin(), code.end())),
+      thisScope_(new value())
 {
   auto ib = builder_.GetInsertBlock();
   {
@@ -59,150 +60,118 @@ translator::translator(std::shared_ptr<llvm::Module>& module,
   builder_.SetInsertPoint(ib);
 }
 
-value_t translator::operator()(ast::value value)
+value* translator::operator()(ast::value astv)
 {
-  return boost::apply_visitor(*this, value);
+  return boost::apply_visitor(*this, astv);
 }
 
-value_t translator::operator()(ast::operators value)
+value* translator::operator()(ast::operators astv)
 {
-  return boost::apply_visitor(*this, value);
+  return boost::apply_visitor(*this, astv);
 }
 
-value_t translator::operator()(ast::integer value)
+value* translator::operator()(ast::integer astv)
 {
-  if (ast::attr(value).lval)
+  if (ast::attr(astv).lval)
     throw error("An integer constant is not to be assigned",
-                ast::attr(value).where, code_range_);
+                ast::attr(astv).where, code_range_);
 
-  if (ast::attr(value).to_call)
+  if (ast::attr(astv).to_call)
     throw error("An integer constant is not to be called",
-                ast::attr(value).where, code_range_);
+                ast::attr(astv).where, code_range_);
 
-  return llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(value));
+  return new value(
+      llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(astv)), astv);
 }
 
-value_t translator::operator()(ast::boolean value)
+value* translator::operator()(ast::boolean astv)
 {
-  if (ast::attr(value).lval)
+  if (ast::attr(astv).lval)
     throw error("A boolean constant is not to be assigned",
-                ast::attr(value).where, code_range_);
+                ast::attr(astv).where, code_range_);
 
-  if (ast::attr(value).to_call)
-    throw error("A boolean constant is not to be called",
-                ast::attr(value).where, code_range_);
-
-  return llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(value));
-}
-
-value_t translator::operator()(ast::string const& value)
-{
-  if (ast::attr(value).lval)
-    throw error("A string constant is not to be assigned",
-                ast::attr(value).where, code_range_);
-
-  if (ast::attr(value).to_call)
-    throw error("A string constant is not to be called", ast::attr(value).where,
+  if (ast::attr(astv).to_call)
+    throw error("A boolean constant is not to be called", ast::attr(astv).where,
                 code_range_);
 
-  return builder_.CreateGlobalStringPtr(ast::val(value));
+  return new value(llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(astv)),
+                   astv);
 }
 
-value_t translator::operator()(ast::variable const& value)
+value* translator::operator()(ast::string const& astv)
 {
-  if (ast::attr(value).to_call) {  // in case of function
-    // find globally declared function
-    auto valp = module_->getFunction(ast::val(value));
-    if (valp != nullptr) {  // found
-      return valp;
-    } else {
-      try {
-        auto varp = getSymbols(currentScope_).at(ast::val(value));
+  if (ast::attr(astv).lval)
+    throw error("A string constant is not to be assigned",
+                ast::attr(astv).where, code_range_);
 
-        if (varp.type() == typeid(llvm::Value*)) {  // llvm value
-          auto vval = get_v(varp);
-          if (!vval->getType()->isPointerTy())
-            throw error("Variable \"" + ast::val(value) +
-                            "\" should be a pointer but " +
-                            getNameString(vval->getType()),
-                        ast::attr(value).where, code_range_);
-          if (vval->getType()->getPointerElementType()->isPointerTy()) {
-            if (vval->getType()
-                    ->getPointerElementType()
-                    ->getPointerElementType()
-                    ->isFunctionTy()) {
-              return builder_.CreateLoad(vval);
-            }
-          }
-          throw error(
-              "Variable \"" + ast::val(value) + "\" is not a function but " +
-                  getNameString(vval->getType()->getPointerElementType()),
-              ast::attr(value).where, code_range_);
-        } else  // lazy value
-          return varp;
-      } catch (std::out_of_range&) {
-        throw error("Function \"" + ast::val(value) +
-                        "\" has not declared in this scope",
-                    ast::attr(value).where, code_range_);
-      }
-    }
-  } else {  // not function (normal variable)
-    try {
-      auto valp = getSymbols(currentScope_).at(ast::val(value));
-      if (ast::attr(value).lval) {  // to be assigned
-        return valp;
-      } else {
-        if (valp.type() == typeid(llvm::Value*))
-          return builder_.CreateLoad(get_v(valp));
-        else  // lazy value
-          return valp;
-      }
-    } catch (std::out_of_range&) {
-      if (ast::attr(value).lval) {
-        // not found in symbols & to be assigned -> declaration
-        return nullptr;
-      } else {
-        throw error(
-            "\"" + ast::val(value) + "\" has not declared in this scope",
-            ast::attr(value).where, code_range_);
-      }
+  if (ast::attr(astv).to_call)
+    throw error("A string constant is not to be called", ast::attr(astv).where,
+                code_range_);
+
+  return new value(builder_.CreateGlobalStringPtr(ast::val(astv)), astv);
+}
+
+value* translator::operator()(ast::variable const& astv)
+{
+  if (auto fp = module_->getFunction(ast::val(astv)))
+    return new value(fp, astv);
+  try {
+    auto vp = thisScope_->symbols().at(ast::val(astv));
+    if (ast::attr(astv).lval || vp->isLazy())
+      return vp;
+    else
+      return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
+  } catch (std::out_of_range&) {
+    if (ast::attr(astv).lval) {
+      // not found in symbols & to be assigned -> declaration
+      return new value(nullptr, astv);
+    } else {
+      throw error("\"" + ast::val(astv) + "\" has not declared in this scope",
+                  ast::attr(astv).where, code_range_);
     }
   }
   assert(false);
 }
 
-value_t translator::operator()(ast::identifier const& value)
+value* translator::operator()(ast::identifier const& astv)
 {
-  return nullptr;
+  return new value();  // void
 }
 
-value_t translator::operator()(ast::array const& value)
+value* translator::operator()(ast::array const& astv)
 {
-  if (ast::attr(value).lval)
+  if (ast::attr(astv).lval)
     throw error("An array constant is not to be assigned",
-                ast::attr(value).where, code_range_);
+                ast::attr(astv).where, code_range_);
 
-  if (ast::attr(value).to_call)
-    throw error("An array constant is not to be called", ast::attr(value).where,
+  if (ast::attr(astv).to_call)
+    throw error("An array constant is not to be called", ast::attr(astv).where,
                 code_range_);
 
-  auto& ary = ast::val(value);
+  auto firstelem = boost::apply_visitor(*this, ast::val(astv)[0]);
+  auto t         = ast::val(astv).empty() ? builder_.getVoidTy()
+                                  : firstelem->getLLVM()->getType();
+
+  auto aryType = llvm::ArrayType::get(t, ast::val(astv).size());
+  auto aryPtr  = builder_.CreateAlloca(aryType);  // Allocate necessary memory
+  auto destval = new value(aryPtr, astv);
+
   std::vector<llvm::Value*> values;
-  for (auto const& elm : ary) {
-    // Convert exprs to llvm::Value* and store it into new vector
-    value_t v = boost::apply_visitor(*this, elm);
-    values.push_back(get_v(v));
+  for (auto const x : ast::val(astv) | boost::adaptors::indexed()) {
+    auto v =
+        x.index() == 0 ? firstelem : boost::apply_visitor(*this, x.value());
+    if (v->getLLVM()->getType() != t) {
+      throw error("all elements of array must have the same type",
+                  ast::attr(astv).where, code_range_);
+    }
+    v->setParent(destval);
+    destval->fields()[std::to_string(x.index())] = std::make_pair(
+        x.index(),
+        v);  // store value into fields list so that we can get this value later
+    if (!v->isLazy())
+      values.push_back(v->getLLVM());
   }
 
-  auto t = values.empty() ? builder_.getVoidTy() : values[0]->getType();
-  // check if the type of all elements of array is same
-  if (!std::all_of(values.begin(), values.end(),
-                   [&t](auto&& v) { return t == v->getType(); }))
-    throw error("all elements of array must have the same type",
-                ast::attr(value).where, code_range_);
-
-  auto aryType = llvm::ArrayType::get(t, ary.size());
-  auto aryPtr  = builder_.CreateAlloca(aryType);  // Allocate necessary memory
   for (auto const v : values | boost::adaptors::indexed()) {
     std::vector<llvm::Value*> idxList = {
         builder_.getInt32(0),
@@ -210,52 +179,61 @@ value_t translator::operator()(ast::array const& value)
     auto p = builder_.CreateInBoundsGEP(aryType, aryPtr,
                                         llvm::ArrayRef<llvm::Value*>(idxList));
 
-    builder_.CreateStore(get_v(v.value()), p);
+    destval->fields()[std::to_string(v.index())].second->setLLVM(p);
+    // not good way...? (many to_string)
+
+    builder_.CreateStore(v.value(), p);
   }
-  return aryPtr;
+  return destval;
 }
 
-value_t translator::operator()(ast::arglist const& value)
+value* translator::operator()(ast::arglist const& astv)
 {
-  return nullptr;
+  return new value();  // void
 }
 
-value_t translator::operator()(ast::structure const& value)
+value* translator::operator()(ast::structure const& astv)
 {
-  std::vector<value_t> vals;
+  std::vector<llvm::Value*> vals;
   std::vector<llvm::Type*> fields;
-  auto structName = createNewStructName();
+  auto destv = new value(nullptr, astv);
 
-  for (auto const& m : ast::val(value)) {
-    fields_map[structName].push_back(ast::val(m.first));
-    auto vp = get_v(boost::apply_visitor(*this, m.second));
-    fields.push_back(vp->getType());
-
-    vals.push_back(vp);
+  for (auto const& m : ast::val(astv) | boost::adaptors::indexed()) {
+    auto vp = boost::apply_visitor(*this, m.value().second);
+    destv->fields()[ast::val(m.value().first)] = std::make_pair(m.index(), vp);
+    vp->setParent(destv);
+    if (!vp->isLazy()) {
+      fields.push_back(vp->getLLVM()->getType());
+      vals.push_back(vp->getLLVM());
+    }
   }
 
-  llvm::StructType* structTy =
-      llvm::StructType::create(module_->getContext(), structName);
+  llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
   structTy->setBody(fields);
 
   auto ptr = builder_.CreateAlloca(structTy);
+  destv->setLLVM(ptr);
   for (auto const v : vals | boost::adaptors::indexed()) {
     auto p = builder_.CreateStructGEP(structTy, ptr,
                                       static_cast<uint32_t>(v.index()));
-    builder_.CreateStore(get_v(v.value()), p);
+    std::find_if(destv->fields().begin(), destv->fields().end(),
+                 [&v](auto& x) {
+                   return x.second.first == static_cast<uint32_t>(v.index());
+                 })
+        ->second.second->setLLVM(p);  // not good for performance
+    builder_.CreateStore(v.value(), p);
   }
 
-  return ptr;
+  return destv;
 }
 
-value_t translator::operator()(ast::function const& fcv)
+value* translator::operator()(ast::function const& fcv)
 {
   if (ast::attr(fcv).lval)
     throw error("A function constant is not to be assigned",
                 ast::attr(fcv).where, code_range_);
 
-  auto& args  = ast::val(fcv).first;
-  auto& lines = ast::val(fcv).second;
+  auto& args = ast::val(fcv).first;
 
   llvm::FunctionType* func_type = llvm::FunctionType::get(
       builder_.getVoidTy(),
@@ -263,41 +241,49 @@ value_t translator::operator()(ast::function const& fcv)
   llvm::Function* func =
       llvm::Function::Create(func_type, llvm::Function::ExternalLinkage);
 
-  auto lv = lazy_value<llvm::Function>(func, lines);
+  auto destv = new value(func, fcv, true);  // is_lazy = true
 
-  createAndRegisterLazyName(lv);
+  // maybe useless
+  // for (auto const arg : args | boost::adaptors::indexed()) {
+  //   destv->fields()[ast::val(arg.value())] = std::make_pair(arg.index(),
+  //   nullptr);
+  // }
 
-  for (auto const arg : args | boost::adaptors::indexed()) {
-    lv.symbols[std::to_string(arg.index()) + ":" + ast::val(arg.value())] =
-        nullptr;  // add number prefixes to remember the order
-  }
-  return lv;
+  return destv;
 }
 
-value_t translator::operator()(ast::scope const& scv)
+value* translator::operator()(ast::scope const& scv)
 {
-  auto bb    = llvm::BasicBlock::Create(module_->getContext());  // empty
-  auto newsc = lazy_value<llvm::BasicBlock>(bb, ast::val(scv));
+  if (ast::attr(scv).lval)
+    throw error("A scope constant is not to be assigned", ast::attr(scv).where,
+                code_range_);
 
-  std::copy(getSymbols(currentScope_).begin(), getSymbols(currentScope_).end(),
-            std::inserter(newsc.symbols, newsc.symbols.end()));
+  auto bb = llvm::BasicBlock::Create(module_->getContext());  // empty
 
-  createAndRegisterLazyName(newsc);
+  auto destv = new value(bb, scv, true);  // is_lazy = true
+  destv->symbols().insert(thisScope_->symbols().begin(),
+                          thisScope_->symbols().end());
 
-  return newsc;
+  return destv;
 }
 
-bool translator::apply_bb(lazy_value<llvm::BasicBlock> vv)
+template <>
+value* translator::operator()(ast::op<ast::call, 2> const& op)
 {
-  auto insts = vv.getInsts();
-  for (auto it = insts.begin(); it != insts.end(); it++) {
-    boost::apply_visitor(*this, *it);
-  }
-  auto cb = builder_.GetInsertBlock();
-  return std::none_of(cb->begin(), cb->end(), [](auto& i) {
-    return i.getOpcode() == llvm::Instruction::Ret ||
-           i.getOpcode() == llvm::Instruction::Br;
-  });
+  std::vector<value*> args;
+  std::transform(ast::val(op).begin(), ast::val(op).end(),
+                 std::back_inserter(args),
+                 [this](auto& o) { return boost::apply_visitor(*this, o); });
+  return apply_op(op, args);
+}
+template <>
+value* translator::operator()(ast::op<ast::assign, 2> const& op)
+{
+  std::vector<value*> args;
+  std::transform(ast::val(op).begin(), ast::val(op).end(),
+                 std::back_inserter(args),
+                 [this](auto& o) { return boost::apply_visitor(*this, o); });
+  return apply_op(op, args);
 }
 
 };  // namespace assembly

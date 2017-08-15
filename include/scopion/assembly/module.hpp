@@ -3,6 +3,7 @@
 
 #include "scopion/assembly/context.hpp"
 #include "scopion/assembly/translator.hpp"
+#include "scopion/assembly/value.hpp"
 
 #include "scopion/parser/parser.hpp"
 
@@ -18,7 +19,7 @@ class module
   std::shared_ptr<llvm::Module> module_;
 
 public:
-  value_t val;
+  value* val;
 
   static std::unique_ptr<module> create(parser::parsed const& tree,
                                         context& ctx,
@@ -28,7 +29,7 @@ public:
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
 private:
-  module(std::shared_ptr<llvm::Module>& module, value_t val_)
+  module(std::shared_ptr<llvm::Module>& module, value* val_)
       : module_(std::move(module)), val(val_)
   {
   }
