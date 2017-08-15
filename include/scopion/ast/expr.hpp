@@ -35,8 +35,7 @@ class op_base
 public:
   op_base(std::initializer_list<expr> args)
   {
-    assert(N == args.size() &&
-           "Initialization with wrong number of expression");
+    assert(N == args.size() && "Initialization with wrong number of expression");
     std::copy(args.begin(), args.end(), exprs_.begin());
   }
   op_base(exprs_t const& args) : exprs_(args) {}

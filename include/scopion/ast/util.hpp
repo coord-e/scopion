@@ -122,10 +122,7 @@ public:
 
   expr operator()(value val) const { return boost::apply_visitor(*this, val); }
 
-  expr operator()(operators val) const
-  {
-    return boost::apply_visitor(*this, val);
-  }
+  expr operator()(operators val) const { return boost::apply_visitor(*this, val); }
 };
 
 struct setter_recursive_visitor : setter_visitor {
@@ -136,8 +133,7 @@ struct setter_recursive_visitor : setter_visitor {
   expr operator()(op<Op, N> val) const
   {
     f_(attr(val));
-    std::for_each(val.begin(), val.end(),
-                  [this](auto& x) { x = boost::apply_visitor(*this, x); });
+    std::for_each(val.begin(), val.end(), [this](auto& x) { x = boost::apply_visitor(*this, x); });
     return val;
   }
 };
@@ -147,29 +143,25 @@ struct setter_recursive_visitor : setter_visitor {
 template <typename T>
 expr set_lval(T t, bool val)
 {
-  return visitors_::setter_recursive_visitor(
-      [val](attribute& attr) { attr.lval = val; })(t);
+  return visitors_::setter_recursive_visitor([val](attribute& attr) { attr.lval = val; })(t);
 }
 
 template <typename T>
 expr set_to_call(T t, bool val)
 {
-  return visitors_::setter_recursive_visitor(
-      [val](attribute& attr) { attr.to_call = val; })(t);
+  return visitors_::setter_recursive_visitor([val](attribute& attr) { attr.to_call = val; })(t);
 }
 
 template <typename T>
 expr set_survey(T t, bool val)
 {
-  return visitors_::setter_recursive_visitor(
-      [val](attribute& attr) { attr.survey = val; })(t);
+  return visitors_::setter_recursive_visitor([val](attribute& attr) { attr.survey = val; })(t);
 }
 
 template <typename T>
 expr set_attr(T t, std::string const& key, std::string const& val)
 {
-  return visitors_::setter_visitor(
-      [key, val](attribute& attr) { attr.attributes[key] = val; })(t);
+  return visitors_::setter_visitor([key, val](attribute& attr) { attr.attributes[key] = val; })(t);
 }
 
 template <typename T, typename RangeT>
@@ -179,16 +171,13 @@ T set_where(T val, RangeT range)
   return val;
 }
 
-template <typename Dest,
-          std::enable_if_t<std::is_convertible<Dest, value>::value>* = nullptr>
+template <typename Dest, std::enable_if_t<std::is_convertible<Dest, value>::value>* = nullptr>
 Dest& unpack(expr t)
 {
   return boost::get<Dest>(boost::get<value>(t));
 }
 
-template <
-    typename Dest,
-    std::enable_if_t<std::is_convertible<Dest, operators>::value>* = nullptr>
+template <typename Dest, std::enable_if_t<std::is_convertible<Dest, operators>::value>* = nullptr>
 Dest& unpack(expr t)
 {
   return boost::get<Dest>(boost::get<operators>(t));

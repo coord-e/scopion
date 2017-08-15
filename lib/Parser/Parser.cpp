@@ -33,9 +33,8 @@ auto assign_str_as = [](auto&& ctx) {
 };
 
 template <typename T>
-auto assign_as = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(T(x3::_attr(ctx)), x3::_where(ctx));
-};
+auto assign_as =
+    [](auto&& ctx) { x3::_val(ctx) = ast::set_where(T(x3::_attr(ctx)), x3::_where(ctx)); };
 
 auto assign_func = [](auto&& ctx) {
   auto&& args  = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
@@ -43,15 +42,13 @@ auto assign_func = [](auto&& ctx) {
   std::vector<ast::identifier> result;
   std::transform(args.begin(), args.end(), std::back_inserter(result),
                  [](auto&& x) { return ast::unpack<ast::identifier>(x); });
-  x3::_val(ctx) =
-      ast::set_where(ast::function({result, lines}), x3::_where(ctx));
+  x3::_val(ctx) = ast::set_where(ast::function({result, lines}), x3::_where(ctx));
 };
 
 auto assign_struct = [](auto&& ctx) {
   std::map<ast::identifier, ast::expr> result;
   for (auto const& v : x3::_attr(ctx)) {
-    auto&& name =
-        ast::unpack<ast::identifier>(boost::fusion::at<boost::mpl::int_<0>>(v));
+    auto&& name  = ast::unpack<ast::identifier>(boost::fusion::at<boost::mpl::int_<0>>(v));
     auto&& val   = boost::fusion::at<boost::mpl::int_<1>>(v);
     result[name] = val;
   }
@@ -70,30 +67,27 @@ auto assign_op = [](auto&& ctx) {
 
 template <typename Op>
 auto assign_op<Op, 2> = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(
-      ast::binary_op<Op>({x3::_val(ctx), x3::_attr(ctx)}), x3::_where(ctx));
+  x3::_val(ctx) =
+      ast::set_where(ast::binary_op<Op>({x3::_val(ctx), x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <typename Op>
 auto assign_op<Op, 1> = [](auto&& ctx) {
-  x3::_val(ctx) =
-      ast::set_where(ast::single_op<Op>({x3::_attr(ctx)}), x3::_where(ctx));
+  x3::_val(ctx) = ast::set_where(ast::single_op<Op>({x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <>
 auto assign_op<ast::assign, 2> = [](auto&& ctx) {
-  x3::_val(ctx) =
-      ast::set_where(ast::binary_op<ast::assign>(
-                         {ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)}),
-                     x3::_where(ctx));
+  x3::_val(ctx) = ast::set_where(
+      ast::binary_op<ast::assign>({ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)}),
+      x3::_where(ctx));
 };
 
 template <>
 auto assign_op<ast::call, 2> = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(
-      ast::binary_op<ast::call>({ast::set_to_call(x3::_val(ctx), true),
-                                 ast::arglist(x3::_attr(ctx))}),
-      x3::_where(ctx));
+  x3::_val(ctx) = ast::set_where(ast::binary_op<ast::call>({ast::set_to_call(x3::_val(ctx), true),
+                                                            ast::arglist(x3::_attr(ctx))}),
+                                 x3::_where(ctx));
 };
 
 auto assign_attr = [](auto&& ctx) {
@@ -102,9 +96,8 @@ auto assign_attr = [](auto&& ctx) {
   auto&& val = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
   // ast::attribute_val
   std::string keystr = ast::val(ast::unpack<ast::identifier>(key));
-  std::string valstr =
-      val ? ast::val(ast::unpack<ast::attribute_val>(*val)) : "";
-  x3::_val(ctx) = ast::set_attr(x3::_val(ctx), keystr, valstr);
+  std::string valstr = val ? ast::val(ast::unpack<ast::attribute_val>(*val)) : "";
+  x3::_val(ctx)      = ast::set_attr(x3::_val(ctx), keystr, valstr);
 };
 
 }  // namespace detail
@@ -169,118 +162,101 @@ x3::rule<assign_expr, ast::expr> const assign_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
 
-auto const variable_def = x3::raw[x3::lexeme[x3::alpha > *x3::alnum]]
-                                 [detail::assign_str_as<ast::variable>];
+auto const variable_def =
+    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_str_as<ast::variable>];
 
-auto const string_def = ('"' >> x3::lexeme[*(x3::char_ - '"')] >>
-                         '"')[detail::assign_str_as<ast::string>];
+auto const string_def =
+    ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str_as<ast::string>];
 
-auto const identifier_def = x3::raw[x3::lexeme[x3::alpha > *x3::alnum]]
-                                   [detail::assign_str_as<ast::identifier>];
+auto const identifier_def =
+    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_str_as<ast::identifier>];
 
-auto const array_def =
-    ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
+auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
 
 auto const structure_def =
-    ("[" >> *(identifier >> ":" >> expression >> -x3::lit(",")) >>
-     "]")[detail::assign_struct];
+    ("[" >> *(identifier >> ":" >> expression >> -x3::lit(",")) >> "]")[detail::assign_struct];
 
-auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> "){") >
-                           *(expression >> ";") > "}")[detail::assign_func];
+auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> "){") > *(expression >> ";") >
+                           "}")[detail::assign_func];
 
-auto const scope_def =
-    ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
+auto const scope_def = ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
 
 auto const attribute_val_def =
     x3::raw[x3::lexeme[*x3::alnum]][detail::assign_str_as<ast::attribute_val>];
 
 auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
-                         x3::bool_[detail::assign_as<ast::boolean>] |
-                         string[detail::assign] | variable[detail::assign] |
-                         structure[detail::assign] | array[detail::assign] |
-                         function[detail::assign] | scope[detail::assign] |
+                         x3::bool_[detail::assign_as<ast::boolean>] | string[detail::assign] |
+                         variable[detail::assign] | structure[detail::assign] |
+                         array[detail::assign] | function[detail::assign] | scope[detail::assign] |
                          ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
                           *(("." > identifier)[detail::assign_op<ast::dot, 2>]);
 
 auto const attr_expr_def = dot_expr[detail::assign] >>
-                           *("#" >> identifier >>
-                             -(":" > attribute_val))[detail::assign_attr];
+                           *("#" >> identifier >> -(":" > attribute_val))[detail::assign_attr];
 
 auto const call_expr_def = attr_expr[detail::assign] >>
                            *(("(" > *(expression >> -x3::lit(",")) >
                               ")")[detail::assign_op<ast::call, 2>] |
-                             ("[" > expression >
-                              "]")[detail::assign_op<ast::at, 2>]);
+                             ("[" > expression > "]")[detail::assign_op<ast::at, 2>]);
 
-auto const post_sinop_expr_def =
-    (call_expr >> "++")[detail::assign_op<ast::inc, 1>] |
-    (call_expr >> "--")[detail::assign_op<ast::dec, 1>] |
-    call_expr[detail::assign];
+auto const post_sinop_expr_def = (call_expr >> "++")[detail::assign_op<ast::inc, 1>] |
+                                 (call_expr >> "--")[detail::assign_op<ast::dec, 1>] |
+                                 call_expr[detail::assign];
 
-auto const pre_sinop_expr_def =
-    post_sinop_expr[detail::assign] |
-    ("!" > post_sinop_expr)[detail::assign_op<ast::lnot, 1>] |
-    ("~" > post_sinop_expr)[detail::assign_op<ast::inot, 1>] |
-    ("++" > post_sinop_expr)[detail::assign_op<ast::inc, 1>] |
-    ("--" > post_sinop_expr)[detail::assign_op<ast::dec, 1>] |
-    ("*" > post_sinop_expr)[detail::assign_op<ast::load, 1>];
+auto const pre_sinop_expr_def = post_sinop_expr[detail::assign] |
+                                ("!" > post_sinop_expr)[detail::assign_op<ast::lnot, 1>] |
+                                ("~" > post_sinop_expr)[detail::assign_op<ast::inot, 1>] |
+                                ("++" > post_sinop_expr)[detail::assign_op<ast::inc, 1>] |
+                                ("--" > post_sinop_expr)[detail::assign_op<ast::dec, 1>] |
+                                ("*" > post_sinop_expr)[detail::assign_op<ast::load, 1>];
 
-auto const mul_expr_def =
-    pre_sinop_expr[detail::assign] >>
-    *(("*" > pre_sinop_expr)[detail::assign_op<ast::mul, 2>] |
-      ("/" > pre_sinop_expr)[detail::assign_op<ast::div, 2>]);
+auto const mul_expr_def = pre_sinop_expr[detail::assign] >>
+                          *(("*" > pre_sinop_expr)[detail::assign_op<ast::mul, 2>] |
+                            ("/" > pre_sinop_expr)[detail::assign_op<ast::div, 2>]);
 
 auto const add_expr_def = mul_expr[detail::assign] >>
                           *(("+" > mul_expr)[detail::assign_op<ast::add, 2>] |
                             ("-" > mul_expr)[detail::assign_op<ast::sub, 2>] |
                             ("%" > mul_expr)[detail::assign_op<ast::rem, 2>]);
 
-auto const shift_expr_def =
-    add_expr[detail::assign] >>
-    *((">>" > add_expr)[detail::assign_op<ast::shr, 2>] |
-      ("<<" > add_expr)[detail::assign_op<ast::shl, 2>]);
+auto const shift_expr_def = add_expr[detail::assign] >>
+                            *((">>" > add_expr)[detail::assign_op<ast::shr, 2>] |
+                              ("<<" > add_expr)[detail::assign_op<ast::shl, 2>]);
 
-auto const cmp_expr_def =
-    shift_expr[detail::assign] >>
-    *(((">" - x3::lit(">=")) > shift_expr)[detail::assign_op<ast::gt, 2>] |
-      (("<" - x3::lit("<=")) > shift_expr)[detail::assign_op<ast::lt, 2>] |
-      (">=" > shift_expr)[detail::assign_op<ast::gtq, 2>] |
-      ("<=" > shift_expr)[detail::assign_op<ast::ltq, 2>] |
-      ("==" > shift_expr)[detail::assign_op<ast::eeq, 2>] |
-      ("!=" > shift_expr)[detail::assign_op<ast::neq, 2>]);
+auto const cmp_expr_def = shift_expr[detail::assign] >>
+                          *(((">" - x3::lit(">=")) > shift_expr)[detail::assign_op<ast::gt, 2>] |
+                            (("<" - x3::lit("<=")) > shift_expr)[detail::assign_op<ast::lt, 2>] |
+                            (">=" > shift_expr)[detail::assign_op<ast::gtq, 2>] |
+                            ("<=" > shift_expr)[detail::assign_op<ast::ltq, 2>] |
+                            ("==" > shift_expr)[detail::assign_op<ast::eeq, 2>] |
+                            ("!=" > shift_expr)[detail::assign_op<ast::neq, 2>]);
 
 auto const iand_expr_def = cmp_expr[detail::assign] >>
-                           *(((x3::lit("&") - "&&") >
-                              cmp_expr)[detail::assign_op<ast::iand, 2>]);
+                           *(((x3::lit("&") - "&&") > cmp_expr)[detail::assign_op<ast::iand, 2>]);
 
 auto const ixor_expr_def = iand_expr[detail::assign] >>
-                           *(("^" >
-                              iand_expr)[detail::assign_op<ast::ixor, 2>]);
+                           *(("^" > iand_expr)[detail::assign_op<ast::ixor, 2>]);
 
 auto const ior_expr_def = ixor_expr[detail::assign] >>
-                          *(((x3::lit("|") - "||") >
-                             ixor_expr)[detail::assign_op<ast::ior, 2>]);
+                          *(((x3::lit("|") - "||") > ixor_expr)[detail::assign_op<ast::ior, 2>]);
 
 auto const land_expr_def = ior_expr[detail::assign] >>
-                           *(("&&" >
-                              ior_expr)[detail::assign_op<ast::land, 2>]);
+                           *(("&&" > ior_expr)[detail::assign_op<ast::land, 2>]);
 
 auto const lor_expr_def = land_expr[detail::assign] >>
                           *(("||" > land_expr)[detail::assign_op<ast::lor, 2>]);
 
 auto const cond_expr_def = lor_expr[detail::assign] >>
-                           *(("?" > lor_expr > ":" >
-                              lor_expr)[detail::assign_op<ast::cond, 3>]);
+                           *(("?" > lor_expr > ":" > lor_expr)[detail::assign_op<ast::cond, 3>]);
 
 auto const assign_expr_def =
-    cond_expr[detail::assign] >> "=" >>
-        assign_expr[detail::assign_op<ast::assign, 2>] |
+    cond_expr[detail::assign] >> "=" >> assign_expr[detail::assign_op<ast::assign, 2>] |
     cond_expr[detail::assign];
 
-auto const ret_expr_def = assign_expr[detail::assign] |
-                          ("|>" > assign_expr)[detail::assign_op<ast::ret, 1>];
+auto const ret_expr_def =
+    assign_expr[detail::assign] | ("|>" > assign_expr)[detail::assign_op<ast::ret, 1>];
 
 auto const expression_def = ret_expr[detail::assign];
 
@@ -333,8 +309,7 @@ parsed parse(std::string const& code)
   ast::expr tree;
 
   auto const space_comment = x3::space | "/*" > *(x3::char_ - "*/") > "*/";
-  if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression,
-                        space_comment, tree)) {
+  if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree)) {
     throw std::runtime_error("detected error");
   }
 

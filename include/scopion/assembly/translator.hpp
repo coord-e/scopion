@@ -54,8 +54,7 @@ public:
     std::vector<value*> args;
     std::vector<llvm::Value*> args_llvm;
     for (; it != ast::val(op).end(); it++) {
-      auto thev = it == ast::val(op).begin() ? target
-                                             : boost::apply_visitor(*this, *it);
+      auto thev = it == ast::val(op).begin() ? target : boost::apply_visitor(*this, *it);
       args.push_back(thev);
       if (!thev->isLazy())
         args_llvm.push_back(thev->getLLVM());
@@ -67,12 +66,10 @@ public:
       args.push_back(target);
       auto it = target->fields().find(ast::op_str<Op>);
       if (it == target->fields().end())
-        throw error(std::string("no operator ") + ast::op_str<Op> +
-                        " is defined in the structure",
+        throw error(std::string("no operator ") + ast::op_str<Op> + " is defined in the structure",
                     ast::attr(op).where, code_range_);
-      return new value(builder_.CreateCall(
-                           evaluate(it->second.second, args, *this)->getLLVM(),
-                           llvm::ArrayRef<llvm::Value*>(args_llvm)),
+      return new value(builder_.CreateCall(evaluate(it->second.second, args, *this)->getLLVM(),
+                                           llvm::ArrayRef<llvm::Value*>(args_llvm)),
                        op);
     }
   }
@@ -108,8 +105,7 @@ private:
   value* apply_op(ast::binary_op<ast::lt> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::gtq> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::ltq> const&, std::vector<value*> const&);
-  value* apply_op(ast::binary_op<ast::assign> const&,
-                  std::vector<value*> const&);
+  value* apply_op(ast::binary_op<ast::assign> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::call> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::at> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::dot> const&, std::vector<value*> const&);
@@ -119,8 +115,7 @@ private:
   value* apply_op(ast::single_op<ast::inot> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::inc> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::dec> const&, std::vector<value*> const&);
-  value* apply_op(ast::ternary_op<ast::cond> const&,
-                  std::vector<value*> const&);
+  value* apply_op(ast::ternary_op<ast::cond> const&, std::vector<value*> const&);
 };
 
 };  // namespace assembly

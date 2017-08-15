@@ -32,8 +32,7 @@ struct arglist : array {
   using array::array;
 };
 using structure = value_wrapper<std::map<identifier, expr>>;
-using function =
-    value_wrapper<std::pair<std::vector<identifier>, std::vector<expr>>>;
+using function  = value_wrapper<std::pair<std::vector<identifier>, std::vector<expr>>>;
 
 struct scope : array {
   using array::array;

@@ -30,17 +30,12 @@ bool apply_bb(ast::scope const& sc, translator& tr)
   }
   auto cb = tr.builder_.GetInsertBlock();
   return std::none_of(cb->begin(), cb->end(), [](auto& i) {
-    return i.getOpcode() == llvm::Instruction::Ret ||
-           i.getOpcode() == llvm::Instruction::Br;
+    return i.getOpcode() == llvm::Instruction::Ret || i.getOpcode() == llvm::Instruction::Br;
   });
 }
 
 evaluator::evaluator(value* v, std::vector<value*> const& args, translator& tr)
-    : v_(v),
-      arguments_(args),
-      translator_(tr),
-      builder_(tr.builder_),
-      module_(tr.module_)
+    : v_(v), arguments_(args), translator_(tr), builder_(tr.builder_), module_(tr.module_)
 {
 }
 
@@ -56,15 +51,11 @@ llvm::Value* evaluator::operator()(ast::operators const& astv)
 
 llvm::Value* evaluator::operator()(ast::function const& fcv)
 {
-  if (v_->getLLVM()
-          ->getType()
-          ->getPointerElementType()
-          ->getFunctionNumParams() != arguments_.size())
+  if (v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams() !=
+      arguments_.size())
     throw error("The number of arguments doesn't match: required " +
-                    std::to_string(v_->getLLVM()
-                                       ->getType()
-                                       ->getPointerElementType()
-                                       ->getFunctionNumParams()) +
+                    std::to_string(
+                        v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams()) +
                     " but supplied " + std::to_string(arguments_.size()),
                 ast::attr(fcv).where, translator_.code_range_);
 
@@ -86,12 +77,10 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
 
   llvm::FunctionType* func_type =
       llvm::FunctionType::get(builder_.getVoidTy(), arg_types_for_func, false);
-  llvm::Function* func =
-      llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
-                             v_->getLLVM()->getName(), module_.get());
-  llvm::BasicBlock* entry =
-      llvm::BasicBlock::Create(module_->getContext(), "entry_survey", func);
-  auto prevScope = translator_.getScope();
+  llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
+                                                v_->getLLVM()->getName(), module_.get());
+  llvm::BasicBlock* entry = llvm::BasicBlock::Create(module_->getContext(), "entry_survey", func);
+  auto prevScope          = translator_.getScope();
   translator_.setScope(new value(entry, fcv));
 
   auto pb = builder_.GetInsertBlock();
@@ -106,8 +95,7 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
     auto vp = arguments_[arg_name.index()];
     if (!vp->isLazy()) {
       translator_.getScope()->symbols()[arg_name.value()] =
-          new value(builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
-                                          arg_name.value()),
+          new value(builder_.CreateAlloca(arg_types[arg_name.index()], nullptr, arg_name.value()),
                     fcv);  // declare arguments
     } else {
       translator_.getScope()->symbols()[arg_name.value()] = vp;
@@ -121,15 +109,14 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
 
   llvm::Type* ret_type = nullptr;
   for (auto const& bb : *func) {
-    for (auto itr = bb.getInstList().begin(); itr != bb.getInstList().end();
-         ++itr) {
+    for (auto itr = bb.getInstList().begin(); itr != bb.getInstList().end(); ++itr) {
       if ((*itr).getOpcode() == llvm::Instruction::Ret) {
         if ((*itr).getOperand(0)->getType() != ret_type) {
           if (ret_type == nullptr) {
             ret_type = (*itr).getOperand(0)->getType();
           } else {
-            throw error("All return values must have the same type",
-                        ast::attr(fcv).where, translator_.code_range_);
+            throw error("All return values must have the same type", ast::attr(fcv).where,
+                        translator_.code_range_);
           }
         }
       }
@@ -145,19 +132,16 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
 
   llvm::Function* newfunc;
   if (ast::attr(fcv).survey) {  // is it really ok?
-    newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, arg_types_for_func, false),
-        llvm::Function::ExternalLinkage);
+    newfunc = llvm::Function::Create(llvm::FunctionType::get(ret_type, arg_types_for_func, false),
+                                     llvm::Function::ExternalLinkage);
   } else {  // Create the real content of function if it
             // isn't in survey
 
-    newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, arg_types_for_func, false),
-        llvm::Function::ExternalLinkage, v_->getLLVM()->getName(),
-        module_.get());
+    newfunc = llvm::Function::Create(llvm::FunctionType::get(ret_type, arg_types_for_func, false),
+                                     llvm::Function::ExternalLinkage, v_->getLLVM()->getName(),
+                                     module_.get());
 
-    llvm::BasicBlock* newentry =
-        llvm::BasicBlock::Create(module_->getContext(), "entry", newfunc);
+    llvm::BasicBlock* newentry = llvm::BasicBlock::Create(module_->getContext(), "entry", newfunc);
 
     translator_.setScope(new value(newentry, fcv));
     builder_.SetInsertPoint(newentry);
@@ -170,11 +154,9 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
     for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
       auto argv = arguments_[arg_name.index()];
       if (!argv->isLazy()) {
-        auto aptr =
-            builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
-                                  arg_name.value());  // declare arguments
-        translator_.getScope()->symbols()[arg_name.value()] =
-            new value(aptr, fcv);
+        auto aptr = builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
+                                          arg_name.value());  // declare arguments
+        translator_.getScope()->symbols()[arg_name.value()] = new value(aptr, fcv);
         builder_.CreateStore(&(*it), aptr);
         it++;
       } else {
@@ -205,11 +187,11 @@ llvm::Value* evaluator::operator()(ast::scope const& sc)
   auto pb = builder_.GetInsertBlock();
   auto pp = builder_.GetInsertPoint();
 
-  auto nb = llvm::BasicBlock::Create(module_->getContext(), "",
-                                     builder_.GetInsertBlock()->getParent());
+  auto nb =
+      llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
 
-  auto theblock = llvm::BasicBlock::Create(
-      module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+  auto theblock =
+      llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
   builder_.SetInsertPoint(theblock);
   auto prevScope = translator_.getScope();
 
@@ -234,10 +216,9 @@ llvm::Value* evaluator::operator()(ast::scope const& sc)
 
 value* evaluate(value* v, std::vector<value*> const& args, translator& tr)
 {
-  auto evor = evaluator{v, args, tr};
-  llvm::Value* evaled =
-      v->isLazy() ? boost::apply_visitor(evor, v->getAst()) : v->getLLVM();
-  auto destv = v->copyWithNewLLVMValue(evaled);
+  auto evor           = evaluator{v, args, tr};
+  llvm::Value* evaled = v->isLazy() ? boost::apply_visitor(evor, v->getAst()) : v->getLLVM();
+  auto destv          = v->copyWithNewLLVMValue(evaled);
   destv->isLazy(false);
   return destv;
 }

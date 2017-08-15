@@ -17,8 +17,7 @@ public:
   attribute attr;
 
   value_wrapper(T const& val) : value(val) {}
-  template <typename U,
-            std::enable_if_t<std::is_constructible<T, U>::value>* = nullptr>
+  template <typename U, std::enable_if_t<std::is_constructible<T, U>::value>* = nullptr>
   value_wrapper(U const& val) : value(T(val))
   {
   }

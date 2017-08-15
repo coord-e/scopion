@@ -26,10 +26,7 @@ public:
   {
   }
 
-  uint64_t line_number() const
-  {
-    return std::count(code.begin(), where.begin(), '\n');
-  }
+  uint64_t line_number() const { return std::count(code.begin(), where.begin(), '\n'); }
   str_range_t line_range() const
   {
     auto range = boost::make_iterator_range(code.begin(), where.begin());

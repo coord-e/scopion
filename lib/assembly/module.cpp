@@ -30,14 +30,13 @@ std::unique_ptr<module> module::create(parser::parsed const& tree,
   llvm::IRBuilder<> builder(mod->getContext());
 
   std::vector<llvm::Type*> args_type = {builder.getInt32Ty()};
-  auto main_func                     = llvm::Function::Create(
-      llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
-      llvm::Function::ExternalLinkage, "main", mod.get());
+  auto main_func =
+      llvm::Function::Create(llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
+                             llvm::Function::ExternalLinkage, "main", mod.get());
 
   translator tr(mod, builder, tree.code);
 
-  builder.SetInsertPoint(
-      llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
+  builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 
   auto val = boost::apply_visitor(tr, tree.ast);
 
@@ -59,13 +58,12 @@ std::string module::irgen()
 
 void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
 {
-  llvm::legacy::PassManager* pm = new llvm::legacy::PassManager();
-  llvm::legacy::FunctionPassManager* fpm =
-      new llvm::legacy::FunctionPassManager(module_.get());
+  llvm::legacy::PassManager* pm          = new llvm::legacy::PassManager();
+  llvm::legacy::FunctionPassManager* fpm = new llvm::legacy::FunctionPassManager(module_.get());
   llvm::PassManagerBuilder builder;
-  builder.OptLevel  = optLevel;
-  builder.SizeLevel = sizeLevel;
-  builder.Inliner   = llvm::createFunctionInliningPass(optLevel, sizeLevel);
+  builder.OptLevel           = optLevel;
+  builder.SizeLevel          = sizeLevel;
+  builder.Inliner            = llvm::createFunctionInliningPass(optLevel, sizeLevel);
   builder.DisableUnitAtATime = false;
   builder.DisableUnrollLoops = false;
   builder.LoopVectorize      = true;

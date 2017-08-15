@@ -31,10 +31,7 @@ class value
 
 public:
   value(llvm::Value* llvm_value, ast::expr ast_value, bool is_lazy = false)
-      : llvm_value_(llvm_value),
-        ast_value_(ast_value),
-        is_lazy_(is_lazy),
-        is_void_(false)
+      : llvm_value_(llvm_value), ast_value_(ast_value), is_lazy_(is_lazy), is_void_(false)
   {
   }
   value() : is_void_(true) {}
@@ -63,10 +60,7 @@ public:
     return !llvm_value_->getType()->isStructTy() &&
            !llvm_value_->getType()->getPointerElementType()->isStructTy();
   }
-  bool isVoid() const
-  {
-    return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_;
-  }
+  bool isVoid() const { return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_; }
   value* getParent() const { return parent_; }
   void setParent(value* parent) { parent_ = parent; }
   ast::expr& getAst() { return ast_value_; };
@@ -77,10 +71,7 @@ public:
   std::map<std::string, value*>& symbols() { return symbols_; }
   std::map<std::string, value*> const& symbols() const { return symbols_; }
   std::map<std::string, std::pair<size_t, value*>>& fields() { return fields_; }
-  std::map<std::string, std::pair<size_t, value*>> const& fields() const
-  {
-    return fields_;
-  }
+  std::map<std::string, std::pair<size_t, value*>> const& fields() const { return fields_; }
 };
 
 };  // namespace assembly

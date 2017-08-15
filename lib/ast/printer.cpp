@@ -27,15 +27,9 @@ public:
 
   auto operator()(ast::integer val) const -> void { _s << ast::val(val); }
 
-  auto operator()(ast::boolean val) const -> void
-  {
-    _s << std::boolalpha << ast::val(val);
-  }
+  auto operator()(ast::boolean val) const -> void { _s << std::boolalpha << ast::val(val); }
 
-  auto operator()(ast::string const& val) const -> void
-  {
-    _s << "\"" << ast::val(val) << "\"";
-  }
+  auto operator()(ast::string const& val) const -> void { _s << "\"" << ast::val(val) << "\""; }
 
   auto operator()(variable const& val) const -> void
   {

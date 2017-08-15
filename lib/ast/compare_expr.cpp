@@ -10,10 +10,7 @@ public:
   Tc with;
   compare_expr(Tc const& _with) : with(_with) {}
 
-  bool operator()(ast::expr_base exp) const
-  {
-    return boost::apply_visitor(*this, exp);
-  }
+  bool operator()(ast::expr_base exp) const { return boost::apply_visitor(*this, exp); }
 
   template <typename Op, size_t N>
   bool operator()(ast::op<Op, N> o) const
@@ -21,9 +18,9 @@ public:
     if (with.type() != typeid(o))
       return false;
     for (size_t i = 0; i < N; i++) {
-      if (!boost::apply_visitor(compare_expr<ast::expr_base>(ast::val(
-                                    boost::get<ast::op<Op, N>>(with))[i]),
-                                ast::val(o)[i]))
+      if (!boost::apply_visitor(
+              compare_expr<ast::expr_base>(ast::val(boost::get<ast::op<Op, N>>(with))[i]),
+              ast::val(o)[i]))
         return false;
     }
     return true;

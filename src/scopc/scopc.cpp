@@ -19,21 +19,17 @@ int main(int argc, char* argv[])
 {
   try {
     cmdline::parser p;
-    p.add<std::string>(
-        "type", 't', "Specify the type of output (ir, ast, asm, obj)", false,
-        "obj", cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
-    p.add<std::string>("output", 'o', "Specify the output path", false,
-                       "./a.out");
-    p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1,
-               cmdline::range(1, 3));
+    p.add<std::string>("type", 't', "Specify the type of output (ir, ast, asm, obj)", false, "obj",
+                       cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
+    p.add<std::string>("output", 'o', "Specify the output path", false, "./a.out");
+    p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1, cmdline::range(1, 3));
     p.add("help", 'h', "Print this help");
     p.add("version", 'v', "Print version");
     p.footer("filename ...");
 
     if (!p.parse(argc, argv)) {
-      std::cout << rang::style::reset << rang::bg::red << rang::fg::gray
-                << "[ERROR]" << rang::style::reset << ": " << p.error_full()
-                << p.usage();
+      std::cout << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+                << rang::style::reset << ": " << p.error_full() << p.usage();
       return 0;
     }
     if (p.exist("help")) {
@@ -57,28 +53,24 @@ int main(int argc, char* argv[])
     }
 
     if (p.rest().empty()) {
-      std::cout << rang::style::reset << rang::bg::red << rang::fg::gray
-                << "[ERROR]" << rang::style::reset
-                << ": no input file specified." << std::endl
+      std::cout << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+                << rang::style::reset << ": no input file specified." << std::endl
                 << p.usage();
       return 0;
     }
 
-    const std::string outpath =
-        p.exist("output") ? p.get<std::string>("output") : "a.out";
+    const std::string outpath = p.exist("output") ? p.get<std::string>("output") : "a.out";
 
     std::ifstream ifs(p.rest()[0]);
     if (ifs.fail()) {
-      std::cout << rang::style::reset << rang::bg::red << rang::fg::gray
-                << "[ERROR]" << rang::style::reset << ": failed to open \""
-                << p.rest()[0] << "\"" << std::endl;
+      std::cout << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+                << rang::style::reset << ": failed to open \"" << p.rest()[0] << "\"" << std::endl;
       return 0;
     }
 
     auto& outtype = p.get<std::string>("type");
 
-    std::string code((std::istreambuf_iterator<char>(ifs)),
-                     std::istreambuf_iterator<char>());
+    std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
     auto ast = scopion::parser::parse(code);
 
@@ -119,13 +111,12 @@ int main(int argc, char* argv[])
 
     system(("gcc " + tmpstr + ".s -o " + std::string(outpath)).c_str());
   } catch (scopion::error const& e) {
-    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray
-              << "[ERROR]" << rang::style::reset << rang::fg::red << " @"
-              << e.line_number() << rang::style::reset << ": " << e.what()
-              << std::endl
+    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+              << rang::style::reset << rang::fg::red << " @" << e.line_number()
+              << rang::style::reset << ": " << e.what() << std::endl
               << e.line() << std::endl
-              << rang::fg::green << std::setw(e.distance() + 1) << "^"
-              << rang::style::reset << std::endl;
+              << rang::fg::green << std::setw(e.distance() + 1) << "^" << rang::style::reset
+              << std::endl;
     return -1;
   }
 }

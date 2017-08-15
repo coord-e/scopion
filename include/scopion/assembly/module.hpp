@@ -29,8 +29,7 @@ public:
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
 private:
-  module(std::shared_ptr<llvm::Module>& module, value* val_)
-      : module_(std::move(module)), val(val_)
+  module(std::shared_ptr<llvm::Module>& module, value* val_) : module_(std::move(module)), val(val_)
   {
   }
 };
