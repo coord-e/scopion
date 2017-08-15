@@ -100,7 +100,7 @@ auto assign_attr = [](auto&& ctx) {
   x3::_val(ctx)      = ast::set_attr(x3::_val(ctx), keystr, valstr);
 };
 
-}  // namespace detail
+};  // namespace detail
 
 struct variable;
 struct identifier;

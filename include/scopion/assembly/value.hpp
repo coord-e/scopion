@@ -65,7 +65,7 @@ public:
   bool isVoid() const { return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_; }
   value* getParent() const { return parent_; }
   void setParent(value* parent) { parent_ = parent; }
-  ast::expr& getAst() { return ast_value_; };
+  ast::expr& getAst() { return ast_value_; }
   ast::expr const& getAst() const { return ast_value_; }
   llvm::Value* getLLVM() const { return llvm_value_; }
   void setLLVM(llvm::Value* const val) { llvm_value_ = val; }
