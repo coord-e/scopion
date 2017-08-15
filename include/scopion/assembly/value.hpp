@@ -57,8 +57,10 @@ public:
   void isLazy(bool tf) { is_lazy_ = tf; }
   bool isFundamental() const
   {
-    return !llvm_value_->getType()->isStructTy() &&
-           !llvm_value_->getType()->getPointerElementType()->isStructTy();
+    if (llvm_value_->getType()->isPointerTy())
+      return !llvm_value_->getType()->getPointerElementType()->isStructTy();
+    else
+      return !llvm_value_->getType()->isStructTy();
   }
   bool isVoid() const { return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_; }
   value* getParent() const { return parent_; }
