@@ -70,30 +70,12 @@ struct setter_recursive_visitor : setter_visitor {
   using setter_visitor::operator();
   using setter_visitor::setter_visitor;
 
-  template <typename Op>
-  expr operator()(single_op<Op> val) const
+  template <typename Op, size_t N>
+  expr operator()(op<Op, N> val) const
   {
     f_(attr(val));
-    val.value = boost::apply_visitor(*this, val.value);
-    return val;
-  }
-
-  template <typename Op>
-  expr operator()(binary_op<Op> val) const
-  {
-    f_(attr(val));
-    val.lhs = boost::apply_visitor(*this, val.lhs);
-    val.rhs = boost::apply_visitor(*this, val.rhs);
-    return val;
-  }
-
-  template <typename Op>
-  expr operator()(ternary_op<Op> val) const
-  {
-    f_(attr(val));
-    val.first  = boost::apply_visitor(*this, val.first);
-    val.second = boost::apply_visitor(*this, val.second);
-    val.third  = boost::apply_visitor(*this, val.third);
+    std::for_each(val.begin(), val.end(),
+                  [this](auto& x) { x = boost::apply_visitor(*this, x); });
     return val;
   }
 };

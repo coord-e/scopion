@@ -110,7 +110,7 @@ public:
   auto operator()(const op<Op, N>& o) const -> void
   {
     _s << "{ ";
-    for (auto const& e : ast::val(o).exprs) {
+    for (auto const& e : ast::val(o)) {
       boost::apply_visitor(*this, e);
       _s << " " << op_str<Op> << " ";
     }
