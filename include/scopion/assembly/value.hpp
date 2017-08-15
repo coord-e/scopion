@@ -58,7 +58,11 @@ public:
   std::type_info const& type() const { return ast_value_.type(); }
   bool isLazy() const { return is_lazy_; }
   void isLazy(bool tf) { is_lazy_ = tf; }
-  bool isFundamental() const { return !llvm_value_->getType()->isStructTy(); }
+  bool isFundamental() const
+  {
+    return !llvm_value_->getType()->isStructTy() &&
+           !llvm_value_->getType()->getPointerElementType()->isStructTy();
+  }
   bool isVoid() const
   {
     return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_;

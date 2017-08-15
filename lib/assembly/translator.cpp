@@ -285,6 +285,24 @@ value* translator::operator()(ast::op<ast::assign, 2> const& op)
                  [this](auto& o) { return boost::apply_visitor(*this, o); });
   return apply_op(op, args);
 }
+template <>
+value* translator::operator()(ast::op<ast::dot, 2> const& op)
+{
+  std::vector<value*> args;
+  std::transform(ast::val(op).begin(), ast::val(op).end(),
+                 std::back_inserter(args),
+                 [this](auto& o) { return boost::apply_visitor(*this, o); });
+  return apply_op(op, args);
+}
+template <>
+value* translator::operator()(ast::op<ast::cond, 3> const& op)
+{
+  std::vector<value*> args;
+  std::transform(ast::val(op).begin(), ast::val(op).end(),
+                 std::back_inserter(args),
+                 [this](auto& o) { return boost::apply_visitor(*this, o); });
+  return apply_op(op, args);
+}
 
 };  // namespace assembly
 };  // namespace scopion

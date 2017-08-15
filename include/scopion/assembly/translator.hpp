@@ -65,11 +65,15 @@ public:
       return apply_op(op, args);
     } else {
       args.push_back(target);
-      auto& func = target->fields().at(ast::op_str<Op>).second;
-      return new value(
-          builder_.CreateCall(evaluate(func, args, *this)->getLLVM(),
-                              llvm::ArrayRef<llvm::Value*>(args_llvm)),
-          op);
+      auto it = target->fields().find(ast::op_str<Op>);
+      if (it == target->fields().end())
+        throw error(std::string("no operator ") + ast::op_str<Op> +
+                        " is defined in the structure",
+                    ast::attr(op).where, code_range_);
+      return new value(builder_.CreateCall(
+                           evaluate(it->second.second, args, *this)->getLLVM(),
+                           llvm::ArrayRef<llvm::Value*>(args_llvm)),
+                       op);
     }
   }
 
