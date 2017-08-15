@@ -59,7 +59,8 @@ int main(int argc, char* argv[])
       return 0;
     }
 
-    const std::string outpath = p.exist("output") ? p.get<std::string>("output") : "a.out";
+    std::string outpath = p.exist("output") ? p.get<std::string>("output") : "a.out";
+    outpath             = outpath == "-" ? "/dev/stdout" : outpath;
 
     std::ifstream ifs(p.rest()[0]);
     if (ifs.fail()) {
@@ -105,7 +106,11 @@ int main(int argc, char* argv[])
     system(("llc -filetype asm " + tmpstr).c_str());
 
     if (outtype == "asm") {
-      fs::rename(fs::path(tmpstr + ".s"), fs::path(outpath));
+      std::ofstream fso(outpath);
+      std::ifstream fsi(tmpstr + ".s");
+      fso << fsi.rdbuf() << std::flush;
+      fso.close();
+      fsi.close();
       return 0;
     }
 
