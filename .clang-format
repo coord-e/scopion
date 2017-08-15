@@ -4,6 +4,8 @@ AccessModifierOffset: '-2'
 AlignConsecutiveAssignments: 'true'
 BreakBeforeBraces: Linux
 Standard: Cpp11
+ColumnLimit: 100
 UseTab: Never
+AlignEscapedNewlinesLeft: true
 
 ...
