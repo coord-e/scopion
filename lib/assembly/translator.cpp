@@ -35,6 +35,13 @@ translator::translator(std::shared_ptr<llvm::Module>& module,
         llvm::FunctionType::get(builder_.getInt32Ty(), llvm::ArrayRef<llvm::Type*>(args), true));
   }
   {
+    module_->getOrInsertFunction("GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
+    module_->getOrInsertFunction(
+        "GC_malloc",
+        llvm::FunctionType::get(builder_.getInt8Ty()->getPointerTo(),
+                                llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
+  }
+  {
     std::vector<llvm::Type*> func_args_type;
     func_args_type.push_back(builder_.getInt32Ty());
 
@@ -137,7 +144,7 @@ value* translator::operator()(ast::array const& astv)
   auto t         = ast::val(astv).empty() ? builder_.getVoidTy() : firstelem->getLLVM()->getType();
 
   auto aryType = llvm::ArrayType::get(t, ast::val(astv).size());
-  auto aryPtr  = builder_.CreateAlloca(aryType);  // Allocate necessary memory
+  auto aryPtr  = createGCMalloc(aryType);  // Allocate necessary memory
   auto destval = new value(aryPtr, astv);
 
   std::vector<llvm::Value*> values;
@@ -192,7 +199,7 @@ value* translator::operator()(ast::structure const& astv)
   llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
   structTy->setBody(fields);
 
-  auto ptr = builder_.CreateAlloca(structTy);
+  auto ptr = createGCMalloc(structTy);
   destv->setLLVM(ptr);
   for (auto const v : vals | boost::adaptors::indexed()) {
     auto p = builder_.CreateStructGEP(structTy, ptr, static_cast<uint32_t>(v.index()));
