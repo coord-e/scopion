@@ -109,8 +109,8 @@ auto assign_func = [](auto&& ctx) {
 auto assign_struct = [](auto&& ctx) {
   std::map<ast::identifier, ast::expr> result;
   for (auto const& v : x3::_attr(ctx)) {
-    auto&& name  = ast::unpack<ast::identifier>(boost::fusion::at<boost::mpl::int_<0>>(v));
-    auto&& val   = boost::fusion::at<boost::mpl::int_<1>>(v);
+    auto name    = ast::unpack<ast::identifier>(boost::fusion::at<boost::mpl::int_<0>>(v));
+    auto val     = boost::fusion::at<boost::mpl::int_<1>>(v);
     result[name] = val;
   }
   x3::_val(ctx) = ast::set_where(ast::structure(result), x3::_where(ctx));
