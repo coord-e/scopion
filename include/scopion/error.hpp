@@ -19,8 +19,8 @@ public:
   const uint8_t level;
 
   error(std::string const& message,
-        str_range_t const& where_,
-        str_range_t const& code_,
+        str_range_t const where_,
+        str_range_t const code_,
         uint8_t level_ = 0)
       : std::runtime_error(message), where(where_), code(code_), level(level_)
   {
