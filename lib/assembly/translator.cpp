@@ -98,10 +98,21 @@ value* translator::operator()(ast::string const& astv)
   return new value(builder_.CreateGlobalStringPtr(ast::val(astv)), astv);
 }
 
+value* translator::operator()(ast::pre_variable const& astv)
+{
+  if (ast::attr(astv).lval)
+    throw error("Pre-defined variables cannnot be called", ast::attr(astv).where, code_range_);
+
+  auto const name = llvm::StringRef(ast::val(astv));
+  if (auto fp = module_->getFunction(name.ltrim('@')))
+    return new value(fp, astv);
+  else
+    throw error("Pre-defined variable \"" + name.str() + "\" is not defined", ast::attr(astv).where,
+                code_range_);
+}
+
 value* translator::operator()(ast::variable const& astv)
 {
-  if (auto fp = module_->getFunction(ast::val(astv)))
-    return new value(fp, astv);
   try {
     auto vp = thisScope_->symbols().at(ast::val(astv));
     if (ast::attr(astv).lval || vp->isLazy())

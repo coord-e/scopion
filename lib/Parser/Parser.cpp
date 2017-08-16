@@ -103,6 +103,7 @@ auto assign_attr = [](auto&& ctx) {
 }  // namespace detail
 
 struct variable;
+struct pre_variable;
 struct identifier;
 struct string;
 struct array;
@@ -133,6 +134,7 @@ struct ret_expr;
 struct expression;
 
 x3::rule<variable, ast::expr> const variable("variable");
+x3::rule<pre_variable, ast::expr> const pre_variable("pre-defined variable");
 x3::rule<identifier, ast::expr> const identifier("identifier");
 x3::rule<string, ast::expr> const string("string");
 x3::rule<array, ast::expr> const array("array");
@@ -165,6 +167,9 @@ x3::rule<expression, ast::expr> const expression("expression");
 auto const variable_def =
     x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_str_as<ast::variable>];
 
+auto const pre_variable_def =
+    (x3::raw[x3::lexeme['@' > x3::alpha > *x3::alnum]])[detail::assign_str_as<ast::pre_variable>];
+
 auto const string_def =
     ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str_as<ast::string>];
 
@@ -184,11 +189,11 @@ auto const scope_def = ("{" > *(expression >> ";") > "}")[detail::assign_as<ast:
 auto const attribute_val_def =
     x3::raw[x3::lexeme[*x3::alnum]][detail::assign_str_as<ast::attribute_val>];
 
-auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
-                         x3::bool_[detail::assign_as<ast::boolean>] | string[detail::assign] |
-                         variable[detail::assign] | structure[detail::assign] |
-                         array[detail::assign] | function[detail::assign] | scope[detail::assign] |
-                         ("(" >> expression >> ")")[detail::assign];
+auto const primary_def =
+    x3::int_[detail::assign_as<ast::integer>] | x3::bool_[detail::assign_as<ast::boolean>] |
+    string[detail::assign] | variable[detail::assign] | pre_variable[detail::assign] |
+    structure[detail::assign] | array[detail::assign] | function[detail::assign] |
+    scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
                           *(("." > identifier)[detail::assign_op<ast::dot, 2>]);
@@ -260,7 +265,8 @@ auto const ret_expr_def =
 
 auto const expression_def = ret_expr[detail::assign];
 
-BOOST_SPIRIT_DEFINE(variable,
+BOOST_SPIRIT_DEFINE(pre_variable,
+                    variable,
                     identifier,
                     string,
                     array,

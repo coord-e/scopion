@@ -21,6 +21,9 @@ using string  = value_wrapper<std::string>;
 struct variable : string {
   using string::string;
 };
+struct pre_variable : string {
+  using string::string;
+};
 struct identifier : string {
   using string::string;
 };
@@ -42,6 +45,7 @@ using value = boost::variant<integer,
                              boolean,
                              boost::recursive_wrapper<string>,
                              boost::recursive_wrapper<variable>,
+                             boost::recursive_wrapper<pre_variable>,
                              boost::recursive_wrapper<identifier>,
                              boost::recursive_wrapper<array>,
                              boost::recursive_wrapper<arglist>,
