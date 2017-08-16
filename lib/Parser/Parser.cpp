@@ -24,12 +24,73 @@ namespace grammar
 {
 namespace detail
 {
+std::string unescape(std::string const& s)
+{
+  std::string res;
+  auto it = s.begin();
+  while (it != s.end()) {
+    char c = *it++;
+    if (c == '\\' && it != s.end()) {
+      switch (*it++) {
+        case '\\':
+          c = '\\';
+          break;
+        /*case '"':
+          c = '"';
+          break;
+        case '\'':
+          c = '\'';
+          break;*/
+        case 'n':
+          c = '\n';
+          break;
+        case 't':
+          c = '\t';
+          break;
+        case 'b':
+          c = '\b';
+          break;
+        case 'f':
+          c = '\f';
+          break;
+        case 'r':
+          c = '\r';
+          break;
+        case 'v':
+          c = '\v';
+          break;
+        case 'a':
+          c = '\a';
+          break;
+        default:
+          c = *(it - 1);
+          break;
+      }
+    }
+    res += c;
+  }
+
+  return res;
+}
+
 auto assign = [](auto&& ctx) { x3::_val(ctx) = x3::_attr(ctx); };
 
 template <typename T>
 auto assign_str_as = [](auto&& ctx) {
   std::string str(x3::_attr(ctx).begin(), x3::_attr(ctx).end());
   x3::_val(ctx) = ast::set_where(T(str), x3::_where(ctx));
+};
+
+template <typename T, char C, bool Es = false>
+auto assign_str_escaped_as = [](auto&& ctx) {
+  std::string rs;
+  for (auto const& x : x3::_attr(ctx)) {
+    if (char ch = boost::get<char>(x))
+      rs += ch;
+    else  // unused_type
+      rs = rs + C;
+  }
+  x3::_val(ctx) = ast::set_where(T(Es ? unescape(rs) : rs), x3::_where(ctx));
 };
 
 template <typename T>
@@ -105,6 +166,7 @@ auto assign_attr = [](auto&& ctx) {
 struct variable;
 struct identifier;
 struct string;
+struct raw_string;
 struct array;
 struct structure;
 struct function;
@@ -135,6 +197,7 @@ struct expression;
 x3::rule<variable, ast::expr> const variable("variable");
 x3::rule<identifier, ast::expr> const identifier("identifier");
 x3::rule<string, ast::expr> const string("string");
+x3::rule<raw_string, ast::expr> const raw_string("raw string");
 x3::rule<array, ast::expr> const array("array");
 x3::rule<structure, ast::expr> const structure("structure");
 x3::rule<function, ast::expr> const function("function");
@@ -165,8 +228,11 @@ x3::rule<expression, ast::expr> const expression("expression");
 auto const variable_def =
     x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_str_as<ast::variable>];
 
-auto const string_def =
-    ('"' >> x3::lexeme[*(x3::char_ - '"')] >> '"')[detail::assign_str_as<ast::string>];
+auto const string_def = ('"' >> x3::lexeme[*(x3::lit("\\\"") | x3::char_ - '"')] >>
+                         '"')[detail::assign_str_escaped_as<ast::string, '"', true>];
+
+auto const raw_string_def = ('\'' >> x3::lexeme[*(x3::lit("\\'") | x3::char_ - '\'')] >>
+                             '\'')[detail::assign_str_escaped_as<ast::string, '\''>];
 
 auto const identifier_def =
     x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_str_as<ast::identifier>];
@@ -184,11 +250,11 @@ auto const scope_def = ("{" > *(expression >> ";") > "}")[detail::assign_as<ast:
 auto const attribute_val_def =
     x3::raw[x3::lexeme[*x3::alnum]][detail::assign_str_as<ast::attribute_val>];
 
-auto const primary_def = x3::int_[detail::assign_as<ast::integer>] |
-                         x3::bool_[detail::assign_as<ast::boolean>] | string[detail::assign] |
-                         variable[detail::assign] | structure[detail::assign] |
-                         array[detail::assign] | function[detail::assign] | scope[detail::assign] |
-                         ("(" >> expression >> ")")[detail::assign];
+auto const primary_def =
+    x3::int_[detail::assign_as<ast::integer>] | x3::bool_[detail::assign_as<ast::boolean>] |
+    string[detail::assign] | raw_string[detail::assign] | variable[detail::assign] |
+    structure[detail::assign] | array[detail::assign] | function[detail::assign] |
+    scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
                           *(("." > identifier)[detail::assign_op<ast::dot, 2>]);
@@ -263,6 +329,7 @@ auto const expression_def = ret_expr[detail::assign];
 BOOST_SPIRIT_DEFINE(variable,
                     identifier,
                     string,
+                    raw_string,
                     array,
                     structure,
                     function,
