@@ -15,6 +15,26 @@ namespace scopion
 {
 namespace assembly
 {
+llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
+                                        llvm::Value* ArraySize,
+                                        const llvm::Twine& Name)
+{
+  assert(!ArraySize &&
+         "Parameter ArraySize is for compatibility with IRBuilder<>::CreateAlloca. Don't pass any "
+         "value.");
+  std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
+  auto sizelp                       = builder_.CreatePtrToInt(
+      builder_.CreateGEP(
+          Ty, llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(Ty->getPointerTo())),
+          idxList),
+      builder_.getInt64Ty());  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
+
+  std::vector<llvm::Value*> arg_values = {sizelp};
+  return builder_.CreatePointerCast(builder_.CreateCall(module_->getFunction("GC_malloc"),
+                                                        llvm::ArrayRef<llvm::Value*>(arg_values)),
+                                    Ty->getPointerTo(), Name);
+}
+
 value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<value*> const& args)
 {
   return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -129,7 +149,7 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
         throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
 
       if (!args[1]->isLazy())
-        args[1]->setLLVM(lval = builder_.CreateAlloca(rval->getType(), nullptr, ast::val(lvar)));
+        args[1]->setLLVM(lval = createGCMalloc(rval->getType(), nullptr, ast::val(lvar)));
       thisScope_->symbols()[ast::val(lvar)] = args[1];
     } else {
       if (parent->getLLVM()->getType()->isStructTy()) {  // structure

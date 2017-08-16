@@ -87,6 +87,10 @@ private:
     return stream.str();
   }
 
+  llvm::Value* createGCMalloc(llvm::Type* Ty,
+                              llvm::Value* ArraySize  = nullptr,
+                              const llvm::Twine& Name = "");
+
   value* apply_op(ast::binary_op<ast::add> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::sub> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::mul> const&, std::vector<value*> const&);

@@ -38,6 +38,8 @@ std::unique_ptr<module> module::create(parser::parsed const& tree,
 
   builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 
+  builder.CreateCall(mod->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
+
   auto val = boost::apply_visitor(tr, tree.ast);
 
   // builder.CreateCall(val->getValue(), llvm::ArrayRef<llvm::Value *>({}));

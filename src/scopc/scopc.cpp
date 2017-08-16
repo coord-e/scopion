@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
       return 0;
     }
 
-    system(("gcc " + tmpstr + ".s -o " + std::string(outpath)).c_str());
+    system(("gcc " + tmpstr + ".s -lgc -o " + std::string(outpath)).c_str());
 
   } catch (scopion::error const& e) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"

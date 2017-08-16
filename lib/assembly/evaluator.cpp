@@ -89,14 +89,14 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
   builder_.SetInsertPoint(entry);
 
   translator_.getScope()->symbols()["self"] =
-      new value(builder_.CreateAlloca(func->getType(), nullptr, "self"), fcv);
+      new value(translator_.createGCMalloc(func->getType(), nullptr, "self"), fcv);
 
   for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
     auto vp = arguments_[arg_name.index()];
     if (!vp->isLazy()) {
-      translator_.getScope()->symbols()[arg_name.value()] =
-          new value(builder_.CreateAlloca(arg_types[arg_name.index()], nullptr, arg_name.value()),
-                    fcv);  // declare arguments
+      translator_.getScope()->symbols()[arg_name.value()] = new value(
+          translator_.createGCMalloc(arg_types[arg_name.index()], nullptr, arg_name.value()),
+          fcv);  // declare arguments
     } else {
       translator_.getScope()->symbols()[arg_name.value()] = vp;
     }
@@ -146,7 +146,7 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
     translator_.setScope(new value(newentry, fcv));
     builder_.SetInsertPoint(newentry);
 
-    auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
+    auto selfptr = translator_.createGCMalloc(newfunc->getType(), nullptr, "self");
     translator_.getScope()->symbols()["self"] = new value(selfptr, fcv);
     builder_.CreateStore(newfunc, selfptr);
 
@@ -154,8 +154,8 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
     for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
       auto argv = arguments_[arg_name.index()];
       if (!argv->isLazy()) {
-        auto aptr = builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
-                                          arg_name.value());  // declare arguments
+        auto aptr = translator_.createGCMalloc(arg_types[arg_name.index()], nullptr,
+                                               arg_name.value());  // declare arguments
         translator_.getScope()->symbols()[arg_name.value()] = new value(aptr, fcv);
         builder_.CreateStore(&(*it), aptr);
         it++;
