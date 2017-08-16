@@ -11,6 +11,10 @@ if(NOT ENV{LLVM_DIR})
     set(ENV{LLVM_DIR} /usr/local/Cellar/llvm/4.0.0/)
 endif()
 
+if(NOT ENV{Clang_DIR})
+    set(ENV{Clang_DIR} /usr/local/Cellar/llvm/4.0.0/)
+endif()
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -43,8 +47,12 @@ find_package(Boost COMPONENTS system filesystem REQUIRED)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+set(CLANG_LIBS clang clangAnalysis clangAST clangBasic clangCodeGen clangDriver clangEdit clangFrontend clangLex clangParse clangRewrite clangSema clangSerialization clangTooling)
+link_directories($ENV{LLVM_DIR}/lib)
+
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS}) # LLVM headers have a lot of warnings with -Weverything
 add_definitions(${LLVM_DEFINITIONS})
+
 llvm_map_components_to_libnames(LLVM_LIBRARIES all)
 
 include_directories(${Boost_INCLUDE_DIRS})

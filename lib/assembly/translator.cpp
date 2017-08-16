@@ -3,8 +3,17 @@
 
 #include "scopion/error.hpp"
 
+#include <clang/CodeGen/CodeGenAction.h>
+#include <clang/Frontend/CodeGenOptions.h>
+#include <clang/Frontend/CompilerInstance.h>
+#include <clang/Frontend/CompilerInvocation.h>
+#include <clang/Frontend/TextDiagnosticPrinter.h>
+#include <llvm/ADT/IntrusiveRefCntPtr.h>
+#include <llvm/IR/Module.h>
+
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 
 #include <boost/range/adaptor/indexed.hpp>
@@ -103,12 +112,67 @@ value* translator::operator()(ast::pre_variable const& astv)
   if (ast::attr(astv).lval)
     throw error("Pre-defined variables cannnot be called", ast::attr(astv).where, code_range_);
 
-  auto const name = llvm::StringRef(ast::val(astv));
-  if (auto fp = module_->getFunction(name.ltrim('@')))
+  auto const name = llvm::StringRef(ast::val(astv)).ltrim('@');
+  if (auto fp = module_->getFunction(name))
     return new value(fp, astv);
-  else
-    throw error("Pre-defined variable \"" + name.str() + "\" is not defined", ast::attr(astv).where,
-                code_range_);
+  else {
+    if (name.equals("import")) {
+      auto it = ast::attr(astv).attributes.find("c");
+      if (it == ast::attr(astv).attributes.end()) {
+        throw error("Import path isn't specified", ast::attr(astv).where, code_range_);
+      }
+      std::vector<const char*> args;
+      args.push_back(it->second.c_str());
+      clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts = new clang::DiagnosticOptions();
+      clang::TextDiagnosticPrinter* DiagClient =
+          new clang::TextDiagnosticPrinter(llvm::errs(), &*DiagOpts);
+      clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
+      clang::DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagClient);
+      std::unique_ptr<clang::CompilerInvocation> CI(new clang::CompilerInvocation);
+      clang::CompilerInvocation::CreateFromArgs(*CI, &args[0], &args[0] + args.size(), Diags);
+      clang::CompilerInstance compileri;
+      compileri.setInvocation(std::move(CI));
+      compileri.createDiagnostics();
+      if (compileri.getDiagnostics().hasErrorOccurred())
+        throw error("Failed to emit llvm ir from \"" + it->second + "\"", ast::attr(astv).where,
+                    code_range_);
+      std::unique_ptr<clang::CodeGenAction> Act(llvm::make_unique<clang::EmitLLVMOnlyAction>());
+      if (!compileri.ExecuteAction(*Act))
+        throw error("Failed to emit llvm ir from \"" + it->second + "\"", ast::attr(astv).where,
+                    code_range_);
+      std::unique_ptr<llvm::Module> module = Act->takeModule();
+
+      std::vector<llvm::Type*> fields;
+      auto destv = new value(nullptr, astv);
+
+      for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end(); ++i) {
+        auto func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
+                                           i->getName(), module_.get());
+        auto vp = new value(func, astv);
+        destv->fields()[i->getName().str()] =
+            std::make_pair(std::distance(module->getFunctionList().begin(), i), vp);
+        vp->setParent(destv);
+        fields.push_back(i->getType());
+      }
+
+      llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
+      structTy->setBody(fields);
+
+      auto ptr = builder_.CreateAlloca(structTy);
+      destv->setLLVM(ptr);
+
+      for (auto const& x : destv->fields()) {
+        auto p = builder_.CreateStructGEP(structTy, ptr, x.second.first);
+        builder_.CreateStore(x.second.second->getLLVM(), p);
+        x.second.second->setLLVM(p);
+      }
+
+      return destv;
+    } else {
+      throw error("Pre-defined variable \"" + name.str() + "\" is not defined",
+                  ast::attr(astv).where, code_range_);
+    }
+  }
 }
 
 value* translator::operator()(ast::variable const& astv)
