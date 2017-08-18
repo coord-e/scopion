@@ -105,7 +105,7 @@ value* translator::operator()(ast::variable const& astv)
   try {
     auto vp = thisScope_->symbols().at(ast::val(astv));
     if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
-      return vp;
+      return vp->copy();
     else
       return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
   } catch (std::out_of_range&) {
@@ -148,8 +148,8 @@ value* translator::operator()(ast::array const& astv)
                   code_range_);
     }
     v->setParent(destval);
-    destval->symbols()[std::to_string(x.index())] =
-        v;  // store value into fields list so that we can get this value later
+    destval->symbols()[std::to_string(x.index())] = v;
+    // store value into fields list so that we can get this value later
     if (!v->isLazy())
       values.push_back(v->getLLVM());
   }

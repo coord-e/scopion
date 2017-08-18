@@ -58,7 +58,7 @@ bool translator::copyFull(value* src,
   }
 
   (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
-      src->isLazy() ? src : src->copyWithNewLLVMValue(lval);
+      src->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
   return true;
 }
 
@@ -178,6 +178,10 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
   auto lval         = args[0]->getLLVM();
   auto const rval   = args[1]->getLLVM();
   auto const parent = args[0]->getParent();
+
+  auto const n = parent ? ast::val(ast::unpack<ast::identifier>(
+                              ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))
+                        : ast::val(ast::unpack<ast::variable>(ast::val(op)[0]));
   if (!lval) {  // first appear in the block (variable declaration)
     if (parent) {
       if (parent->getLLVM()->getType()->isStructTy()) {  // structure
@@ -196,17 +200,14 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
     } else {  // not a member of array or structure
       assert(ast::val(op)[0].type() == typeid(ast::value) &&
              "Assigning to operator expression with no parent");
-      auto lvar = ast::unpack<ast::variable>(ast::val(op)[0]);  // auto6 lvar = not working
       if (rval->getType()->isVoidTy())
         throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
       lval = builder_.CreateAlloca(
           args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
-          nullptr, ast::val(lvar));
+          nullptr, n);
     }
   }
-  auto const n = parent ? ast::val(ast::unpack<ast::identifier>(
-                              ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))
-                        : ast::val(ast::unpack<ast::variable>(ast::val(op)[0]));
+
   if (!copyFull(args[1], args[0], n, lval)) {
     throw error(
         "Cannot assign to the value of incompatible type (" + getNameString(lval->getType()) + ")",
@@ -300,7 +301,8 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     int aindex = ast::val(ast::unpack<ast::integer>(ast::val(op)[1]));
     try {
       auto ep = args[0]->symbols().at(std::to_string(aindex));
-      return ast::attr(op).lval ? ep : ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
+      return ast::attr(op).lval ? ep->copy()
+                                : ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
     } catch (std::out_of_range&) {
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
@@ -352,7 +354,7 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
   }
 
   if (ast::attr(op).lval || elm->second->isLazy() || !elm->second->isFundamental())
-    return elm->second;
+    return elm->second->copy();
   else
     return elm->second->copyWithNewLLVMValue(builder_.CreateLoad(elm->second->getLLVM()));
 }
