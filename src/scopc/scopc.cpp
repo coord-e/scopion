@@ -6,14 +6,10 @@
 #include <memory>
 #include <stdexcept>
 
-#include <boost/filesystem.hpp>
-
 #include "cmdline.h"
 #include "rang.hpp"
 
 #include "scopion/scopion.hpp"
-
-namespace fs = boost::filesystem;
 
 int main(int argc, char* argv[])
 {
