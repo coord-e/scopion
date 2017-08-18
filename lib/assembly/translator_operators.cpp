@@ -57,8 +57,10 @@ bool translator::copyFull(value* src,
     }
   }
 
-  (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
-      src->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
+  if (name != "") {
+    (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
+        src->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
+  }
   return true;
 }
 
@@ -179,9 +181,7 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
   auto const rval   = args[1]->getLLVM();
   auto const parent = args[0]->getParent();
 
-  auto const n = parent ? ast::val(ast::unpack<ast::identifier>(
-                              ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))
-                        : ast::val(ast::unpack<ast::variable>(ast::val(op)[0]));
+  auto const n = args[0]->getName();
   if (!lval) {  // first appear in the block (variable declaration)
     if (parent) {
       if (parent->getLLVM()->getType()->isStructTy()) {  // structure
@@ -298,22 +298,38 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
   // Now lval's type is pointer to array
 
   try {
-    int aindex = ast::val(ast::unpack<ast::integer>(ast::val(op)[1]));
+    int aindex       = ast::val(ast::unpack<ast::integer>(ast::val(op)[1]));
+    std::string istr = std::to_string(aindex);
     try {
-      auto ep = args[0]->symbols().at(std::to_string(aindex));
-      return ast::attr(op).lval ? ep->copy()
-                                : ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
+      auto ep = args[0]->symbols().at(istr);
+
+      if (!ep->isLazy()) {
+        std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
+        auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                            llvm::ArrayRef<llvm::Value*>(idxList));
+        ep->setLLVM(p);
+      }
+      ep->setName(istr);
+
+      if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
+        return ep->copy();
+      else
+        return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
     } catch (std::out_of_range&) {
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
     }
   } catch (boost::bad_get&) {  // specifing index with non-literal integer
-    if (std::none_of(args[0]->symbols().begin(), args[0]->symbols().end(),
-                     [](auto& x) { return x.second->isLazy(); })) {  // No Lazy is in it
+    if (!args[0]->symbols().begin()->second->isLazy()) {  // No Lazy is in it
       std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
       auto ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
                                            llvm::ArrayRef<llvm::Value*>(idxList));
-      return ast::attr(op).lval ? new value(ep, op) : new value(builder_.CreateLoad(ep), op);
+
+      if (ast::attr(op).lval || ep->getType()->getPointerElementType()->isStructTy() ||
+          ep->getType()->getPointerElementType()->isArrayTy())
+        return new value(ep, op);
+      else
+        return new value(builder_.CreateLoad(ep), op);
     } else {  // contains lazy
       throw error(
           "Getting value from an array which contains lazy value with an index "
@@ -352,6 +368,7 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
                                         args[0]->fields()[id]);
     elm->second->setLLVM(ptr);
   }
+  elm->second->setName(id);
 
   if (ast::attr(op).lval || elm->second->isLazy() || !elm->second->isFundamental())
     return elm->second->copy();

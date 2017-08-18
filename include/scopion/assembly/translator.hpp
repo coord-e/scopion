@@ -49,7 +49,7 @@ public:
   {
     auto it       = ast::val(op).begin();
     value* target = boost::apply_visitor(*this, *(it++));
-    if (target->isFundamental())  // no its own opr method
+    if (!target->isStruct())  // no its own opr method
       it--;
     std::vector<value*> args;
     std::vector<llvm::Value*> args_llvm;
@@ -60,7 +60,7 @@ public:
         args_llvm.push_back(thev->getLLVM());
     }
 
-    if (target->isFundamental()) {
+    if (!target->isStruct()) {
       return apply_op(op, args);
     } else {
       args.push_back(target);

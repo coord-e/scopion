@@ -104,6 +104,7 @@ value* translator::operator()(ast::variable const& astv)
     return new value(fp, astv);
   try {
     auto vp = thisScope_->symbols().at(ast::val(astv));
+    vp->setName(ast::val(astv));
     if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
       return vp->copy();
     else
@@ -111,7 +112,9 @@ value* translator::operator()(ast::variable const& astv)
   } catch (std::out_of_range&) {
     if (ast::attr(astv).lval) {
       // not found in symbols & to be assigned -> declaration
-      return new value(nullptr, astv);
+      auto vp = new value(nullptr, astv);
+      vp->setName(ast::val(astv));
+      return vp;
     } else {
       throw error("\"" + ast::val(astv) + "\" has not declared in this scope",
                   ast::attr(astv).where, code_range_);
@@ -135,35 +138,37 @@ value* translator::operator()(ast::array const& astv)
 
   auto firstelem = boost::apply_visitor(*this, ast::val(astv)[0]);
   auto t         = ast::val(astv).empty() ? builder_.getVoidTy() : firstelem->getLLVM()->getType();
+  t              = firstelem->isFundamental() ? t : t->getPointerElementType();
+  auto aryType   = llvm::ArrayType::get(t, ast::val(astv).size());
+  auto aryPtr    = builder_.CreateAlloca(aryType);  // Allocate necessary memory
+  auto destv     = new value(aryPtr, astv);
 
-  auto aryType = llvm::ArrayType::get(t, ast::val(astv).size());
-  auto aryPtr  = builder_.CreateAlloca(aryType);  // Allocate necessary memory
-  auto destval = new value(aryPtr, astv);
-
-  std::vector<llvm::Value*> values;
+  std::vector<value*> values;
   for (auto const x : ast::val(astv) | boost::adaptors::indexed()) {
     auto v = x.index() == 0 ? firstelem : boost::apply_visitor(*this, x.value());
     if (v->getLLVM()->getType() != t) {
       throw error("all elements of array must have the same type", ast::attr(astv).where,
                   code_range_);
     }
-    v->setParent(destval);
-    destval->symbols()[std::to_string(x.index())] = v;
+    v->setParent(destv);
+    destv->symbols()[std::to_string(x.index())] = v;
     // store value into fields list so that we can get this value later
     if (!v->isLazy())
-      values.push_back(v->getLLVM());
+      values.push_back(v);
   }
 
   for (auto const v : values | boost::adaptors::indexed()) {
     std::vector<llvm::Value*> idxList = {builder_.getInt32(0),
                                          builder_.getInt32(static_cast<uint32_t>(v.index()))};
     auto p = builder_.CreateInBoundsGEP(aryType, aryPtr, llvm::ArrayRef<llvm::Value*>(idxList));
-
-    destval->symbols()[std::to_string(v.index())]->setLLVM(p);
+    std::string str = std::to_string(v.index());
     // not good way...? (many to_string)
-    builder_.CreateStore(v.value(), p);
+
+    if (!copyFull(v.value(), new value(p, v.value()->getAst()), str, p, destv)) {
+      assert(false && "Assigned with wrong type during construction of the structure");
+    }
   }
-  return destval;
+  return destv;
 }
 
 value* translator::operator()(ast::arglist const& astv)
