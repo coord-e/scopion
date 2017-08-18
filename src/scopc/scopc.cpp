@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
   p.add<std::string>("output", 'o', "Specify the output path", false, "./a.out");
   p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1, cmdline::range(1, 3));
   p.add("help", 'h', "Print this help");
-  p.add("version", 'v', "Print version");
+  p.add("version", 'V', "Print version");
   p.footer("filename ...");
 
   if (!p.parse(argc, argv)) {
