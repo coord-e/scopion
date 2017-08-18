@@ -25,6 +25,7 @@ class value
   value* parent_           = nullptr;
   ast::expr ast_value_;
   std::map<std::string, value*> symbols_;
+  std::map<std::string, uint32_t> fields_;
   bool is_lazy_;
   bool is_void_;
 
@@ -48,6 +49,7 @@ public:
     newval->symbols_    = symbols_;
     newval->is_lazy_    = is_lazy_;
     newval->is_void_    = is_void_;
+    newval->fields_  = fields_;
     return newval;
   }
   std::type_info const& type() const { return ast_value_.type(); }
@@ -70,6 +72,8 @@ public:
 
   std::map<std::string, value*>& symbols() { return symbols_; }
   std::map<std::string, value*> const& symbols() const { return symbols_; }
+  std::map<std::string, uint32_t>& fields() { return fields_; }
+  std::map<std::string, uint32_t> const& fields() const { return fields_; }
 };
 
 };  // namespace assembly

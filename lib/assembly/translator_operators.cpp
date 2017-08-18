@@ -306,10 +306,12 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
     throw error("No member named \"" + id + "\" in the structure", ast::attr(op).where,
                 code_range_);
   }
-  // auto ptr = builder_.CreateStructGEP(
-  //     lval->getType()->getPointerElementType(), lval,
-  //     static_cast<uint32_t>(elm.first));
-  // maybe useless
+
+  if (!elm->second->isLazy()) {
+    auto ptr = builder_.CreateStructGEP(lval->getType()->getPointerElementType(), lval,
+                                        args[0]->fields()[id]);
+    elm->second->setLLVM(ptr);
+  }
 
   if (ast::attr(op).lval || elm->second->isLazy())
     return elm->second;

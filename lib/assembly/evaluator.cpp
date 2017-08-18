@@ -95,8 +95,8 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
     auto vp = arguments_[arg_name.index()];
     if (!vp->isLazy()) {
       translator_.getScope()->symbols()[arg_name.value()] =
-          new value(builder_.CreateAlloca(arg_types[arg_name.index()], nullptr, arg_name.value()),
-                    fcv);  // declare arguments
+          vp->copyWithNewLLVMValue(builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
+                                                         arg_name.value()));  // declare arguments
     } else {
       translator_.getScope()->symbols()[arg_name.value()] = vp;
     }
@@ -156,7 +156,7 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
       if (!argv->isLazy()) {
         auto aptr = builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
                                           arg_name.value());  // declare arguments
-        translator_.getScope()->symbols()[arg_name.value()] = new value(aptr, fcv);
+        translator_.getScope()->symbols()[arg_name.value()] = argv->copyWithNewLLVMValue(aptr);
         builder_.CreateStore(&(*it), aptr);
         it++;
       } else {

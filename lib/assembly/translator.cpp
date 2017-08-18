@@ -181,6 +181,7 @@ value* translator::operator()(ast::structure const& astv)
   for (auto const& m : ast::val(astv) | boost::adaptors::indexed()) {
     auto vp                                     = boost::apply_visitor(*this, m.value().second);
     destv->symbols()[ast::val(m.value().first)] = vp;
+    destv->fields()[ast::val(m.value().first)]  = m.index();
     vp->setParent(destv);
     if (!vp->isLazy()) {
       fields.push_back(vp->getLLVM()->getType());
@@ -194,10 +195,11 @@ value* translator::operator()(ast::structure const& astv)
   auto ptr = builder_.CreateAlloca(structTy);
   destv->setLLVM(ptr);
   for (auto const v : vals | boost::adaptors::indexed()) {
-    auto p = builder_.CreateStructGEP(structTy, ptr, static_cast<uint32_t>(v.index()));
-    std::find_if(destv->symbols().begin(), destv->symbols().end(),
-                 [&v](auto& x) { return x.second->getLLVM() == v.value(); })
-        ->second->setLLVM(p);  // not good for performance
+    auto p          = builder_.CreateStructGEP(structTy, ptr, static_cast<uint32_t>(v.index()));
+    std::string str = std::find_if(destv->fields().begin(), destv->fields().end(),
+                                   [&v](auto& x) { return x.second == v.index(); })
+                          ->first;
+    destv->symbols()[str]->setLLVM(p);  // not good for performance
     builder_.CreateStore(v.value(), p);
   }
 
