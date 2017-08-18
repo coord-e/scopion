@@ -49,7 +49,7 @@ public:
   {
     auto it       = ast::val(op).begin();
     value* target = boost::apply_visitor(*this, *(it++));
-    if (target->isFundamental())  // no its own opr method
+    if (!target->isStruct())  // no its own opr method
       it--;
     std::vector<value*> args;
     std::vector<llvm::Value*> args_llvm;
@@ -60,15 +60,15 @@ public:
         args_llvm.push_back(thev->getLLVM());
     }
 
-    if (target->isFundamental()) {
+    if (!target->isStruct()) {
       return apply_op(op, args);
     } else {
       args.push_back(target);
-      auto f = target->fields().find(ast::op_str<Op>);
-      if (f == target->fields().end())
+      auto f = target->symbols().find(ast::op_str<Op>);
+      if (f == target->symbols().end())
         throw error(std::string("no operator ") + ast::op_str<Op> + " is defined in the structure",
                     ast::attr(op).where, code_range_);
-      return new value(builder_.CreateCall(evaluate(f->second.second, args, *this)->getLLVM(),
+      return new value(builder_.CreateCall(evaluate(f->second, args, *this)->getLLVM(),
                                            llvm::ArrayRef<llvm::Value*>(args_llvm)),
                        op);
     }
@@ -90,6 +90,13 @@ private:
   llvm::Value* createGCMalloc(llvm::Type* Ty,
                               llvm::Value* ArraySize  = nullptr,
                               const llvm::Twine& Name = "");
+
+  bool copyFull(value* src,
+                value* dest,
+                std::string const& name,
+                llvm::Value* newv = nullptr,
+                value* defp       = nullptr);
+  llvm::Value* sizeofType(llvm::Type*);
 
   value* apply_op(ast::binary_op<ast::add> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::sub> const&, std::vector<value*> const&);

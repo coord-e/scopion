@@ -35,6 +35,66 @@ llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
                                     Ty->getPointerTo(), Name);
 }
 
+bool translator::copyFull(value* src,
+                          value* dest,
+                          std::string const& name,
+                          llvm::Value* newv,
+                          value* defp)
+{
+  auto parent = dest->getParent();
+  auto lval   = newv ? newv : dest->getLLVM();
+  auto rval   = src->getLLVM();
+
+  if (!src->isLazy()) {
+    if (lval->getType()->isPointerTy()) {
+      if ((src->isFundamental() ? lval->getType()->getPointerElementType() : lval->getType()) ==
+          rval->getType()) {
+        if (src->isFundamental()) {
+          builder_.CreateStore(rval, lval);
+        } else {
+          std::vector<llvm::Type*> list;
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt64Ty());
+          list.push_back(builder_.getInt32Ty());
+          list.push_back(builder_.getInt1Ty());
+          llvm::Function* fmemcpy =
+              llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
+
+          std::vector<llvm::Value*> arg_values;
+          arg_values.push_back(builder_.CreatePointerCast(lval, builder_.getInt8PtrTy()));
+          arg_values.push_back(builder_.CreatePointerCast(rval, builder_.getInt8PtrTy()));
+          arg_values.push_back(sizeofType(rval->getType()));
+          arg_values.push_back(builder_.getInt32(0));
+          arg_values.push_back(builder_.getInt1(0));
+          builder_.CreateCall(fmemcpy, llvm::ArrayRef<llvm::Value*>(arg_values));
+        }
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  if (name != "") {
+    (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
+        src->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
+  }
+  return true;
+}
+
+llvm::Value* translator::sizeofType(llvm::Type* ptrT)
+{
+  std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
+  return builder_.CreatePtrToInt(
+      builder_.CreateGEP(ptrT->getPointerElementType(),
+                         llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(ptrT)),
+                         idxList),
+      builder_.getInt64Ty());
+  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
+}
+
 value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<value*> const& args)
 {
   return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -137,21 +197,13 @@ value* translator::apply_op(ast::binary_op<ast::ltq> const& op, std::vector<valu
 
 value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<value*> const& args)
 {
-  auto lval       = args[0]->getLLVM();
-  auto const rval = args[1]->getLLVM();
-  if (!lval) {  // first appear in the block (variable declaration)
-    auto const parent = args[0]->getParent();
-    if (!parent) {  // not a member of array or structure
-      assert(ast::val(op)[0].type() == typeid(ast::value) &&
-             "Assigning to operator expression with no parent");
-      auto lvar = ast::unpack<ast::variable>(ast::val(op)[0]);  // auto6 lvar = not working
-      if (rval->getType()->isVoidTy())
-        throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
+  auto lval         = args[0]->getLLVM();
+  auto const rval   = args[1]->getLLVM();
+  auto const parent = args[0]->getParent();
 
-      if (!args[1]->isLazy())
-        args[1]->setLLVM(lval = createGCMalloc(rval->getType(), nullptr, ast::val(lvar)));
-      thisScope_->symbols()[ast::val(lvar)] = args[1];
-    } else {
+  auto const n = args[0]->getName();
+  if (!lval) {  // first appear in the block (variable declaration)
+    if (parent) {
       if (parent->getLLVM()->getType()->isStructTy()) {  // structure
         // [feature/var-struct-array] Add a member to the structure, store it to
         // lval, and add args[1] to fields
@@ -165,36 +217,21 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
       } else {
         assert(false);  // unreachable
       }
-    }
-  } else {
-    if (args[1]->isLazy()) {
-      if (auto parent = args[0]->getParent()) {
-        // not good way...?
-        // ow? args[1]->setParent(parent);
-        parent
-            ->fields()[ast::val(ast::unpack<ast::identifier>(
-                ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))]
-            .second = args[1];
-      } else {
-        thisScope_->symbols()[ast::val(ast::unpack<ast::variable>(ast::val(op)[0]))] = args[1];
-      }
+    } else {  // not a member of array or structure
+      assert(ast::val(op)[0].type() == typeid(ast::value) &&
+             "Assigning to operator expression with no parent");
+      if (rval->getType()->isVoidTy())
+        throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
+      lval = createGCMalloc(
+          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
+          nullptr, n);
     }
   }
 
-  if (!args[1]->isLazy()) {
-    if (lval->getType()->isPointerTy()) {
-      if (lval->getType()->getPointerElementType() == rval->getType()) {
-        builder_.CreateStore(rval, lval);
-      } else {
-        throw error("Cannot assign to different type of value (assigning " +
-                        getNameString(rval->getType()) + " into " +
-                        getNameString(lval->getType()->getPointerElementType()) + ")",
-                    ast::attr(op).where, code_range_);
-      }
-    } else {
-      throw error("Cannot assign to non-pointer value (" + getNameString(lval->getType()) + ")",
-                  ast::attr(op).where, code_range_);
-    }
+  if (!copyFull(args[1], args[0], n, lval)) {
+    throw error(
+        "Cannot assign to the value of incompatible type (" + getNameString(lval->getType()) + ")",
+        ast::attr(op).where, code_range_);
   }
   return args[1];
 }
@@ -281,21 +318,38 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
   // Now lval's type is pointer to array
 
   try {
-    int aindex = ast::val(ast::unpack<ast::integer>(ast::val(op)[1]));
+    int aindex       = ast::val(ast::unpack<ast::integer>(ast::val(op)[1]));
+    std::string istr = std::to_string(aindex);
     try {
-      auto ep = args[0]->fields().at(std::to_string(aindex)).second;
-      return ast::attr(op).lval ? ep : ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
+      auto ep = args[0]->symbols().at(istr);
+
+      if (!ep->isLazy()) {
+        std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
+        auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                            llvm::ArrayRef<llvm::Value*>(idxList));
+        ep->setLLVM(p);
+      }
+      ep->setName(istr);
+
+      if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
+        return ep->copy();
+      else
+        return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
     } catch (std::out_of_range&) {
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
     }
   } catch (boost::bad_get&) {  // specifing index with non-literal integer
-    if (std::none_of(args[0]->fields().begin(), args[0]->fields().end(),
-                     [](auto& x) { return x.second.second->isLazy(); })) {  // No Lazy is in it
+    if (!args[0]->symbols().begin()->second->isLazy()) {  // No Lazy is in it
       std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
       auto ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
                                            llvm::ArrayRef<llvm::Value*>(idxList));
-      return ast::attr(op).lval ? new value(ep, op) : new value(builder_.CreateLoad(ep), op);
+
+      if (ast::attr(op).lval || ep->getType()->getPointerElementType()->isStructTy() ||
+          ep->getType()->getPointerElementType()->isArrayTy())
+        return new value(ep, op);
+      else
+        return new value(builder_.CreateLoad(ep), op);
     } else {  // contains lazy
       throw error(
           "Getting value from an array which contains lazy value with an index "
@@ -322,22 +376,24 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
         "Cannot get \"" + id + "\" from non-structure type " + getNameString(lval->getType()),
         ast::attr(op).where, code_range_);
 
-  auto elm = args[0]->fields().find(id);
+  auto elm = args[0]->symbols().find(id);
 
-  if (elm == args[0]->fields().end()) {
+  if (elm == args[0]->symbols().end()) {
     throw error("No member named \"" + id + "\" in the structure", ast::attr(op).where,
                 code_range_);
   }
-  // auto ptr = builder_.CreateStructGEP(
-  //     lval->getType()->getPointerElementType(), lval,
-  //     static_cast<uint32_t>(elm.first));
-  // maybe useless
 
-  if (ast::attr(op).lval || elm->second.second->isLazy())
-    return elm->second.second;
+  if (!elm->second->isLazy()) {
+    auto ptr = builder_.CreateStructGEP(lval->getType()->getPointerElementType(), lval,
+                                        args[0]->fields()[id]);
+    elm->second->setLLVM(ptr);
+  }
+  elm->second->setName(id);
+
+  if (ast::attr(op).lval || elm->second->isLazy() || !elm->second->isFundamental())
+    return elm->second->copy();
   else
-    return elm->second.second->copyWithNewLLVMValue(
-        builder_.CreateLoad(elm->second.second->getLLVM()));
+    return elm->second->copyWithNewLLVMValue(builder_.CreateLoad(elm->second->getLLVM()));
 }
 
 [[deprecated]] value* translator::apply_op(ast::single_op<ast::load> const& op,
