@@ -15,6 +15,64 @@ namespace scopion
 {
 namespace assembly
 {
+bool translator::copyFull(value* src,
+                          value* dest,
+                          std::string const& name,
+                          llvm::Value* newv,
+                          value* defp)
+{
+  auto parent = dest->getParent();
+  auto lval   = newv ? newv : dest->getLLVM();
+  auto rval   = src->getLLVM();
+
+  if (!src->isLazy()) {
+    if (lval->getType()->isPointerTy()) {
+      if ((src->isFundamental() ? lval->getType()->getPointerElementType() : lval->getType()) ==
+          rval->getType()) {
+        if (src->isFundamental()) {
+          builder_.CreateStore(rval, lval);
+        } else {
+          std::vector<llvm::Type*> list;
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt64Ty());
+          list.push_back(builder_.getInt32Ty());
+          list.push_back(builder_.getInt1Ty());
+          llvm::Function* fmemcpy =
+              llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
+
+          std::vector<llvm::Value*> arg_values;
+          arg_values.push_back(builder_.CreatePointerCast(lval, builder_.getInt8PtrTy()));
+          arg_values.push_back(builder_.CreatePointerCast(rval, builder_.getInt8PtrTy()));
+          arg_values.push_back(sizeofType(rval->getType()));
+          arg_values.push_back(builder_.getInt32(0));
+          arg_values.push_back(builder_.getInt1(0));
+          builder_.CreateCall(fmemcpy, llvm::ArrayRef<llvm::Value*>(arg_values));
+        }
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
+      src->isLazy() ? src : src->copyWithNewLLVMValue(lval);
+  return true;
+}
+
+llvm::Value* translator::sizeofType(llvm::Type* ptrT)
+{
+  std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
+  return builder_.CreatePtrToInt(
+      builder_.CreateGEP(ptrT->getPointerElementType(),
+                         llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(ptrT)),
+                         idxList),
+      builder_.getInt64Ty());
+  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
+}
+
 value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<value*> const& args)
 {
   return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -117,20 +175,11 @@ value* translator::apply_op(ast::binary_op<ast::ltq> const& op, std::vector<valu
 
 value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<value*> const& args)
 {
-  auto lval       = args[0]->getLLVM();
-  auto const rval = args[1]->getLLVM();
+  auto lval         = args[0]->getLLVM();
+  auto const rval   = args[1]->getLLVM();
+  auto const parent = args[0]->getParent();
   if (!lval) {  // first appear in the block (variable declaration)
-    auto const parent = args[0]->getParent();
-    if (!parent) {  // not a member of array or structure
-      assert(ast::val(op)[0].type() == typeid(ast::value) &&
-             "Assigning to operator expression with no parent");
-      auto lvar = ast::unpack<ast::variable>(ast::val(op)[0]);  // auto6 lvar = not working
-      if (rval->getType()->isVoidTy())
-        throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
-      lval = builder_.CreateAlloca(
-          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
-          nullptr, ast::val(lvar));
-    } else {
+    if (parent) {
       if (parent->getLLVM()->getType()->isStructTy()) {  // structure
         // [feature/var-struct-array] Add a member to the structure, store it to
         // lval, and add args[1] to fields
@@ -144,61 +193,24 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
       } else {
         assert(false);  // unreachable
       }
+    } else {  // not a member of array or structure
+      assert(ast::val(op)[0].type() == typeid(ast::value) &&
+             "Assigning to operator expression with no parent");
+      auto lvar = ast::unpack<ast::variable>(ast::val(op)[0]);  // auto6 lvar = not working
+      if (rval->getType()->isVoidTy())
+        throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
+      lval = builder_.CreateAlloca(
+          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
+          nullptr, ast::val(lvar));
     }
   }
-  if (auto parent = args[0]->getParent()) {
-    // not good way...?
-    // ow? args[1]->setParent(parent);
-    parent->symbols()[ast::val(ast::unpack<ast::identifier>(
-        ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))] =
-        args[1]->isLazy() ? args[1] : args[1]->copyWithNewLLVMValue(lval);
-  } else {
-    thisScope_->symbols()[ast::val(ast::unpack<ast::variable>(ast::val(op)[0]))] =
-        args[1]->isLazy() ? args[1] : args[1]->copyWithNewLLVMValue(lval);
-  }
-
-  if (!args[1]->isLazy()) {
-    if (lval->getType()->isPointerTy()) {
-      if ((args[1]->isFundamental() ? lval->getType()->getPointerElementType() : lval->getType()) ==
-          rval->getType()) {
-        if (args[1]->isFundamental()) {
-          builder_.CreateStore(rval, lval);
-        } else {
-          std::vector<llvm::Type*> list;
-          list.push_back(builder_.getInt8Ty()->getPointerTo());
-          list.push_back(builder_.getInt8Ty()->getPointerTo());
-          list.push_back(builder_.getInt64Ty());
-          list.push_back(builder_.getInt32Ty());
-          list.push_back(builder_.getInt1Ty());
-          llvm::Function* fmemcpy =
-              llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
-
-          std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
-          auto sizelp                       = builder_.CreatePtrToInt(
-              builder_.CreateGEP(
-                  rval->getType()->getPointerElementType(),
-                  llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(rval->getType())),
-                  idxList),
-              builder_.getInt64Ty());  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
-
-          std::vector<llvm::Value*> arg_values;
-          arg_values.push_back(builder_.CreatePointerCast(lval, builder_.getInt8PtrTy()));
-          arg_values.push_back(builder_.CreatePointerCast(rval, builder_.getInt8PtrTy()));
-          arg_values.push_back(sizelp);
-          arg_values.push_back(builder_.getInt32(0));
-          arg_values.push_back(builder_.getInt1(0));
-          builder_.CreateCall(fmemcpy, llvm::ArrayRef<llvm::Value*>(arg_values));
-        }
-      } else {
-        throw error("Cannot assign to different type of value (assigning " +
-                        getNameString(rval->getType()) + " into " +
-                        getNameString(lval->getType()->getPointerElementType()) + ")",
-                    ast::attr(op).where, code_range_);
-      }
-    } else {
-      throw error("Cannot assign to non-pointer value (" + getNameString(lval->getType()) + ")",
-                  ast::attr(op).where, code_range_);
-    }
+  auto const n = parent ? ast::val(ast::unpack<ast::identifier>(
+                              ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))
+                        : ast::val(ast::unpack<ast::variable>(ast::val(op)[0]));
+  if (!copyFull(args[1], args[0], n, lval)) {
+    throw error(
+        "Cannot assign to the value of incompatible type (" + getNameString(lval->getType()) + ")",
+        ast::attr(op).where, code_range_);
   }
   return args[1];
 }

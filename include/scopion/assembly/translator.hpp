@@ -87,6 +87,13 @@ private:
     return stream.str();
   }
 
+  bool copyFull(value* src,
+                value* dest,
+                std::string const& name,
+                llvm::Value* newv = nullptr,
+                value* defp       = nullptr);
+  llvm::Value* sizeofType(llvm::Type*);
+
   value* apply_op(ast::binary_op<ast::add> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::sub> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::mul> const&, std::vector<value*> const&);
