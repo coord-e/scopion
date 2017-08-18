@@ -29,6 +29,13 @@ class value
   bool is_lazy_;
   bool is_void_;
 
+  static bool isFundamental_impl(llvm::Type* t)
+  {
+    if (t->isPointerTy())
+      return isFundamental_impl(t->getPointerElementType());
+    return t->isStructTy();
+  }
+
 public:
   value(llvm::Value* llvm_value, ast::expr ast_value, bool is_lazy = false)
       : llvm_value_(llvm_value), ast_value_(ast_value), is_lazy_(is_lazy), is_void_(false)
@@ -41,27 +48,25 @@ public:
 
   value* copyWithNewLLVMValue(llvm::Value* v) const
   {
-    assert(v != llvm_value_);
     auto newval         = new value();
     newval->llvm_value_ = v;
     newval->parent_     = parent_;
     newval->ast_value_  = ast_value_;
-    newval->symbols_    = symbols_;
-    newval->is_lazy_    = is_lazy_;
-    newval->is_void_    = is_void_;
+    for (auto const& x : symbols_) {
+      newval->symbols_[x.first] = x.second->copy();
+    }
     newval->fields_  = fields_;
+    newval->is_lazy_ = is_lazy_;
+    newval->is_void_ = is_void_;
     return newval;
   }
+
+  value* copy() { return copyWithNewLLVMValue(llvm_value_); }
+
   std::type_info const& type() const { return ast_value_.type(); }
   bool isLazy() const { return is_lazy_; }
   void isLazy(bool tf) { is_lazy_ = tf; }
-  bool isFundamental() const
-  {
-    if (llvm_value_->getType()->isPointerTy())
-      return !llvm_value_->getType()->getPointerElementType()->isStructTy();
-    else
-      return !llvm_value_->getType()->isStructTy();
-  }
+  bool isFundamental() const { return !isFundamental_impl(llvm_value_->getType()); }
   bool isVoid() const { return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_; }
   value* getParent() const { return parent_; }
   void setParent(value* parent) { parent_ = parent; }

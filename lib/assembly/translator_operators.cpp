@@ -127,10 +127,9 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
       auto lvar = ast::unpack<ast::variable>(ast::val(op)[0]);  // auto6 lvar = not working
       if (rval->getType()->isVoidTy())
         throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
-
-      if (!args[1]->isLazy())
-        args[1]->setLLVM(lval = builder_.CreateAlloca(rval->getType(), nullptr, ast::val(lvar)));
-      thisScope_->symbols()[ast::val(lvar)] = args[1];
+      lval = builder_.CreateAlloca(
+          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
+          nullptr, ast::val(lvar));
     } else {
       if (parent->getLLVM()->getType()->isStructTy()) {  // structure
         // [feature/var-struct-array] Add a member to the structure, store it to
@@ -146,23 +145,50 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
         assert(false);  // unreachable
       }
     }
+  }
+  if (auto parent = args[0]->getParent()) {
+    // not good way...?
+    // ow? args[1]->setParent(parent);
+    parent->symbols()[ast::val(ast::unpack<ast::identifier>(
+        ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))] =
+        args[1]->isLazy() ? args[1] : args[1]->copyWithNewLLVMValue(lval);
   } else {
-    if (args[1]->isLazy()) {
-      if (auto parent = args[0]->getParent()) {
-        // not good way...?
-        // ow? args[1]->setParent(parent);
-        parent->symbols()[ast::val(ast::unpack<ast::identifier>(
-            ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))] = args[1];
-      } else {
-        thisScope_->symbols()[ast::val(ast::unpack<ast::variable>(ast::val(op)[0]))] = args[1];
-      }
-    }
+    thisScope_->symbols()[ast::val(ast::unpack<ast::variable>(ast::val(op)[0]))] =
+        args[1]->isLazy() ? args[1] : args[1]->copyWithNewLLVMValue(lval);
   }
 
   if (!args[1]->isLazy()) {
     if (lval->getType()->isPointerTy()) {
-      if (lval->getType()->getPointerElementType() == rval->getType()) {
-        builder_.CreateStore(rval, lval);
+      if ((args[1]->isFundamental() ? lval->getType()->getPointerElementType() : lval->getType()) ==
+          rval->getType()) {
+        if (args[1]->isFundamental()) {
+          builder_.CreateStore(rval, lval);
+        } else {
+          std::vector<llvm::Type*> list;
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt64Ty());
+          list.push_back(builder_.getInt32Ty());
+          list.push_back(builder_.getInt1Ty());
+          llvm::Function* fmemcpy =
+              llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
+
+          std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
+          auto sizelp                       = builder_.CreatePtrToInt(
+              builder_.CreateGEP(
+                  rval->getType()->getPointerElementType(),
+                  llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(rval->getType())),
+                  idxList),
+              builder_.getInt64Ty());  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
+
+          std::vector<llvm::Value*> arg_values;
+          arg_values.push_back(builder_.CreatePointerCast(lval, builder_.getInt8PtrTy()));
+          arg_values.push_back(builder_.CreatePointerCast(rval, builder_.getInt8PtrTy()));
+          arg_values.push_back(sizelp);
+          arg_values.push_back(builder_.getInt32(0));
+          arg_values.push_back(builder_.getInt1(0));
+          builder_.CreateCall(fmemcpy, llvm::ArrayRef<llvm::Value*>(arg_values));
+        }
       } else {
         throw error("Cannot assign to different type of value (assigning " +
                         getNameString(rval->getType()) + " into " +
@@ -313,7 +339,7 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
     elm->second->setLLVM(ptr);
   }
 
-  if (ast::attr(op).lval || elm->second->isLazy())
+  if (ast::attr(op).lval || elm->second->isLazy() || !elm->second->isFundamental())
     return elm->second;
   else
     return elm->second->copyWithNewLLVMValue(builder_.CreateLoad(elm->second->getLLVM()));

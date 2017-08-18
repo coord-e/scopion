@@ -104,7 +104,7 @@ value* translator::operator()(ast::variable const& astv)
     return new value(fp, astv);
   try {
     auto vp = thisScope_->symbols().at(ast::val(astv));
-    if (ast::attr(astv).lval || vp->isLazy())
+    if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
       return vp;
     else
       return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
@@ -161,7 +161,6 @@ value* translator::operator()(ast::array const& astv)
 
     destval->symbols()[std::to_string(v.index())]->setLLVM(p);
     // not good way...? (many to_string)
-
     builder_.CreateStore(v.value(), p);
   }
   return destval;
@@ -174,7 +173,7 @@ value* translator::operator()(ast::arglist const& astv)
 
 value* translator::operator()(ast::structure const& astv)
 {
-  std::vector<llvm::Value*> vals;
+  std::vector<value*> vals;
   std::vector<llvm::Type*> fields;
   auto destv = new value(nullptr, astv);
 
@@ -184,8 +183,9 @@ value* translator::operator()(ast::structure const& astv)
     destv->fields()[ast::val(m.value().first)]  = m.index();
     vp->setParent(destv);
     if (!vp->isLazy()) {
-      fields.push_back(vp->getLLVM()->getType());
-      vals.push_back(vp->getLLVM());
+      fields.push_back(vp->isFundamental() ? vp->getLLVM()->getType()
+                                           : vp->getLLVM()->getType()->getPointerElementType());
+      vals.push_back(vp);
     }
   }
 
@@ -199,8 +199,38 @@ value* translator::operator()(ast::structure const& astv)
     std::string str = std::find_if(destv->fields().begin(), destv->fields().end(),
                                    [&v](auto& x) { return x.second == v.index(); })
                           ->first;
+
+    if (v.value()->isFundamental()) {
+      builder_.CreateStore(v.value()->getLLVM(), p);
+    } else {
+      std::vector<llvm::Type*> list;
+      list.push_back(builder_.getInt8Ty()->getPointerTo());
+      list.push_back(builder_.getInt8Ty()->getPointerTo());
+      list.push_back(builder_.getInt64Ty());
+      list.push_back(builder_.getInt32Ty());
+      list.push_back(builder_.getInt1Ty());
+      llvm::Function* fmemcpy =
+          llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
+
+      std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
+      auto sizelp                       = builder_.CreatePtrToInt(
+          builder_.CreateGEP(v.value()->getLLVM()->getType()->getPointerElementType(),
+                             llvm::ConstantPointerNull::get(
+                                 llvm::cast<llvm::PointerType>(v.value()->getLLVM()->getType())),
+                             idxList),
+          builder_.getInt64Ty());  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
+
+      std::vector<llvm::Value*> arg_values;
+      arg_values.push_back(builder_.CreatePointerCast(p, builder_.getInt8PtrTy()));
+      arg_values.push_back(
+          builder_.CreatePointerCast(v.value()->getLLVM(), builder_.getInt8PtrTy()));
+      arg_values.push_back(sizelp);
+      arg_values.push_back(builder_.getInt32(0));
+      arg_values.push_back(builder_.getInt1(0));
+      builder_.CreateCall(fmemcpy, llvm::ArrayRef<llvm::Value*>(arg_values));
+    }
+
     destv->symbols()[str]->setLLVM(p);  // not good for performance
-    builder_.CreateStore(v.value(), p);
   }
 
   return destv;
