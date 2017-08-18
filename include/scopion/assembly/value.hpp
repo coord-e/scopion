@@ -24,7 +24,6 @@ class value
   llvm::Value* llvm_value_ = nullptr;
   value* parent_           = nullptr;
   ast::expr ast_value_;
-  std::map<std::string, std::pair<size_t, value*>> fields_;
   std::map<std::string, value*> symbols_;
   bool is_lazy_;
   bool is_void_;
@@ -46,7 +45,6 @@ public:
     newval->llvm_value_ = v;
     newval->parent_     = parent_;
     newval->ast_value_  = ast_value_;
-    newval->fields_     = fields_;
     newval->symbols_    = symbols_;
     newval->is_lazy_    = is_lazy_;
     newval->is_void_    = is_void_;
@@ -72,8 +70,6 @@ public:
 
   std::map<std::string, value*>& symbols() { return symbols_; }
   std::map<std::string, value*> const& symbols() const { return symbols_; }
-  std::map<std::string, std::pair<size_t, value*>>& fields() { return fields_; }
-  std::map<std::string, std::pair<size_t, value*>> const& fields() const { return fields_; }
 };
 
 };  // namespace assembly

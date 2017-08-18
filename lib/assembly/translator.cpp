@@ -148,9 +148,8 @@ value* translator::operator()(ast::array const& astv)
                   code_range_);
     }
     v->setParent(destval);
-    destval->fields()[std::to_string(x.index())] =
-        std::make_pair(x.index(),
-                       v);  // store value into fields list so that we can get this value later
+    destval->symbols()[std::to_string(x.index())] =
+        v;  // store value into fields list so that we can get this value later
     if (!v->isLazy())
       values.push_back(v->getLLVM());
   }
@@ -160,7 +159,7 @@ value* translator::operator()(ast::array const& astv)
                                          builder_.getInt32(static_cast<uint32_t>(v.index()))};
     auto p = builder_.CreateInBoundsGEP(aryType, aryPtr, llvm::ArrayRef<llvm::Value*>(idxList));
 
-    destval->fields()[std::to_string(v.index())].second->setLLVM(p);
+    destval->symbols()[std::to_string(v.index())]->setLLVM(p);
     // not good way...? (many to_string)
 
     builder_.CreateStore(v.value(), p);
@@ -180,8 +179,8 @@ value* translator::operator()(ast::structure const& astv)
   auto destv = new value(nullptr, astv);
 
   for (auto const& m : ast::val(astv) | boost::adaptors::indexed()) {
-    auto vp                                    = boost::apply_visitor(*this, m.value().second);
-    destv->fields()[ast::val(m.value().first)] = std::make_pair(m.index(), vp);
+    auto vp                                     = boost::apply_visitor(*this, m.value().second);
+    destv->symbols()[ast::val(m.value().first)] = vp;
     vp->setParent(destv);
     if (!vp->isLazy()) {
       fields.push_back(vp->getLLVM()->getType());
@@ -196,9 +195,9 @@ value* translator::operator()(ast::structure const& astv)
   destv->setLLVM(ptr);
   for (auto const v : vals | boost::adaptors::indexed()) {
     auto p = builder_.CreateStructGEP(structTy, ptr, static_cast<uint32_t>(v.index()));
-    std::find_if(destv->fields().begin(), destv->fields().end(),
-                 [&v](auto& x) { return x.second.first == static_cast<uint32_t>(v.index()); })
-        ->second.second->setLLVM(p);  // not good for performance
+    std::find_if(destv->symbols().begin(), destv->symbols().end(),
+                 [&v](auto& x) { return x.second->getLLVM() == v.value(); })
+        ->second->setLLVM(p);  // not good for performance
     builder_.CreateStore(v.value(), p);
   }
 
@@ -220,8 +219,7 @@ value* translator::operator()(ast::function const& fcv)
 
   // maybe useless
   // for (auto const arg : args | boost::adaptors::indexed()) {
-  //   destv->fields()[ast::val(arg.value())] = std::make_pair(arg.index(),
-  //   nullptr);
+  //   destv->symbols()[ast::val(arg.value())] = nullptr
   // }
 
   return destv;

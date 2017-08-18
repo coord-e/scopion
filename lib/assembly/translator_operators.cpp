@@ -151,10 +151,8 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
       if (auto parent = args[0]->getParent()) {
         // not good way...?
         // ow? args[1]->setParent(parent);
-        parent
-            ->fields()[ast::val(ast::unpack<ast::identifier>(
-                ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))]
-            .second = args[1];
+        parent->symbols()[ast::val(ast::unpack<ast::identifier>(
+            ast::val(ast::unpack<ast::op<ast::dot, 2>>(ast::val(op)[0]))[1]))] = args[1];
       } else {
         thisScope_->symbols()[ast::val(ast::unpack<ast::variable>(ast::val(op)[0]))] = args[1];
       }
@@ -263,15 +261,15 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
   try {
     int aindex = ast::val(ast::unpack<ast::integer>(ast::val(op)[1]));
     try {
-      auto ep = args[0]->fields().at(std::to_string(aindex)).second;
+      auto ep = args[0]->symbols().at(std::to_string(aindex));
       return ast::attr(op).lval ? ep : ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
     } catch (std::out_of_range&) {
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
     }
   } catch (boost::bad_get&) {  // specifing index with non-literal integer
-    if (std::none_of(args[0]->fields().begin(), args[0]->fields().end(),
-                     [](auto& x) { return x.second.second->isLazy(); })) {  // No Lazy is in it
+    if (std::none_of(args[0]->symbols().begin(), args[0]->symbols().end(),
+                     [](auto& x) { return x.second->isLazy(); })) {  // No Lazy is in it
       std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
       auto ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
                                            llvm::ArrayRef<llvm::Value*>(idxList));
@@ -302,9 +300,9 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
         "Cannot get \"" + id + "\" from non-structure type " + getNameString(lval->getType()),
         ast::attr(op).where, code_range_);
 
-  auto elm = args[0]->fields().find(id);
+  auto elm = args[0]->symbols().find(id);
 
-  if (elm == args[0]->fields().end()) {
+  if (elm == args[0]->symbols().end()) {
     throw error("No member named \"" + id + "\" in the structure", ast::attr(op).where,
                 code_range_);
   }
@@ -313,11 +311,10 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
   //     static_cast<uint32_t>(elm.first));
   // maybe useless
 
-  if (ast::attr(op).lval || elm->second.second->isLazy())
-    return elm->second.second;
+  if (ast::attr(op).lval || elm->second->isLazy())
+    return elm->second;
   else
-    return elm->second.second->copyWithNewLLVMValue(
-        builder_.CreateLoad(elm->second.second->getLLVM()));
+    return elm->second->copyWithNewLLVMValue(builder_.CreateLoad(elm->second->getLLVM()));
 }
 
 [[deprecated]] value* translator::apply_op(ast::single_op<ast::load> const& op,

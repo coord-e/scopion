@@ -64,11 +64,11 @@ public:
       return apply_op(op, args);
     } else {
       args.push_back(target);
-      auto f = target->fields().find(ast::op_str<Op>);
-      if (f == target->fields().end())
+      auto f = target->symbols().find(ast::op_str<Op>);
+      if (f == target->symbols().end())
         throw error(std::string("no operator ") + ast::op_str<Op> + " is defined in the structure",
                     ast::attr(op).where, code_range_);
-      return new value(builder_.CreateCall(evaluate(f->second.second, args, *this)->getLLVM(),
+      return new value(builder_.CreateCall(evaluate(f->second, args, *this)->getLLVM(),
                                            llvm::ArrayRef<llvm::Value*>(args_llvm)),
                        op);
     }
