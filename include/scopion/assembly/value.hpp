@@ -26,6 +26,7 @@ class value
   ast::expr ast_value_;
   std::map<std::string, value*> symbols_;
   std::map<std::string, uint32_t> fields_;
+  std::string name_;
   bool is_lazy_;
   bool is_void_;
 
@@ -70,6 +71,8 @@ public:
   bool isVoid() const { return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_; }
   value* getParent() const { return parent_; }
   void setParent(value* parent) { parent_ = parent; }
+  std::string getName() const { return name_; }
+  void setName(std::string const& name) { name_ = name ;}
   ast::expr& getAst() { return ast_value_; }
   ast::expr const& getAst() const { return ast_value_; }
   llvm::Value* getLLVM() const { return llvm_value_; }
