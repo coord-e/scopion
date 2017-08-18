@@ -29,7 +29,8 @@ std::unique_ptr<module> module::create(parser::parsed const& tree,
   std::shared_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
   llvm::IRBuilder<> builder(mod->getContext());
 
-  std::vector<llvm::Type*> args_type = {builder.getInt32Ty()};
+  std::vector<llvm::Type*> args_type = {builder.getInt32Ty(),
+                                        builder.getInt8PtrTy()->getPointerTo()};
   auto main_func =
       llvm::Function::Create(llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
                              llvm::Function::ExternalLinkage, "main", mod.get());
@@ -42,9 +43,17 @@ std::unique_ptr<module> module::create(parser::parsed const& tree,
 
   auto val = boost::apply_visitor(tr, tree.ast);
 
-  // builder.CreateCall(val->getValue(), llvm::ArrayRef<llvm::Value *>({}));
+  std::vector<llvm::Value*> arg_llvm_values;
+  std::vector<value*> arg_values;
+  for (auto& x : main_func->getArgumentList()) {
+    arg_llvm_values.push_back(&x);
+    arg_values.push_back(new value(&x, ast::expr{}));
+  }
 
-  builder.CreateRet(builder.getInt32(0));
+  llvm::Value* ret = builder.CreateCall(evaluate(val, arg_values, tr)->getLLVM(),
+                                        llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
+
+  builder.CreateRet(ret->getType()->isVoidTy() ? builder.getInt32(0) : ret);
 
   return std::unique_ptr<module>(new module(mod, val));
 }
