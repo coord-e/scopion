@@ -185,19 +185,16 @@ value* translator::operator()(ast::arglist const& astv)
 
 value* translator::operator()(ast::structure const& astv)
 {
-  std::vector<value*> vals;
   std::vector<llvm::Type*> fields;
   auto destv = new value(nullptr, astv);
 
   for (auto const& m : ast::val(astv) | boost::adaptors::indexed()) {
     auto vp                                     = boost::apply_visitor(*this, m.value().second);
     destv->symbols()[ast::val(m.value().first)] = vp;
-    destv->fields()[ast::val(m.value().first)]  = m.index();
     vp->setParent(destv);
     if (!vp->isLazy()) {
       fields.push_back(vp->isFundamental() ? vp->getLLVM()->getType()
                                            : vp->getLLVM()->getType()->getPointerElementType());
-      vals.push_back(vp);
     }
   }
 
@@ -206,13 +203,16 @@ value* translator::operator()(ast::structure const& astv)
 
   auto ptr = createGCMalloc(structTy);
   destv->setLLVM(ptr);
-  for (auto const v : vals | boost::adaptors::indexed()) {
-    auto p          = builder_.CreateStructGEP(structTy, ptr, static_cast<uint32_t>(v.index()));
-    std::string str = std::find_if(destv->fields().begin(), destv->fields().end(),
-                                   [&v](auto& x) { return x.second == v.index(); })
-                          ->first;
-    if (!copyFull(v.value(), new value(p, v.value()->getAst()), str, p, destv)) {
-      assert(false && "Assigned with wrong type during construction of the structure");
+
+  uint32_t i = 0;
+  for (auto const& v : destv->symbols()) {
+    if (!v.second->isLazy()) {
+      destv->fields()[v.first] = i;
+      auto p                   = builder_.CreateStructGEP(structTy, ptr, i);
+      if (!copyFull(v.second, new value(p, v.second->getAst()), v.first, p, destv)) {
+        assert(false && "Assigned with wrong type during construction of the structure");
+      }
+      i++;
     }
   }
 
