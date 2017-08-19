@@ -36,6 +36,7 @@ public:
   value* operator()(ast::integer);
   value* operator()(ast::boolean);
   value* operator()(ast::string const&);
+  value* operator()(ast::pre_variable const&);
   value* operator()(ast::variable const&);
   value* operator()(ast::array const&);
   value* operator()(ast::arglist const&);

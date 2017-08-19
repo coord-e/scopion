@@ -3,8 +3,15 @@
 
 #include "scopion/error.hpp"
 
+#include <llvm/IR/Module.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/raw_os_ostream.h>
+
 #include <algorithm>
+#include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 
 #include <boost/range/adaptor/indexed.hpp>
@@ -23,43 +30,11 @@ translator::translator(std::shared_ptr<llvm::Module>& module,
       code_range_(boost::make_iterator_range(code.begin(), code.end())),
       thisScope_(new value())
 {
-  auto ib = builder_.GetInsertBlock();
-  {
-    std::vector<llvm::Type*> args = {builder_.getInt8Ty()->getPointerTo()};
-
-    module_->getOrInsertFunction(
-        "printf",
-        llvm::FunctionType::get(builder_.getInt32Ty(), llvm::ArrayRef<llvm::Type*>(args), true));
-    module_->getOrInsertFunction(
-        "puts",
-        llvm::FunctionType::get(builder_.getInt32Ty(), llvm::ArrayRef<llvm::Type*>(args), true));
-  }
-  {
-    module_->getOrInsertFunction("GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
-    module_->getOrInsertFunction(
-        "GC_malloc",
-        llvm::FunctionType::get(builder_.getInt8Ty()->getPointerTo(),
-                                llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
-  }
-  {
-    std::vector<llvm::Type*> func_args_type;
-    func_args_type.push_back(builder_.getInt32Ty());
-
-    llvm::FunctionType* llvm_func_type =
-        llvm::FunctionType::get(builder_.getInt32Ty(), func_args_type, /*可変長引数=*/false);
-    llvm::Function* llvm_func = llvm::Function::Create(
-        llvm_func_type, llvm::Function::ExternalLinkage, "printn", module_.get());
-
-    llvm::BasicBlock* entry = llvm::BasicBlock::Create(module_->getContext(),
-                                                       "entry_printn",  // BasicBlockの名前
-                                                       llvm_func);
-    builder_.SetInsertPoint(entry);  // entryの開始
-    std::vector<llvm::Value*> args = {builder_.CreateGlobalStringPtr("%d\n"),
-                                      &(*(llvm_func->getArgumentList().begin()))};
-    builder_.CreateCall(module_->getFunction("printf"), args);
-    builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0, true));
-  }
-  builder_.SetInsertPoint(ib);
+  module_->getOrInsertFunction("GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
+  module_->getOrInsertFunction(
+      "GC_malloc",
+      llvm::FunctionType::get(builder_.getInt8Ty()->getPointerTo(),
+                              llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
 }
 
 value* translator::operator()(ast::value astv)
@@ -105,10 +80,65 @@ value* translator::operator()(ast::string const& astv)
   return new value(builder_.CreateGlobalStringPtr(ast::val(astv)), astv);
 }
 
+value* translator::operator()(ast::pre_variable const& astv)
+{
+  if (ast::attr(astv).lval)
+    throw error("Pre-defined variables cannnot be called", ast::attr(astv).where, code_range_);
+
+  auto const name = llvm::StringRef(ast::val(astv)).ltrim('@');
+  if (auto fp = module_->getFunction(name))
+    return new value(fp, astv);
+  else {
+    if (name.equals("import")) {
+      auto it = ast::attr(astv).attributes.find("ir");
+      if (it == ast::attr(astv).attributes.end()) {
+        throw error("Import path isn't specified", ast::attr(astv).where, code_range_);
+      }
+      llvm::SMDiagnostic err;
+      std::unique_ptr<llvm::Module> module =
+          llvm::parseIRFile(it->second, err, module_->getContext());
+      if (!module) {
+        llvm::raw_os_ostream stream(std::cout);
+        err.print(it->second.c_str(), stream);
+        throw error("Error happened during import of llvm ir", ast::attr(astv).where, code_range_);
+      }
+      std::vector<llvm::Type*> fields;
+      auto destv = new value(nullptr, astv);
+
+      for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end(); ++i) {
+        llvm::Function* func;
+        if (!(func = module_->getFunction(i->getName())))
+          func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
+                                        i->getName(), module_.get());
+        auto vp                              = new value(func, astv);
+        destv->symbols()[i->getName().str()] = vp;
+        destv->fields()[i->getName().str()]  = std::distance(module->getFunctionList().begin(), i);
+        vp->setParent(destv);
+        fields.push_back(i->getType());
+      }
+
+      llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
+      structTy->setBody(fields);
+
+      auto ptr = builder_.CreateAlloca(structTy);
+      destv->setLLVM(ptr);
+
+      for (auto const& x : destv->fields()) {
+        auto p = builder_.CreateStructGEP(structTy, ptr, x.second);
+        builder_.CreateStore(destv->symbols()[x.first]->getLLVM(), p);
+        destv->symbols()[x.first]->setLLVM(p);
+      }
+
+      return destv;
+    } else {
+      throw error("Pre-defined variable \"" + name.str() + "\" is not defined",
+                  ast::attr(astv).where, code_range_);
+    }
+  }
+}
+
 value* translator::operator()(ast::variable const& astv)
 {
-  if (auto fp = module_->getFunction(ast::val(astv)))
-    return new value(fp, astv);
   try {
     auto vp = thisScope_->symbols().at(ast::val(astv));
     vp->setName(ast::val(astv));
