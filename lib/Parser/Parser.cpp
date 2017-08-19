@@ -235,7 +235,11 @@ auto const raw_string_def = ('\'' >> x3::lexeme[*(x3::lit("\\'") | x3::char_ - '
                              '\'')[detail::assign_str_escaped_as<ast::string, '\''>];
 
 auto const identifier_def =
-    x3::raw[x3::lexeme[x3::alpha > *x3::alnum]][detail::assign_str_as<ast::identifier>];
+    x3::raw[x3::lexeme[(x3::alpha > *x3::alnum) | x3::char_("+\\-*/%<>&|^~!") |
+                       (x3::char_("!=<>") > '=') |
+                       x3::repeat(2)[x3::char_("+\\-<>&|")] |
+                       "[]" |
+                       "()"]][detail::assign_str_as<ast::identifier>];
 
 auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
 
