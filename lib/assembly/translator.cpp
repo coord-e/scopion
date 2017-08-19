@@ -130,6 +130,13 @@ value* translator::operator()(ast::pre_variable const& astv)
       }
 
       return destv;
+    } else if (name.equals("self")) {
+      if (ast::attr(astv).lval)
+        throw error("Assigning to @self is not allowed", ast::attr(astv).where, code_range_);
+
+      auto v       = ast::variable("__self");
+      ast::attr(v) = ast::attr(astv);
+      return operator()(v);
     } else {
       throw error("Pre-defined variable \"" + name.str() + "\" is not defined",
                   ast::attr(astv).where, code_range_);

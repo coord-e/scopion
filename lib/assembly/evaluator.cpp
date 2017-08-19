@@ -88,8 +88,8 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
 
   builder_.SetInsertPoint(entry);
 
-  translator_.getScope()->symbols()["self"] =
-      new value(translator_.createGCMalloc(func->getType(), nullptr, "self"), fcv);
+  translator_.getScope()->symbols()["__self"] =
+      new value(translator_.createGCMalloc(func->getType(), nullptr, "__self"), fcv);
 
   for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
     auto vp = arguments_[arg_name.index()];
@@ -146,8 +146,8 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
     translator_.setScope(new value(newentry, fcv));
     builder_.SetInsertPoint(newentry);
 
-    auto selfptr = translator_.createGCMalloc(newfunc->getType(), nullptr, "self");
-    translator_.getScope()->symbols()["self"] = new value(selfptr, fcv);
+    auto selfptr = translator_.createGCMalloc(newfunc->getType(), nullptr, "__self");
+    translator_.getScope()->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(newfunc, selfptr);
 
     auto it = newfunc->getArgumentList().begin();
