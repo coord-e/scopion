@@ -3,15 +3,13 @@
 
 #include "scopion/error.hpp"
 
-#include <clang/CodeGen/CodeGenAction.h>
-#include <clang/Frontend/CodeGenOptions.h>
-#include <clang/Frontend/CompilerInstance.h>
-#include <clang/Frontend/CompilerInvocation.h>
-#include <clang/Frontend/TextDiagnosticPrinter.h>
-#include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/raw_os_ostream.h>
 
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
@@ -32,36 +30,6 @@ translator::translator(std::shared_ptr<llvm::Module>& module,
       code_range_(boost::make_iterator_range(code.begin(), code.end())),
       thisScope_(new value())
 {
-  auto ib = builder_.GetInsertBlock();
-  {
-    std::vector<llvm::Type*> args = {builder_.getInt8Ty()->getPointerTo()};
-
-    module_->getOrInsertFunction(
-        "printf",
-        llvm::FunctionType::get(builder_.getInt32Ty(), llvm::ArrayRef<llvm::Type*>(args), true));
-    module_->getOrInsertFunction(
-        "puts",
-        llvm::FunctionType::get(builder_.getInt32Ty(), llvm::ArrayRef<llvm::Type*>(args), true));
-  }
-  {
-    std::vector<llvm::Type*> func_args_type;
-    func_args_type.push_back(builder_.getInt32Ty());
-
-    llvm::FunctionType* llvm_func_type =
-        llvm::FunctionType::get(builder_.getInt32Ty(), func_args_type, /*可変長引数=*/false);
-    llvm::Function* llvm_func = llvm::Function::Create(
-        llvm_func_type, llvm::Function::ExternalLinkage, "printn", module_.get());
-
-    llvm::BasicBlock* entry = llvm::BasicBlock::Create(module_->getContext(),
-                                                       "entry_printn",  // BasicBlockの名前
-                                                       llvm_func);
-    builder_.SetInsertPoint(entry);  // entryの開始
-    std::vector<llvm::Value*> args = {builder_.CreateGlobalStringPtr("%d\n"),
-                                      &(*(llvm_func->getArgumentList().begin()))};
-    builder_.CreateCall(module_->getFunction("printf"), args);
-    builder_.CreateRet(llvm::ConstantInt::get(builder_.getInt32Ty(), 0, true));
-  }
-  builder_.SetInsertPoint(ib);
 }
 
 value* translator::operator()(ast::value astv)
@@ -117,37 +85,26 @@ value* translator::operator()(ast::pre_variable const& astv)
     return new value(fp, astv);
   else {
     if (name.equals("import")) {
-      auto it = ast::attr(astv).attributes.find("c");
+      auto it = ast::attr(astv).attributes.find("ir");
       if (it == ast::attr(astv).attributes.end()) {
         throw error("Import path isn't specified", ast::attr(astv).where, code_range_);
       }
-      std::vector<const char*> args;
-      args.push_back(it->second.c_str());
-      clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts = new clang::DiagnosticOptions();
-      clang::TextDiagnosticPrinter* DiagClient =
-          new clang::TextDiagnosticPrinter(llvm::errs(), &*DiagOpts);
-      clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
-      clang::DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagClient);
-      std::unique_ptr<clang::CompilerInvocation> CI(new clang::CompilerInvocation);
-      clang::CompilerInvocation::CreateFromArgs(*CI, &args[0], &args[0] + args.size(), Diags);
-      clang::CompilerInstance compileri;
-      compileri.setInvocation(std::move(CI));
-      compileri.createDiagnostics();
-      if (compileri.getDiagnostics().hasErrorOccurred())
-        throw error("Failed to emit llvm ir from \"" + it->second + "\"", ast::attr(astv).where,
-                    code_range_);
-      std::unique_ptr<clang::CodeGenAction> Act(llvm::make_unique<clang::EmitLLVMOnlyAction>());
-      if (!compileri.ExecuteAction(*Act))
-        throw error("Failed to emit llvm ir from \"" + it->second + "\"", ast::attr(astv).where,
-                    code_range_);
-      std::unique_ptr<llvm::Module> module = Act->takeModule();
-
+      llvm::SMDiagnostic err;
+      std::unique_ptr<llvm::Module> module =
+          llvm::parseIRFile(it->second, err, module_->getContext());
+      if (!module) {
+        llvm::raw_os_ostream stream(std::cout);
+        err.print(it->second.c_str(), stream);
+        throw error("Error happened during import of llvm ir", ast::attr(astv).where, code_range_);
+      }
       std::vector<llvm::Type*> fields;
       auto destv = new value(nullptr, astv);
 
       for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end(); ++i) {
-        auto func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
-                                           i->getName(), module_.get());
+        llvm::Function* func;
+        if (!(func = module_->getFunction(i->getName())))
+          func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
+                                        i->getName(), module_.get());
         auto vp = new value(func, astv);
         destv->fields()[i->getName().str()] =
             std::make_pair(std::distance(module->getFunctionList().begin(), i), vp);
