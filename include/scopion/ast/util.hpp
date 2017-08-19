@@ -61,6 +61,8 @@ static constexpr auto op_str<at> = "[]";
 template <>
 static constexpr auto op_str<dot> = ".";
 template <>
+static constexpr auto op_str<odot> = ".:";
+template <>
 static constexpr auto op_str<load> = "*";
 template <>
 static constexpr auto op_str<ret> = "|>";

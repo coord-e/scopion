@@ -238,10 +238,19 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
 
 value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<value*> const& args)
 {
+  bool isodot = true;
+  try {
+    ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]);
+  } catch (boost::bad_get&) {
+    isodot = false;
+  }
   assert(args[1]->isVoid());  // args[1] should be arglist
 
   if (args[0]->getLLVM()->getType()->isLabelTy()) {
-    if (!ast::val(ast::unpack<ast::arglist>(ast::val(op)[1])).empty()) {
+    if (isodot) {
+      throw error("Calling scope with odot operator is not allowed", ast::attr(op).where,
+                  code_range_);
+    } else if (!ast::val(ast::unpack<ast::arglist>(ast::val(op)[1])).empty()) {
       throw error("Calling scope with arguments is not allowed", ast::attr(op).where, code_range_);
     } else {
       return evaluate(args[0], std::vector<value*>{}, *this);
@@ -255,10 +264,13 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
     if (!args[0]->isLazy()) {
       tocall = args[0]->getLLVM();
       if (!tocall->getType()->isPointerTy()) {
-        throw error("Cannot call a non-pointer value", ast::attr(op).where, code_range_);
+        throw error(
+            "Cannot call a non-pointer value (type: " + getNameString(tocall->getType()) + ")",
+            ast::attr(op).where, code_range_);
       } else if (!tocall->getType()->getPointerElementType()->isFunctionTy()) {
-        throw error("Cannot call a value which is not a function pointer", ast::attr(op).where,
-                    code_range_);
+        throw error("Cannot call a value which is not a function pointer  (type: " +
+                        getNameString(tocall->getType()) + ")",
+                    ast::attr(op).where, code_range_);
       } else {
         std::transform(ast::val(arglist).begin(), ast::val(arglist).end(),
                        std::back_inserter(arg_values), [this, &op](auto& x) {
@@ -270,6 +282,8 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
                            return rv->getLLVM();
                          }
                        });
+        if (isodot)
+          arg_values.push_back(args[0]->getParent()->getLLVM());
       }
     } else {
       if (ast::attr(op).survey) {
@@ -281,6 +295,12 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
           vary.push_back(rv);
           if (!rv->isLazy())
             arg_values.push_back(rv->getLLVM());
+        }
+        if (isodot) {
+          auto p = boost::apply_visitor(
+              *this, ast::val(ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]))[0]);
+          vary.push_back(p);
+          arg_values.push_back(p->getLLVM());
         }
 
         tocall = evaluate(args[0], vary, *this)->getLLVM();
@@ -394,6 +414,13 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
     return elm->second->copy();
   else
     return elm->second->copyWithNewLLVMValue(builder_.CreateLoad(elm->second->getLLVM()));
+}
+
+value* translator::apply_op(ast::binary_op<ast::odot> const& op, std::vector<value*> const& args)
+{
+  if (!ast::attr(op).to_call)
+    throw error("Objective dot operator without call operator", ast::attr(op).where, code_range_);
+  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
 }
 
 [[deprecated]] value* translator::apply_op(ast::single_op<ast::load> const& op,

@@ -65,6 +65,7 @@ public:
       return apply_op(op, args);
     } else {
       args.push_back(target);
+      args_llvm.push_back(target->getLLVM());
       auto f = target->symbols().find(ast::op_str<Op>);
       if (f == target->symbols().end())
         throw error(std::string("no operator ") + ast::op_str<Op> + " is defined in the structure",
@@ -121,6 +122,7 @@ private:
   value* apply_op(ast::binary_op<ast::call> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::at> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::dot> const&, std::vector<value*> const&);
+  value* apply_op(ast::binary_op<ast::odot> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::load> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::ret> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::lnot> const&, std::vector<value*> const&);
