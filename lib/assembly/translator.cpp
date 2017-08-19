@@ -83,7 +83,7 @@ value* translator::operator()(ast::string const& astv)
 value* translator::operator()(ast::pre_variable const& astv)
 {
   if (ast::attr(astv).lval)
-    throw error("Pre-defined variables cannnot be called", ast::attr(astv).where, code_range_);
+    throw error("Pre-defined variables cannnot be assigned", ast::attr(astv).where, code_range_);
 
   auto const name = llvm::StringRef(ast::val(astv)).ltrim('@');
   if (auto fp = module_->getFunction(name))
