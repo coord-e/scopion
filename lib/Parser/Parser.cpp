@@ -73,16 +73,16 @@ std::string unescape(std::string const& s)
   return res;
 }
 
-auto assign = [](auto&& ctx) { x3::_val(ctx) = x3::_attr(ctx); };
+static auto const assign = [](auto&& ctx) { x3::_val(ctx) = x3::_attr(ctx); };
 
 template <typename T>
-auto assign_str_as = [](auto&& ctx) {
+static auto const assign_str_as = [](auto&& ctx) {
   std::string str(x3::_attr(ctx).begin(), x3::_attr(ctx).end());
   x3::_val(ctx) = ast::set_where(T(str), x3::_where(ctx));
 };
 
 template <typename T, char C, bool Es = false>
-auto assign_str_escaped_as = [](auto&& ctx) {
+static auto const assign_str_escaped_as = [](auto&& ctx) {
   std::string rs;
   for (auto const& x : x3::_attr(ctx)) {
     if (char ch = boost::get<char>(x))
@@ -94,10 +94,10 @@ auto assign_str_escaped_as = [](auto&& ctx) {
 };
 
 template <typename T>
-auto assign_as =
+static auto const assign_as =
     [](auto&& ctx) { x3::_val(ctx) = ast::set_where(T(x3::_attr(ctx)), x3::_where(ctx)); };
 
-auto assign_func = [](auto&& ctx) {
+static auto const assign_func = [](auto&& ctx) {
   auto&& args  = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
   auto&& lines = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
   std::vector<ast::identifier> result;
@@ -106,18 +106,18 @@ auto assign_func = [](auto&& ctx) {
   x3::_val(ctx) = ast::set_where(ast::function({result, lines}), x3::_where(ctx));
 };
 
-auto assign_struct = [](auto&& ctx) {
+static auto const assign_struct = [](auto&& ctx) {
   std::map<ast::identifier, ast::expr> result;
   for (auto const& v : x3::_attr(ctx)) {
     auto name    = ast::unpack<ast::identifier>(boost::fusion::at<boost::mpl::int_<0>>(v));
-    auto val     = boost::fusion::at<boost::mpl::int_<1>>(v);
+    auto&& val   = boost::fusion::at<boost::mpl::int_<1>>(v);
     result[name] = val;
   }
   x3::_val(ctx) = ast::set_where(ast::structure(result), x3::_where(ctx));
 };
 
 template <typename Op, size_t N>
-auto assign_op = [](auto&& ctx) {
+static auto const assign_op = [](auto&& ctx) {
   static_assert(N >= 3, "Wrong number of terms");
   std::array<ast::expr, N> ary;
   auto it = ary.begin();
@@ -127,31 +127,31 @@ auto assign_op = [](auto&& ctx) {
 };
 
 template <typename Op>
-auto assign_op<Op, 2> = [](auto&& ctx) {
+static auto const assign_op<Op, 2> = [](auto&& ctx) {
   x3::_val(ctx) =
       ast::set_where(ast::binary_op<Op>({x3::_val(ctx), x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <typename Op>
-auto assign_op<Op, 1> = [](auto&& ctx) {
+static auto const assign_op<Op, 1> = [](auto&& ctx) {
   x3::_val(ctx) = ast::set_where(ast::single_op<Op>({x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <>
-auto assign_op<ast::assign, 2> = [](auto&& ctx) {
+static auto const assign_op<ast::assign, 2> = [](auto&& ctx) {
   x3::_val(ctx) = ast::set_where(
       ast::binary_op<ast::assign>({ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)}),
       x3::_where(ctx));
 };
 
 template <>
-auto assign_op<ast::call, 2> = [](auto&& ctx) {
+static auto const assign_op<ast::call, 2> = [](auto&& ctx) {
   x3::_val(ctx) = ast::set_where(ast::binary_op<ast::call>({ast::set_to_call(x3::_val(ctx), true),
                                                             ast::arglist(x3::_attr(ctx))}),
                                  x3::_where(ctx));
 };
 
-auto assign_attr = [](auto&& ctx) {
+static auto const assign_attr = [](auto&& ctx) {
   auto&& key = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
   // ast::identifier
   auto&& val = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
