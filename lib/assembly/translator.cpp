@@ -254,7 +254,7 @@ value* translator::operator()(ast::scope const& scv)
 }
 
 template <>
-value* translator::operator()(ast::op<ast::call, 2> const& op)
+value* translator::operator()(ast::op<ast::odot, 2> const& op)
 {
   std::vector<value*> args;
   std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),

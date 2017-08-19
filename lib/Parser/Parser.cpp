@@ -261,7 +261,8 @@ auto const primary_def =
     scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
-                          *(("." > identifier)[detail::assign_op<ast::dot, 2>]);
+                          *((".:" > identifier)[detail::assign_op<ast::odot, 2>] |
+                            ("." > identifier)[detail::assign_op<ast::dot, 2>]);
 
 auto const attr_expr_def = dot_expr[detail::assign] >>
                            *("#" >> identifier >> -(":" > attribute_val))[detail::assign_attr];
