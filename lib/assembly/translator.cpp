@@ -1,5 +1,6 @@
 #include "scopion/assembly/translator.hpp"
 #include "scopion/assembly/value.hpp"
+#include "scopion/parser/parser.hpp"
 
 #include "scopion/error.hpp"
 
@@ -9,6 +10,7 @@
 #include <llvm/Support/raw_os_ostream.h>
 
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -90,46 +92,60 @@ value* translator::operator()(ast::pre_variable const& astv)
     return new value(fp, astv);
   else {
     if (name.equals("import")) {
-      auto it = ast::attr(astv).attributes.find("ir");
-      if (it == ast::attr(astv).attributes.end()) {
+      auto itm = ast::attr(astv).attributes.find("m");
+      auto iti = ast::attr(astv).attributes.find("ir");
+      if (itm != ast::attr(astv).attributes.end()) {  // found path to module
+        std::ifstream ifs(itm->second);
+        if (ifs.fail()) {
+          throw error("failed to open " + itm->second, ast::attr(astv).where, code_range_);
+        }
+        std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+        ifs.close();
+        auto parsed = parser::parse(code);
+        translator tr(module_, builder_, parsed.code);
+        return boost::apply_visitor(tr, parsed.ast);
+      } else if (iti != ast::attr(astv).attributes.end()) {  // found path to ir
+        llvm::SMDiagnostic err;
+        std::unique_ptr<llvm::Module> module =
+            llvm::parseIRFile(iti->second, err, module_->getContext());
+        if (!module) {
+          llvm::raw_os_ostream stream(std::cerr);
+          err.print(iti->second.c_str(), stream);
+          throw error("Error happened during import of llvm ir", ast::attr(astv).where,
+                      code_range_);
+        }
+        std::vector<llvm::Type*> fields;
+        auto destv = new value(nullptr, astv);
+
+        for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end();
+             ++i) {
+          llvm::Function* func;
+          if (!(func = module_->getFunction(i->getName())))
+            func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
+                                          i->getName(), module_.get());
+          auto vp                              = new value(func, astv);
+          destv->symbols()[i->getName().str()] = vp;
+          destv->fields()[i->getName().str()] = std::distance(module->getFunctionList().begin(), i);
+          vp->setParent(destv);
+          fields.push_back(i->getType());
+        }
+
+        llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
+        structTy->setBody(fields);
+
+        auto ptr = builder_.CreateAlloca(structTy);
+        destv->setLLVM(ptr);
+
+        for (auto const& x : destv->fields()) {
+          auto p = builder_.CreateStructGEP(structTy, ptr, x.second);
+          builder_.CreateStore(destv->symbols()[x.first]->getLLVM(), p);
+          destv->symbols()[x.first]->setLLVM(p);
+        }
+
+        return destv;
+      } else {
         throw error("Import path isn't specified", ast::attr(astv).where, code_range_);
       }
-      llvm::SMDiagnostic err;
-      std::unique_ptr<llvm::Module> module =
-          llvm::parseIRFile(it->second, err, module_->getContext());
-      if (!module) {
-        llvm::raw_os_ostream stream(std::cerr);
-        err.print(it->second.c_str(), stream);
-        throw error("Error happened during import of llvm ir", ast::attr(astv).where, code_range_);
-      }
-      std::vector<llvm::Type*> fields;
-      auto destv = new value(nullptr, astv);
-
-      for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end(); ++i) {
-        llvm::Function* func;
-        if (!(func = module_->getFunction(i->getName())))
-          func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
-                                        i->getName(), module_.get());
-        auto vp                              = new value(func, astv);
-        destv->symbols()[i->getName().str()] = vp;
-        destv->fields()[i->getName().str()]  = std::distance(module->getFunctionList().begin(), i);
-        vp->setParent(destv);
-        fields.push_back(i->getType());
-      }
-
-      llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
-      structTy->setBody(fields);
-
-      auto ptr = builder_.CreateAlloca(structTy);
-      destv->setLLVM(ptr);
-
-      for (auto const& x : destv->fields()) {
-        auto p = builder_.CreateStructGEP(structTy, ptr, x.second);
-        builder_.CreateStore(destv->symbols()[x.first]->getLLVM(), p);
-        destv->symbols()[x.first]->setLLVM(p);
-      }
-
-      return destv;
     } else if (name.equals("self")) {
       if (ast::attr(astv).lval)
         throw error("Assigning to @self is not allowed", ast::attr(astv).where, code_range_);
