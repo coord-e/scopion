@@ -315,6 +315,14 @@ value* translator::operator()(ast::op<ast::odot, 2> const& op)
   return apply_op(op, args);
 }
 template <>
+value* translator::operator()(ast::op<ast::adot, 2> const& op)
+{
+  std::vector<value*> args;
+  std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
+                 [this](auto& o) { return boost::apply_visitor(*this, o); });
+  return apply_op(op, args);
+}
+template <>
 value* translator::operator()(ast::op<ast::assign, 2> const& op)
 {
   std::vector<value*> args;

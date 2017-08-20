@@ -63,6 +63,8 @@ static constexpr auto op_str<dot> = ".";
 template <>
 static constexpr auto op_str<odot> = ".:";
 template <>
+static constexpr auto op_str<adot> = ".=";
+template <>
 static constexpr auto op_str<ret> = "|>";
 template <>
 static constexpr auto op_str<lnot> = "!";

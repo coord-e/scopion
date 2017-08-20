@@ -239,11 +239,19 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
 value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<value*> const& args)
 {
   bool isodot = true;
+  bool isadot = true;
+  ast::expr op_unpacked;
   try {
-    ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]);
+    op_unpacked = ast::val(ast::unpack<ast::binary_op<ast::adot>>(ast::val(op)[0]))[0];
   } catch (boost::bad_get&) {
-    isodot = false;
+    try {
+      op_unpacked = ast::val(ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]))[0];
+    } catch (boost::bad_get&) {
+      isodot = false;
+    }
+    isadot = false;
   }
+
   assert(args[1]->isVoid());  // args[1] should be arglist
 
   if (args[0]->getLLVM()->getType()->isLabelTy()) {
@@ -298,10 +306,9 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
             arg_values.push_back(rv->getLLVM());
         }
         if (isodot) {
-          auto p = boost::apply_visitor(
-              *this, ast::val(ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]))[0]);
-          vary.push_back(p);
-          arg_values.push_back(p->getLLVM());
+          auto ob_parent = boost::apply_visitor(*this, op_unpacked);
+          vary.push_back(ob_parent);
+          arg_values.push_back(ob_parent->getLLVM());
         }
 
         auto v    = evaluate(args[0], vary, *this);
@@ -314,6 +321,14 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
         new value(builder_.CreateCall(tocall, llvm::ArrayRef<llvm::Value*>(arg_values)), op);
     if (ret_table)
       destv->applyRetTable(ret_table);
+
+    if (isadot && !ast::attr(op).survey) {
+      auto lvaled              = ast::set_lval(op_unpacked, true);
+      std::vector<value*> args = {boost::apply_visitor(*this, lvaled), destv};
+      /* constructing ast::binary_op with dummy arguments */
+      return apply_op(ast::set_where(ast::binary_op<ast::assign>{{op, op}}, ast::attr(op).where),
+                      args);
+    }
 
     return destv;
   }
@@ -425,6 +440,13 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
 }
 
 value* translator::apply_op(ast::binary_op<ast::odot> const& op, std::vector<value*> const& args)
+{
+  if (!ast::attr(op).to_call)
+    throw error("Objective dot operator without call operator", ast::attr(op).where, code_range_);
+  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
+}
+
+value* translator::apply_op(ast::binary_op<ast::adot> const& op, std::vector<value*> const& args)
 {
   if (!ast::attr(op).to_call)
     throw error("Objective dot operator without call operator", ast::attr(op).where, code_range_);

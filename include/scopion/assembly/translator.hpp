@@ -129,6 +129,7 @@ private:
   value* apply_op(ast::binary_op<ast::at> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::dot> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::odot> const&, std::vector<value*> const&);
+  value* apply_op(ast::binary_op<ast::adot> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::ret> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::lnot> const&, std::vector<value*> const&);
   value* apply_op(ast::single_op<ast::inot> const&, std::vector<value*> const&);
