@@ -6,10 +6,20 @@
 #include <memory>
 #include <stdexcept>
 
+#include <llvm/ADT/Triple.h>
+#include <llvm/Support/Host.h>
+
 #include "cmdline.h"
 #include "rang.hpp"
 
 #include "scopion/scopion.hpp"
+
+std::string getTmpFilePath()
+{
+  char* tmpname = strdup("/tmp/tmpfileXXXXXX");
+  mkstemp(tmpname);
+  return std::string(tmpname);
+}
 
 int main(int argc, char* argv[])
 {
@@ -17,6 +27,7 @@ int main(int argc, char* argv[])
   p.add<std::string>("type", 't', "Specify the type of output (ir, ast, asm, obj)", false, "obj",
                      cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
   p.add<std::string>("output", 'o', "Specify the output path", false, "./a.out");
+  p.add<std::string>("arch", 'a', "Specify the target triple", false, "native");
   p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1, cmdline::range(1, 3));
   p.add("help", 'h', "Print this help");
   p.add("version", 'V', "Print version");
@@ -86,32 +97,28 @@ int main(int argc, char* argv[])
       mod->optimize(opt, opt);
     }
 
-    if (outtype == "ir") {
-      std::ofstream f(outpath);
-      f << mod->irgen();
-      f.close();
-      return 0;
-    }
+    std::string ir = mod->irgen();
 
-    char* tmpname = strdup("/tmp/tmpfileXXXXXX");
-    mkstemp(tmpname);
-    std::string tmpstr(tmpname);
-    std::ofstream f(tmpstr);
-    f << mod->irgen();
+    auto irpath = outtype == "ir" ? outpath : getTmpFilePath() + ".ll";
+    std::ofstream f(irpath);
+    f << ir;
     f.close();
-    system(("llc -filetype asm " + tmpstr).c_str());
-
-    if (outtype == "asm") {
-      std::ofstream fso(outpath);
-      std::ifstream fsi(tmpstr + ".s");
-      fso << fsi.rdbuf() << std::flush;
-      fso.close();
-      fsi.close();
+    if (outtype == "ir")
       return 0;
-    }
 
-    system(("gcc " + tmpstr + ".s -lgc -o " + std::string(outpath)).c_str());
+    auto asmpath = outtype == "asm" ? outpath : getTmpFilePath() + ".s";
 
+    auto const archstr = p.get<std::string>("arch") != "native"
+                             ? p.get<std::string>("arch")
+                             : llvm::sys::getDefaultTargetTriple();
+    llvm::Triple triple(archstr);
+
+    system(("llc -mtriple=" + triple.getTriple() + " -filetype asm " + irpath + " -o=" + asmpath)
+               .c_str());
+    if (outtype == "asm")
+      return 0;
+
+    system(("gcc " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
   } catch (scopion::error const& e) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
               << rang::style::reset << rang::fg::red << " @" << e.line_number()
