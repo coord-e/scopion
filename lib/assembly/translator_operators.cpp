@@ -483,7 +483,8 @@ value* translator::apply_op(ast::single_op<ast::dec> const& op, std::vector<valu
 value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<value*> const& args)
 {
   if (args[0]->isLazy())
-    throw error("Conditions with lazy value is not supported", ast::attr(op).where, code_range_);
+    throw error("Conditional operator with lazy value is not supported", ast::attr(op).where,
+                code_range_);
 
   if (args[1]->getLLVM()->getType() != args[2]->getLLVM()->getType())
     throw error("Conditional operator with incompatible value types (lhs: " +
@@ -540,6 +541,15 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
 
     return new value();  // Void
   } else {
+    if (args[1]->isLazy() || args[2]->isLazy())
+      throw error("Conditional operator with lazy value is currently not supported",
+                  ast::attr(op).where, code_range_);
+
+    if (!std::equal(args[1]->fields().begin(), args[1]->fields().end(), args[2]->fields().begin(),
+                    args[2]->fields().end(), [](auto& s, auto& t) { return s.first == t.first; })) {
+      throw error("Conditional operator with different fields", ast::attr(op).where, code_range_);
+    }
+
     auto pb = builder_.GetInsertBlock();
     auto pp = builder_.GetInsertPoint();
 
@@ -569,7 +579,10 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
 
     builder_.SetInsertPoint(mergebb);
 
-    return new value(builder_.CreateLoad(destlv), op);
+    auto destv       = new value(builder_.CreateLoad(destlv), op);
+    destv->symbols() = args[1]->symbols();
+    destv->fields()  = args[1]->fields();
+    return destv;
   }
 }
 
