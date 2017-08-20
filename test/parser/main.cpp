@@ -152,8 +152,6 @@ TEST_F(parserTest, sinOp)
             ast::expr(ast::function({{}, {ast::single_op<ast::inc>({ast::integer(1)})}})));
   EXPECT_EQ(parser::parse("(){1--;}").ast,
             ast::expr(ast::function({{}, {ast::single_op<ast::dec>({ast::integer(1)})}})));
-  EXPECT_EQ(parser::parse("(){*1;}").ast,
-            ast::expr(ast::function({{}, {ast::single_op<ast::load>({ast::integer(1)})}})));
 }
 
 TEST_F(parserTest, callOp)
@@ -175,7 +173,7 @@ TEST_F(parserTest, atOp)
 TEST_F(parserTest, priority)
 {
   EXPECT_EQ(
-      parser::parse("(){|>a=1||1&&1|1^1&1>1>>1+1**1++;}").ast,
+      parser::parse("(){|>a=1||1&&1|1^1&1>1>>1+1*1++;}").ast,
       ast::expr(ast::function(
           {{},
            {ast::single_op<ast::ret>({ast::binary_op<ast::assign>(
@@ -198,10 +196,8 @@ TEST_F(parserTest, priority)
                                                        {ast::integer(1),
                                                         ast::binary_op<ast::mul>(
                                                             {ast::integer(1),
-                                                             ast::single_op<ast::load>(
-                                                                 {ast::single_op<
-                                                                     ast::inc>({ast::integer(
-                                                                     1)})})})})})})})})})})})})})}})));
+                                                             ast::single_op<ast::inc>({ast::integer(
+                                                                 1)})})})})})})})})})})})})}})));
 }  // namespace
 
 }  // namespace

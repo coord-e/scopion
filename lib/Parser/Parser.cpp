@@ -240,8 +240,11 @@ auto const pre_variable_def =
     (x3::raw[x3::lexeme['@' > x3::alpha > *x3::alnum]])[detail::assign_str_as<ast::pre_variable>];
 
 auto const identifier_def =
-    x3::raw[x3::lexeme[x3::alpha > *(x3::alnum | '_')]][detail::assign_str_as<ast::identifier>];
-
+    x3::raw[x3::lexeme[(x3::alpha > *(x3::alnum | '_')) | x3::char_("+\\-*/%<>&|^~!") |
+                       (x3::char_("!=<>") > '=') |
+                       x3::repeat(2)[x3::char_("+\\-<>&|")] |
+                       "[]" |
+                       "()"]][detail::assign_str_as<ast::identifier>];
 auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
 
 auto const structure_def =
@@ -262,7 +265,8 @@ auto const primary_def =
     function[detail::assign] | scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
-                          *(("." > identifier)[detail::assign_op<ast::dot, 2>]);
+                          *((".:" > identifier)[detail::assign_op<ast::odot, 2>] |
+                            ("." > identifier)[detail::assign_op<ast::dot, 2>]);
 
 auto const attr_expr_def = dot_expr[detail::assign] >>
                            *("#" >> identifier >> -(":" > attribute_val))[detail::assign_attr];
@@ -280,8 +284,7 @@ auto const pre_sinop_expr_def = post_sinop_expr[detail::assign] |
                                 ("!" > post_sinop_expr)[detail::assign_op<ast::lnot, 1>] |
                                 ("~" > post_sinop_expr)[detail::assign_op<ast::inot, 1>] |
                                 ("++" > post_sinop_expr)[detail::assign_op<ast::inc, 1>] |
-                                ("--" > post_sinop_expr)[detail::assign_op<ast::dec, 1>] |
-                                ("*" > post_sinop_expr)[detail::assign_op<ast::load, 1>];
+                                ("--" > post_sinop_expr)[detail::assign_op<ast::dec, 1>];
 
 auto const mul_expr_def = pre_sinop_expr[detail::assign] >>
                           *(("*" > pre_sinop_expr)[detail::assign_op<ast::mul, 2>] |

@@ -34,9 +34,9 @@ struct call;
 struct cond;
 struct dot;
 struct at;
+struct odot;
 
 struct ret;
-struct load;
 struct lnot;
 struct inot;
 struct inc;
@@ -77,7 +77,7 @@ using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<call>>,
                                  boost::recursive_wrapper<binary_op<at>>,
                                  boost::recursive_wrapper<binary_op<dot>>,
-                                 boost::recursive_wrapper<single_op<load>>,
+                                 boost::recursive_wrapper<binary_op<odot>>,
                                  boost::recursive_wrapper<single_op<lnot>>,
                                  boost::recursive_wrapper<single_op<inot>>,
                                  boost::recursive_wrapper<single_op<inc>>,
