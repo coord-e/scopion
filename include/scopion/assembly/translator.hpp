@@ -11,6 +11,8 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <utility>
+
 namespace scopion
 {
 namespace assembly
@@ -23,7 +25,7 @@ class translator : public boost::static_visitor<value*>
   value* thisScope_;
 
   friend struct evaluator;
-  friend bool apply_bb(ast::scope const& sc, translator& tr);
+  friend std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr);
 
 public:
   translator(std::shared_ptr<llvm::Module>& module,

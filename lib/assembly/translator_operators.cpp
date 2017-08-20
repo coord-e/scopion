@@ -484,14 +484,14 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
 
   builder_.SetInsertPoint(thenbb);
   thisScope_ = args[1];
-  if (apply_bb(secondsc, *this)) {
+  if (apply_bb(secondsc, *this).first) {
     builder_.CreateBr(mergebb);
     mergebbShouldBeErased &= false;
   }
 
   builder_.SetInsertPoint(elsebb);
   thisScope_ = args[2];
-  if (apply_bb(thirdsc, *this)) {
+  if (apply_bb(thirdsc, *this).first) {
     builder_.CreateBr(mergebb);
     mergebbShouldBeErased &= false;
   }
@@ -505,6 +505,7 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
 
   if (args[0]->isLazy())
     throw error("Conditions with lazy value is not supported", ast::attr(op).where, code_range_);
+
   builder_.CreateCondBr(args[0]->getLLVM(), thenbb, elsebb);
 
   if (!mergebbShouldBeErased)

@@ -9,6 +9,7 @@
 #include <llvm/IR/Value.h>
 
 #include <memory>
+#include <utility>
 
 namespace scopion
 {
@@ -16,9 +17,9 @@ namespace assembly
 {
 class translator;
 
-bool apply_bb(ast::scope const& sc, translator& tr);
+std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr);
 
-struct evaluator : boost::static_visitor<llvm::Value*> {
+struct evaluator : boost::static_visitor<value*> {
   value* v_;
   std::vector<value*> const& arguments_;
   translator& translator_;
@@ -27,20 +28,20 @@ struct evaluator : boost::static_visitor<llvm::Value*> {
 
   evaluator(value* v, std::vector<value*> const& args, translator& tr);
 
-  llvm::Value* operator()(ast::value const&);
-  llvm::Value* operator()(ast::operators const&);
+  value* operator()(ast::value const&);
+  value* operator()(ast::operators const&);
 
-  llvm::Value* operator()(ast::function const&);
+  value* operator()(ast::function const&);
 
-  llvm::Value* operator()(ast::scope const&);
+  value* operator()(ast::scope const&);
 
   template <typename T>
-  llvm::Value* operator()(T const&)
+  value* operator()(T const&)
   {
     // throw evaluate_no_support{};
     std::cerr << "T: " << typeid(T).name() << std::endl;
     assert(false && "Evaluating not supported type");
-    return nullptr;  // void
+    return new value();  // void
   }
 };
 
