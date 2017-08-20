@@ -202,6 +202,10 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
   auto const parent = args[0]->getParent();
 
   auto const n = args[0]->getName();
+
+  if (rval->getType()->isVoidTy())
+    throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
+
   if (!lval) {  // first appear in the block (variable declaration)
     if (parent) {
       if (parent->getLLVM()->getType()->isStructTy()) {  // structure
@@ -220,8 +224,6 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
     } else {  // not a member of array or structure
       assert(ast::val(op)[0].type() == typeid(ast::value) &&
              "Assigning to operator expression with no parent");
-      if (rval->getType()->isVoidTy())
-        throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
       lval = createGCMalloc(
           args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
           nullptr, n);
@@ -230,7 +232,8 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
 
   if (!copyFull(args[1], args[0], n, lval)) {
     throw error(
-        "Cannot assign to the value of incompatible type (" + getNameString(lval->getType()) + ")",
+        "Cannot assign to the value of incompatible type (lval: " + getNameString(lval->getType()) +
+            ", rval: " + getNameString(rval->getType()) + ")",
         ast::attr(op).where, code_range_);
   }
   return args[1];
