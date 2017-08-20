@@ -72,9 +72,13 @@ public:
       if (f == target->symbols().end())
         throw error(std::string("no operator ") + ast::op_str<Op> + " is defined in the structure",
                     ast::attr(op).where, code_range_);
-      return new value(builder_.CreateCall(evaluate(f->second, args, *this)->getLLVM(),
-                                           llvm::ArrayRef<llvm::Value*>(args_llvm)),
-                       op);
+      auto v         = evaluate(f->second, args, *this);
+      auto ret_table = v->getRetTable();
+      auto destv =
+          new value(builder_.CreateCall(v->getLLVM(), llvm::ArrayRef<llvm::Value*>(args_llvm)), op);
+      if (ret_table)
+        destv->applyRetTable(ret_table);
+      return destv;
     }
   }
 

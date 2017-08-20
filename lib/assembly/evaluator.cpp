@@ -106,9 +106,12 @@ value* evaluator::operator()(ast::function const& fcv)
     }
   }
 
+  ret_table_t* ret_table = nullptr;
   for (auto const& line : ast::val(fcv).second) {
     auto e = ast::set_survey(line, true);
-    boost::apply_visitor(translator_, e);
+    auto v = boost::apply_visitor(translator_, e);
+    if (!ret_table)
+      ret_table = v->getRetTable();
   }
 
   llvm::Type* ret_type = nullptr;
@@ -183,7 +186,9 @@ value* evaluator::operator()(ast::function const& fcv)
 
   // value.getValue()->eraseFromParent();
 
-  return new value(newfunc, fcv);
+  auto destv = new value(newfunc, fcv);
+  destv->setRetTable(ret_table);
+  return destv;
 }
 
 value* evaluator::operator()(ast::scope const& sc)

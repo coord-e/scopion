@@ -258,6 +258,7 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
   } else {
     llvm::Value* tocall;
     std::vector<llvm::Value*> arg_values;
+    ret_table_t* ret_table = nullptr;
 
     auto arglist = ast::unpack<ast::arglist>(ast::val(op)[1]);
 
@@ -303,11 +304,18 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
           arg_values.push_back(p->getLLVM());
         }
 
-        tocall = evaluate(args[0], vary, *this)->getLLVM();
+        auto v    = evaluate(args[0], vary, *this);
+        tocall    = v->getLLVM();
+        ret_table = v->getRetTable();
       }
     }
 
-    return new value(builder_.CreateCall(tocall, llvm::ArrayRef<llvm::Value*>(arg_values)), op);
+    auto destv =
+        new value(builder_.CreateCall(tocall, llvm::ArrayRef<llvm::Value*>(arg_values)), op);
+    if (ret_table)
+      destv->applyRetTable(ret_table);
+
+    return destv;
   }
 }
 
@@ -425,7 +433,10 @@ value* translator::apply_op(ast::binary_op<ast::odot> const& op, std::vector<val
 
 value* translator::apply_op(ast::single_op<ast::ret> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateRet(args[0]->getLLVM()), op);
+  builder_.CreateRet(args[0]->getLLVM());
+  auto newv = new value();
+  newv->setRetTable(args[0]->generateRetTable());
+  return newv;  // void+rettable
 }
 
 value* translator::apply_op(ast::single_op<ast::lnot> const& op, std::vector<value*> const& args)
