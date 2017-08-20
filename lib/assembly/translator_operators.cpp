@@ -363,8 +363,9 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
   }
   // Now lval's type is pointer to array
 
-  try {
-    int aindex       = ast::val(ast::unpack<ast::integer>(ast::val(op)[1]));
+  if (llvm::isa<llvm::ConstantInt>(args[1]->getLLVM())) {
+    uint64_t aindex =
+        llvm::cast<llvm::ConstantInt>(args[1]->getLLVM())->getValue().getLimitedValue();
     std::string istr = std::to_string(aindex);
     try {
       auto ep = args[0]->symbols().at(istr);
@@ -385,7 +386,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
     }
-  } catch (boost::bad_get&) {  // specifing index with non-literal integer
+  } else {  // specifing index with non-constant integer
     if (!args[0]->symbols().begin()->second->isLazy()) {  // No Lazy is in it
       std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
       auto ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
@@ -399,7 +400,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     } else {  // contains lazy
       throw error(
           "Getting value from an array which contains lazy value with an index "
-          "of non-conpiletime value",
+          "of non-constant value",
           ast::attr(op).where, code_range_);
     }
   }
