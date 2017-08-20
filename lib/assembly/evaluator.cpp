@@ -76,7 +76,7 @@ value* evaluator::operator()(ast::function const& fcv)
     auto type = arg_value->getLLVM()->getType();
     if (!arg_value->isLazy())
       arg_types_for_func.push_back(type);
-    arg_types.push_back(type);
+    arg_types.push_back(arg_value->isFundamental() ? type : type->getPointerElementType());
   }
 
   llvm::FunctionType* func_type =
@@ -164,7 +164,9 @@ value* evaluator::operator()(ast::function const& fcv)
         auto aptr = translator_.createGCMalloc(arg_types[arg_name.index()], nullptr,
                                                arg_name.value());  // declare arguments
         translator_.getScope()->symbols()[arg_name.value()] = argv->copyWithNewLLVMValue(aptr);
-        builder_.CreateStore(&(*it), aptr);
+        builder_.CreateStore(
+            argv->isFundamental() ? static_cast<llvm::Value*>(&(*it)) : builder_.CreateLoad(&(*it)),
+            aptr);
         it++;
       } else {
         // std::cout << arg_name.value() << " is lazy" << std::endl;
