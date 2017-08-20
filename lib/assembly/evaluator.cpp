@@ -22,16 +22,20 @@ namespace scopion
 {
 namespace assembly
 {
-bool apply_bb(ast::scope const& sc, translator& tr)
+std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr)
 {
   auto insts = ast::val(sc);
+  value* ll;
   for (auto it = insts.begin(); it != insts.end(); it++) {
-    boost::apply_visitor(tr, *it);
+    ll = boost::apply_visitor(tr, *it);
   }
   auto cb = tr.builder_.GetInsertBlock();
-  return std::none_of(cb->begin(), cb->end(), [](auto& i) {
-    return i.getOpcode() == llvm::Instruction::Ret || i.getOpcode() == llvm::Instruction::Br;
-  });
+  return std::make_pair(std::none_of(cb->begin(), cb->end(),
+                                     [](auto& i) {
+                                       return i.getOpcode() == llvm::Instruction::Ret ||
+                                              i.getOpcode() == llvm::Instruction::Br;
+                                     }),
+                        ll);
 }
 
 evaluator::evaluator(value* v, std::vector<value*> const& args, translator& tr)
@@ -39,17 +43,17 @@ evaluator::evaluator(value* v, std::vector<value*> const& args, translator& tr)
 {
 }
 
-llvm::Value* evaluator::operator()(ast::value const& astv)
+value* evaluator::operator()(ast::value const& astv)
 {
   return boost::apply_visitor(*this, astv);
 }
 
-llvm::Value* evaluator::operator()(ast::operators const& astv)
+value* evaluator::operator()(ast::operators const& astv)
 {
   return boost::apply_visitor(*this, astv);
 }
 
-llvm::Value* evaluator::operator()(ast::function const& fcv)
+value* evaluator::operator()(ast::function const& fcv)
 {
   if (v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams() !=
       arguments_.size())
@@ -102,9 +106,12 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
     }
   }
 
+  ret_table_t* ret_table = nullptr;
   for (auto const& line : ast::val(fcv).second) {
     auto e = ast::set_survey(line, true);
-    boost::apply_visitor(translator_, e);
+    auto v = boost::apply_visitor(translator_, e);
+    if (!ret_table)
+      ret_table = v->getRetTable();
   }
 
   llvm::Type* ret_type = nullptr;
@@ -179,10 +186,12 @@ llvm::Value* evaluator::operator()(ast::function const& fcv)
 
   // value.getValue()->eraseFromParent();
 
-  return newfunc;
+  auto destv = new value(newfunc, fcv);
+  destv->setRetTable(ret_table);
+  return destv;
 }
 
-llvm::Value* evaluator::operator()(ast::scope const& sc)
+value* evaluator::operator()(ast::scope const& sc)
 {
   auto pb = builder_.GetInsertBlock();
   auto pp = builder_.GetInsertPoint();
@@ -196,7 +205,8 @@ llvm::Value* evaluator::operator()(ast::scope const& sc)
   auto prevScope = translator_.getScope();
 
   translator_.setScope(v_);
-  bool non_rb = apply_bb(sc, translator_);
+  auto r      = apply_bb(sc, translator_);
+  bool non_rb = r.first;
   if (non_rb)
     builder_.CreateBr(nb);
   else
@@ -211,16 +221,13 @@ llvm::Value* evaluator::operator()(ast::scope const& sc)
   if (non_rb)
     builder_.SetInsertPoint(nb);
 
-  return nullptr;  // void
+  return r.second;  // lastline
 }
 
 value* evaluate(value* v, std::vector<value*> const& args, translator& tr)
 {
-  auto evor           = evaluator{v, args, tr};
-  llvm::Value* evaled = v->isLazy() ? boost::apply_visitor(evor, v->getAst()) : v->getLLVM();
-  auto destv          = v->copyWithNewLLVMValue(evaled);
-  destv->isLazy(false);
-  return destv;
+  auto evor = evaluator{v, args, tr};
+  return v->isLazy() ? boost::apply_visitor(evor, v->getAst()) : v->copy();
 }
 };
 };

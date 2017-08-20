@@ -19,6 +19,10 @@ namespace scopion
 {
 namespace assembly
 {
+class value;
+
+using ret_table_t = std::pair<std::map<std::string, value*>, std::map<std::string, uint32_t>>;
+
 class value
 {
   llvm::Value* llvm_value_ = nullptr;
@@ -27,6 +31,7 @@ class value
   std::map<std::string, value*> symbols_;
   std::map<std::string, uint32_t> fields_;
   std::string name_;
+  ret_table_t* ret_table_ = nullptr;
   bool is_lazy_;
   bool is_void_;
 
@@ -57,10 +62,11 @@ public:
     for (auto const& x : symbols_) {
       newval->symbols_[x.first] = x.second->copy();
     }
-    newval->fields_  = fields_;
-    newval->name_    = name_;
-    newval->is_lazy_ = is_lazy_;
-    newval->is_void_ = is_void_;
+    newval->fields_    = fields_;
+    newval->ret_table_ = ret_table_;
+    newval->name_      = name_;
+    newval->is_lazy_   = is_lazy_;
+    newval->is_void_   = is_void_;
     return newval;
   }
 
@@ -85,6 +91,20 @@ public:
   bool isVoid() const { return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_; }
   value* getParent() const { return parent_; }
   void setParent(value* parent) { parent_ = parent; }
+  void setRetTable(ret_table_t* table) { ret_table_ = table; }
+  ret_table_t* getRetTable() const { return ret_table_; }
+  void applyRetTable(ret_table_t* table)
+  {
+    symbols_ = table->first;
+    fields_  = table->second;
+  }
+  ret_table_t* generateRetTable()
+  {
+    auto ret_table    = new ret_table_t();
+    ret_table->first  = symbols_;
+    ret_table->second = fields_;
+    return ret_table;
+  }
   std::string getName() const { return name_; }
   void setName(std::string const& name) { name_ = name; }
   ast::expr& getAst() { return ast_value_; }
