@@ -78,8 +78,11 @@ bool translator::copyFull(value* src,
   }
 
   if (name != "") {
-    (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
-        src->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
+    auto thep             = (parent ? parent : (defp ? defp : thisScope_));
+    thep->symbols()[name] = src->isLazy() ? src : (src->setLLVM(lval), src);
+    if (thep->fields().find(name) == thep->fields().end() && !src->isLazy()) {
+      thep->fields()[name] = thep->fields().size();
+    }
   }
   return true;
 }
@@ -202,14 +205,28 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
   auto const parent = args[0]->getParent();
 
   auto const n = args[0]->getName();
+
   if (!lval) {  // first appear in the block (variable declaration)
     if (parent) {
-      if (parent->getLLVM()->getType()->isStructTy()) {  // structure
-        // [feature/var-struct-array] Add a member to the structure, store it to
-        // lval, and add args[1] to fields
-        throw error("Variadic structure: This feature is not supported yet", ast::attr(op).where,
-                    code_range_);
-      } else if (parent->getLLVM()->getType()->isArrayTy()) {  // array
+      if (rval->getType()->isVoidTy())
+        throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
+      if (parent->isStruct()) {  // structure
+        auto ptv =
+            llvm::cast<llvm::StructType>(parent->getLLVM()->getType()->getPointerElementType())
+                ->elements()
+                .vec();
+        ptv.push_back(rval->getType());
+        auto newt = llvm::StructType::create(module_->getContext());
+        newt->setBody(llvm::ArrayRef<llvm::Type*>(ptv));
+        auto news = createGCMalloc(newt);
+        parent->getLLVM()->replaceAllUsesWith(news);
+        parent->setLLVM(news);
+        // copyFull(parent, newp, n);
+        auto ptr = builder_.CreateStructGEP(newt, news, ptv.size() - 1);
+        // args[0]->setParent(newp);
+        args[0]->setLLVM(ptr);
+        lval = ptr;
+      } else if (parent->isArray()) {  // array
         // [feature/var-struct-array] Add an element to the array, store it to
         // lval, and add args[1] to fields
         throw error("Variadic array: This feature is not supported yet", ast::attr(op).where,
@@ -399,13 +416,24 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
   auto elm = args[0]->symbols().find(id);
 
   if (elm == args[0]->symbols().end()) {
-    throw error("No member named \"" + id + "\" in the structure", ast::attr(op).where,
-                code_range_);
+    if (ast::attr(op).lval) {
+      auto destv = new value(nullptr, op);
+      destv->setName(id);
+      destv->setParent(args[0]);
+      return destv;
+    } else {
+      throw error("Key \"" + id +
+                      "\" is not in the structure (type :" + getNameString(lval->getType()) + ")",
+                  ast::attr(op).where, code_range_);
+    }
   }
 
   if (!elm->second->isLazy()) {
-    auto ptr = builder_.CreateStructGEP(lval->getType()->getPointerElementType(), lval,
-                                        args[0]->fields()[id]);
+    auto it = args[0]->fields().find(id);
+    if (it == args[0]->fields().end()) {
+      assert(false && "Found in symbols but not in fields");
+    }
+    auto ptr = builder_.CreateStructGEP(targett, lval, it->second);
     elm->second->setLLVM(ptr);
   }
   elm->second->setName(id);

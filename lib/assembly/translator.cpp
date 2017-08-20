@@ -150,9 +150,9 @@ value* translator::operator()(ast::variable const& astv)
     auto vp = thisScope_->symbols().at(ast::val(astv));
     vp->setName(ast::val(astv));
     if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
-      return vp->copy();
+      return vp->clone();
     else
-      return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
+      return vp->cloneWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
   } catch (std::out_of_range&) {
     if (ast::attr(astv).lval) {
       // not found in symbols & to be assigned -> declaration

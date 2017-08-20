@@ -24,8 +24,8 @@ class value
   llvm::Value* llvm_value_ = nullptr;
   value* parent_           = nullptr;
   ast::expr ast_value_;
-  std::map<std::string, value*> symbols_;
-  std::map<std::string, uint32_t> fields_;
+  std::map<std::string, value*>* symbols_  = new std::map<std::string, value*>();
+  std::map<std::string, uint32_t>* fields_ = new std::map<std::string, uint32_t>();
   std::string name_;
   bool is_lazy_;
   bool is_void_;
@@ -54,17 +54,32 @@ public:
     newval->llvm_value_ = v;
     newval->parent_     = parent_;
     newval->ast_value_  = ast_value_;
-    for (auto const& x : symbols_) {
-      newval->symbols_[x.first] = x.second->copy();
+    for (auto const& x : *symbols_) {
+      (*newval->symbols_)[x.first] = x.second->copy();
     }
-    newval->fields_  = fields_;
+    *newval->fields_ = *fields_;
     newval->name_    = name_;
     newval->is_lazy_ = is_lazy_;
     newval->is_void_ = is_void_;
     return newval;
   }
 
+  value* cloneWithNewLLVMValue(llvm::Value* v) const
+  {
+    auto newval         = new value();
+    newval->llvm_value_ = v;
+    newval->parent_     = parent_;
+    newval->ast_value_  = ast_value_;
+    newval->symbols_    = symbols_;
+    newval->fields_     = fields_;
+    newval->name_       = name_;
+    newval->is_lazy_    = is_lazy_;
+    newval->is_void_    = is_void_;
+    return newval;
+  }
+
   value* copy() { return copyWithNewLLVMValue(llvm_value_); }
+  value* clone() { return cloneWithNewLLVMValue(llvm_value_); }
 
   std::type_info const& type() const { return ast_value_.type(); }
   bool isLazy() const { return is_lazy_; }
@@ -92,10 +107,10 @@ public:
   llvm::Value* getLLVM() const { return llvm_value_; }
   void setLLVM(llvm::Value* const val) { llvm_value_ = val; }
 
-  std::map<std::string, value*>& symbols() { return symbols_; }
-  std::map<std::string, value*> const& symbols() const { return symbols_; }
-  std::map<std::string, uint32_t>& fields() { return fields_; }
-  std::map<std::string, uint32_t> const& fields() const { return fields_; }
+  std::map<std::string, value*>& symbols() { return *symbols_; }
+  std::map<std::string, value*> const& symbols() const { return *symbols_; }
+  std::map<std::string, uint32_t>& fields() { return *fields_; }
+  std::map<std::string, uint32_t> const& fields() const { return *fields_; }
 };
 
 };  // namespace assembly
