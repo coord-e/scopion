@@ -241,18 +241,12 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
 
 value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<value*> const& args)
 {
-  bool isodot = true;
-  bool isadot = true;
+  bool isadot = ast::isa<ast::binary_op<ast::adot>>(ast::val(op)[0]);
+  bool isodot = ast::isa<ast::binary_op<ast::odot>>(ast::val(op)[0]) || isadot;
   ast::expr op_unpacked;
-  try {
-    op_unpacked = ast::val(ast::unpack<ast::binary_op<ast::adot>>(ast::val(op)[0]))[0];
-  } catch (boost::bad_get&) {
-    try {
-      op_unpacked = ast::val(ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]))[0];
-    } catch (boost::bad_get&) {
-      isodot = false;
-    }
-    isadot = false;
+  if (isodot) {
+    op_unpacked = isadot ? ast::val(ast::unpack<ast::binary_op<ast::adot>>(ast::val(op)[0]))[0]
+                         : ast::val(ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]))[0];
   }
 
   assert(args[1]->isVoid());  // args[1] should be arglist
@@ -410,6 +404,7 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
 {
   auto lval = args[0]->getLLVM();
 
+  assert(ast::isa<ast::identifier>(ast::val(op)[1]) && "lhs of dot operator must be an identifier");
   auto id = ast::val(ast::unpack<ast::identifier>(ast::val(op)[1]));
 
   if (!lval->getType()->isPointerTy())
@@ -510,14 +505,10 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
 
   auto prevScope = thisScope_;
 
-  ast::scope secondsc;
-  ast::scope thirdsc;
-  try {
-    secondsc = ast::unpack<ast::scope>(args[1]->getAst());
-    thirdsc  = ast::unpack<ast::scope>(args[2]->getAst());
-  } catch (boost::bad_get&) {
-    throw error("Applying non-scope value as scope", ast::attr(op).where, code_range_);
-  }
+  assert(ast::isa<ast::scope>(args[1]->getAst()) && ast::isa<ast::scope>(args[2]->getAst()) &&
+         "Applying non-scope value as scope");
+  auto secondsc = ast::unpack<ast::scope>(args[1]->getAst());
+  auto thirdsc  = ast::unpack<ast::scope>(args[2]->getAst());
 
   builder_.SetInsertPoint(thenbb);
   thisScope_ = args[1];

@@ -185,6 +185,17 @@ Dest& unpack(expr t)
   return boost::get<Dest>(boost::get<operators>(t));
 }
 
+template <typename Dest>
+bool isa(expr t)
+{
+  if (t.type() == typeid(value))
+    return boost::get<value>(t).type() == typeid(Dest);
+  else if (t.type() == typeid(operators))
+    return boost::get<operators>(t).type() == typeid(Dest);
+  else
+    return false;
+}
+
 };  // namespace ast
 };  // namespace scopion
 
