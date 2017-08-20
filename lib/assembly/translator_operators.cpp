@@ -292,26 +292,22 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
           arg_values.push_back(args[0]->getParent()->getLLVM());
       }
     } else {
-      if (ast::attr(op).survey) {
-        tocall = args[0]->getLLVM();
-      } else {
-        std::vector<value*> vary;
-        for (auto const& argast : ast::val(arglist)) {
-          auto rv = boost::apply_visitor(*this, argast);
-          vary.push_back(rv);
-          if (!rv->isLazy())
-            arg_values.push_back(rv->getLLVM());
-        }
-        if (isodot) {
-          auto ob_parent = boost::apply_visitor(*this, op_unpacked);
-          vary.push_back(ob_parent);
-          arg_values.push_back(ob_parent->getLLVM());
-        }
-
-        auto v    = evaluate(args[0], vary, *this);
-        tocall    = v->getLLVM();
-        ret_table = v->getRetTable();
+      std::vector<value*> vary;
+      for (auto const& argast : ast::val(arglist)) {
+        auto rv = boost::apply_visitor(*this, argast);
+        vary.push_back(rv);
+        if (!rv->isLazy())
+          arg_values.push_back(rv->getLLVM());
       }
+      if (isodot) {
+        auto ob_parent = boost::apply_visitor(*this, op_unpacked);
+        vary.push_back(ob_parent);
+        arg_values.push_back(ob_parent->getLLVM());
+      }
+
+      auto v    = evaluate(args[0], vary, *this);
+      tocall    = v->getLLVM();
+      ret_table = v->getRetTable();
     }
 
     auto destv =
