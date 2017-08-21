@@ -400,7 +400,7 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
 {
   auto lval = args[0]->getLLVM();
 
-  assert(ast::isa<ast::identifier>(ast::val(op)[1]) && "lhs of dot operator must be an identifier");
+  assert(ast::isa<ast::identifier>(ast::val(op)[1]) && "rhs of dot operator must be an identifier");
   auto id = ast::val(ast::unpack<ast::identifier>(ast::val(op)[1]));
 
   if (!lval->getType()->isPointerTy())
