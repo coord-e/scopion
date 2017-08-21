@@ -9,8 +9,6 @@
 #include <algorithm>
 #include <iostream>
 
-#include <csignal>
-
 namespace scopion
 {
 namespace assembly

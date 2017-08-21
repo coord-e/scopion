@@ -21,6 +21,16 @@ std::string getTmpFilePath()
   return std::string(tmpname);
 }
 
+void printError(scopion::error const& e)
+{
+  std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+            << rang::style::reset << rang::fg::red << " @" << e.line_number() << rang::style::reset
+            << ": " << e.what() << std::endl
+            << e.line() << std::endl
+            << rang::fg::green << std::setw(e.distance() + 1) << "^" << rang::style::reset
+            << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
   cmdline::parser p;
@@ -79,53 +89,64 @@ int main(int argc, char* argv[])
 
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
-  try {
-    auto ast = scopion::parser::parse(code);
+  scopion::context context(code);
+  scopion::error err;
 
-    if (outtype == "ast") {
-      std::ofstream f(outpath);
-      f << ast.ast;
-      f.close();
-      return 0;
-    }
+  auto ast = scopion::parser::parse(context, err);
 
-    scopion::assembly::context ctx;
-    auto mod = scopion::assembly::module::create(ast, ctx, outpath);
-
-    if (p.exist("optimize")) {
-      auto opt = static_cast<uint8_t>(p.get<int>("optimize"));
-      mod->optimize(opt, opt);
-    }
-
-    std::string ir = mod->irgen();
-
-    auto irpath = outtype == "ir" ? outpath : getTmpFilePath() + ".ll";
-    std::ofstream f(irpath);
-    f << ir;
-    f.close();
-    if (outtype == "ir")
-      return 0;
-
-    auto asmpath = outtype == "asm" ? outpath : getTmpFilePath() + ".s";
-
-    auto const archstr = p.get<std::string>("arch") != "native"
-                             ? p.get<std::string>("arch")
-                             : llvm::sys::getDefaultTargetTriple();
-    llvm::Triple triple(archstr);
-
-    system(("llc -mtriple=" + triple.getTriple() + " -filetype asm " + irpath + " -o=" + asmpath)
-               .c_str());
-    if (outtype == "asm")
-      return 0;
-
-    system(("gcc " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
-  } catch (scopion::error const& e) {
+  if (!ast) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-              << rang::style::reset << rang::fg::red << " @" << e.line_number()
-              << rang::style::reset << ": " << e.what() << std::endl
-              << e.line() << std::endl
-              << rang::fg::green << std::setw(e.distance() + 1) << "^" << rang::style::reset
+              << rang::style::reset << rang::fg::red << ": parse error @" << err.line_number()
+              << rang::style::reset << ": " << err.what() << std::endl
+              << err.line() << std::endl
+              << rang::fg::green << std::setw(err.distance() + 1) << "^" << rang::style::reset
               << std::endl;
     return -1;
   }
+
+  if (outtype == "ast") {
+    std::ofstream f(outpath);
+    f << *ast;
+    f.close();
+    return 0;
+  }
+
+  auto mod = scopion::assembly::translate(*ast, outpath, context, err);
+  if (!mod) {
+    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+              << rang::style::reset << rang::fg::red << ": translator error @" << err.line_number()
+              << rang::style::reset << ": " << err.what() << std::endl
+              << err.line() << std::endl
+              << rang::fg::green << std::setw(err.distance() + 1) << "^" << rang::style::reset
+              << std::endl;
+
+    return -1;
+  }
+
+  if (p.exist("optimize")) {
+    auto opt = static_cast<uint8_t>(p.get<int>("optimize"));
+    mod->optimize(opt, opt);
+  }
+
+  std::string ir = mod->getIR();
+
+  auto irpath = outtype == "ir" ? outpath : getTmpFilePath() + ".ll";
+  std::ofstream f(irpath);
+  f << ir;
+  f.close();
+  if (outtype == "ir")
+    return 0;
+
+  auto asmpath = outtype == "asm" ? outpath : getTmpFilePath() + ".s";
+
+  auto const archstr = p.get<std::string>("arch") != "native" ? p.get<std::string>("arch")
+                                                              : llvm::sys::getDefaultTargetTriple();
+  llvm::Triple triple(archstr);
+
+  system(("llc -mtriple=" + triple.getTriple() + " -filetype asm " + irpath + " -o=" + asmpath)
+             .c_str());
+  if (outtype == "asm")
+    return 0;
+
+  system(("gcc " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
 }

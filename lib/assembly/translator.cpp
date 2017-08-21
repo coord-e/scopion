@@ -25,11 +25,13 @@ namespace assembly
 {
 translator::translator(std::shared_ptr<llvm::Module>& module,
                        llvm::IRBuilder<>& builder,
-                       std::string const& code)
+                       std::string const& filename,
+                       context& ctx)
     : boost::static_visitor<value*>(),
       module_(module),
       builder_(builder),
-      code_range_(boost::make_iterator_range(code.begin(), code.end())),
+      code_range_(boost::make_iterator_range(ctx.code.begin(), ctx.code.end())),
+      ctx_(ctx),
       thisScope_(new value())
 {
   module_->getOrInsertFunction("GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
@@ -101,9 +103,13 @@ value* translator::operator()(ast::pre_variable const& astv)
         }
         std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
         ifs.close();
-        auto parsed = parser::parse(code);
-        translator tr(module_, builder_, parsed.code);
-        return boost::apply_visitor(tr, parsed.ast);
+
+        error err;
+        auto parsed = parser::parse(code, err);
+        if (!parsed)
+          throw err;
+        translator tr(module_, builder_, itm->second, ctx_);
+        return boost::apply_visitor(tr, *parsed);
       } else if (iti != ast::attr(astv).attributes.end()) {  // found path to ir
         llvm::SMDiagnostic err;
         std::unique_ptr<llvm::Module> module =

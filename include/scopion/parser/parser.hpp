@@ -1,19 +1,18 @@
 #ifndef SCOPION_PARSER_H_
 #define SCOPION_PARSER_H_
 
+#include "scopion/context.hpp"
+#include "scopion/error.hpp"
+
 #include "scopion/ast/ast.hpp"
+
+#include <boost/optional.hpp>
 
 namespace scopion
 {
 namespace parser
 {
-struct parsed {
-  ast::expr ast;
-  std::string const& code;
-  parsed(ast::expr const& ast_, std::string const& code_) : ast(ast_), code(code_) {}
-};
-
-parsed parse(std::string const& code);
+boost::optional<ast::expr> parse(context const& ctx, error& err);
 
 };  // namespace parser
 

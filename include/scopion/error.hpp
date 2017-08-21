@@ -9,7 +9,7 @@
 
 namespace scopion
 {
-class error : public std::runtime_error
+class error
 {
   using str_range_t = boost::iterator_range<std::string::const_iterator>;
 
@@ -23,14 +23,17 @@ class error : public std::runtime_error
   uint64_t line_number_;
   uint64_t distance_;
   std::string line_;
+  std::string message_;
   uint8_t level_;
 
 public:
+  error() = default;
+
   error(std::string const& message,
         str_range_t const where,
         str_range_t const code,
         uint8_t level = 0)
-      : std::runtime_error(message), level_(level)
+      : message_(message), level_(level)
   {
     line_number_ = std::count(code.begin(), where.begin(), '\n');
     auto r       = line_range(where, code);
@@ -40,6 +43,7 @@ public:
 
   uint64_t line_number() const { return line_number_; }
   std::string line() const { return line_; }
+  std::string what() const { return message_; }
   uint64_t distance() const { return distance_; }
   uint8_t level() const { return level_; }
 };

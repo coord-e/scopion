@@ -5,6 +5,7 @@
 #include "scopion/ast/ast.hpp"
 #include "scopion/parser/parser.hpp"
 
+#include "scopion/context.hpp"
 #include "scopion/error.hpp"
 
 #endif

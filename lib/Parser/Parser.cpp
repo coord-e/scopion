@@ -381,16 +381,24 @@ struct expression {
 };
 };  // namespace grammar
 
-parsed parse(std::string const& code)
+boost::optional<ast::expr> parse(context const& ctx, error& err)
 {
-  ast::expr tree;
+  ast::expr res;
 
-  auto const space_comment = x3::space | "/*" > *(x3::char_ - "*/") > "*/";
-  if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree)) {
-    throw std::runtime_error("detected error");
+  try {
+    auto const space_comment = x3::space | "/*" > *(x3::char_ - "*/") > "*/";
+    if (!x3::phrase_parse(ctx.code.begin(), ctx.code.end(), grammar::expression, space_comment,
+                          res)) {
+      err = error("Parse failed for an unknown reason", boost::make_iterator_range(ctx.code),
+                  boost::make_iterator_range(ctx.code));
+      return boost::none;
+    }
+  } catch (error& e) {
+    err = e;
+    return boost::none;
   }
 
-  return parsed(tree, code);
+  return res;
 }
 
 };  // namespace parser

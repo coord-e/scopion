@@ -5,6 +5,7 @@
 #include "scopion/assembly/value.hpp"
 #include "scopion/ast/ast.hpp"
 
+#include "scopion/context.hpp"
 #include "scopion/error.hpp"
 
 #include <llvm/IR/IRBuilder.h>
@@ -21,6 +22,7 @@ class translator : public boost::static_visitor<value*>
 {
   std::shared_ptr<llvm::Module> module_;
   llvm::IRBuilder<>& builder_;
+  context& ctx_;
   boost::iterator_range<std::string::const_iterator> const code_range_;
   value* thisScope_;
 
@@ -30,7 +32,8 @@ class translator : public boost::static_visitor<value*>
 public:
   translator(std::shared_ptr<llvm::Module>& module,
              llvm::IRBuilder<>& builder,
-             std::string const& code);
+             std::string const& filename,
+             context& ctx);
 
   value* operator()(ast::value);
   value* operator()(ast::operators);

@@ -22,43 +22,21 @@ namespace scopion
 {
 namespace assembly
 {
-std::unique_ptr<module> module::create(parser::parsed const& tree,
-                                       context& ctx,
-                                       std::string const& name)
+module::module(std::shared_ptr<llvm::Module>& module, value* val) : module_(module), val_(val)
 {
-  std::shared_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
-  llvm::IRBuilder<> builder(mod->getContext());
-
-  std::vector<llvm::Type*> args_type = {builder.getInt32Ty(),
-                                        builder.getInt8PtrTy()->getPointerTo()};
-  auto main_func =
-      llvm::Function::Create(llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
-                             llvm::Function::ExternalLinkage, "main", mod.get());
-
-  translator tr(mod, builder, tree.code);
-
-  builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
-
-  builder.CreateCall(mod->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
-
-  auto val = boost::apply_visitor(tr, tree.ast);
-
-  std::vector<llvm::Value*> arg_llvm_values;
-  std::vector<value*> arg_values;
-  for (auto& x : main_func->getArgumentList()) {
-    arg_llvm_values.push_back(&x);
-    arg_values.push_back(new value(&x, ast::expr{}));
-  }
-
-  llvm::Value* ret = builder.CreateCall(evaluate(val, arg_values, tr)->getLLVM(),
-                                        llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
-
-  builder.CreateRet(ret->getType()->isVoidTy() ? builder.getInt32(0) : ret);
-
-  return std::unique_ptr<module>(new module(mod, val));
 }
 
-std::string module::irgen()
+value* module::getValue()
+{
+  return val_;
+}
+
+std::shared_ptr<llvm::Module> module::getLLVMModule()
+{
+  return module_;
+}
+
+std::string module::getIR()
 {
   std::string result;
   llvm::raw_string_ostream stream(result);
@@ -89,6 +67,48 @@ void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
     f.optForSize();
   }
   fpm->doFinalization();
+}
+
+boost::optional<module> translate(ast::expr const& astv,
+                                  std::string const& filename,
+                                  context& ctx,
+                                  error& err)
+{
+  try {
+    std::shared_ptr<llvm::Module> mod(new llvm::Module(filename, ctx.llvmcontext));
+    llvm::IRBuilder<> builder(mod->getContext());
+
+    std::vector<llvm::Type*> args_type = {builder.getInt32Ty(),
+                                          builder.getInt8PtrTy()->getPointerTo()};
+    auto main_func =
+        llvm::Function::Create(llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
+                               llvm::Function::ExternalLinkage, "main", mod.get());
+
+    translator tr(mod, builder, filename, ctx);
+
+    builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
+
+    builder.CreateCall(mod->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
+
+    auto val = boost::apply_visitor(tr, astv);
+
+    std::vector<llvm::Value*> arg_llvm_values;
+    std::vector<value*> arg_values;
+    for (auto& x : main_func->getArgumentList()) {
+      arg_llvm_values.push_back(&x);
+      arg_values.push_back(new value(&x, ast::expr{}));
+    }
+
+    llvm::Value* ret = builder.CreateCall(evaluate(val, arg_values, tr)->getLLVM(),
+                                          llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
+
+    builder.CreateRet(ret->getType()->isVoidTy() ? builder.getInt32(0) : ret);
+
+    return module(mod, val);
+  } catch (error& e) {
+    err = e;
+    return boost::none;
+  }
 }
 
 };  // namespace assembly
