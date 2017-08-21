@@ -343,17 +343,8 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
                 ast::attr(op).where, code_range_);
   }
 
-  if (!lval->getType()->getPointerElementType()->isArrayTy()) {
-    lval = builder_.CreateLoad(lval);
-
-    if (!lval->getType()->getPointerElementType()->isArrayTy()) {
-      throw error("Cannot get element from non-array type " + getNameString(lval->getType()),
-                  ast::attr(op).where, code_range_);
-    }
-  }
-  // Now lval's type is pointer to array
-
-  if (llvm::isa<llvm::ConstantInt>(args[1]->getLLVM())) {
+  if (llvm::isa<llvm::ConstantInt>(args[1]->getLLVM()) &&
+      lval->getType()->getPointerElementType()->isArrayTy()) {
     uint64_t aindex =
         llvm::cast<llvm::ConstantInt>(args[1]->getLLVM())->getValue().getLimitedValue();
     std::string istr = std::to_string(aindex);
@@ -376,23 +367,33 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
     }
-  } else {  // specifing index with non-constant integer
-    if (!args[0]->symbols().begin()->second->isLazy()) {  // No Lazy is in it
-      std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
-      auto ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
-                                           llvm::ArrayRef<llvm::Value*>(idxList));
+  } else {  // specifing index with non-constant integer or pointer to pointer
+    llvm::Value* ep;
 
-      if (ast::attr(op).lval || ep->getType()->getPointerElementType()->isStructTy() ||
-          ep->getType()->getPointerElementType()->isArrayTy())
-        return new value(ep, op);
-      else
-        return new value(builder_.CreateLoad(ep), op);
-    } else {  // contains lazy
-      throw error(
-          "Getting value from an array which contains lazy value with an index "
-          "of non-constant value",
-          ast::attr(op).where, code_range_);
+    if (!lval->getType()->getPointerElementType()->isPointerTy()) {
+      if (!lval->getType()->getPointerElementType()->isArrayTy()) {
+        throw error("Cannot get element from incompatible type " + getNameString(lval->getType()),
+                    ast::attr(op).where, code_range_);
+      } else if (args[0]->symbols().begin()->second->isLazy()) {
+        throw error(
+            "Getting value from an array which contains lazy value with an index "
+            "of non-constant value",
+            ast::attr(op).where, code_range_);
+      }
+
+      std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
+      ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                      llvm::ArrayRef<llvm::Value*>(idxList));
+
+    } else {
+      ep = builder_.CreateGEP(lval->getType()->getPointerElementType(), lval, rval);
     }
+
+    if (ast::attr(op).lval || ep->getType()->getPointerElementType()->isStructTy() ||
+        ep->getType()->getPointerElementType()->isArrayTy())
+      return new value(ep, op);
+    else
+      return new value(builder_.CreateLoad(ep), op);
   }
 }
 
