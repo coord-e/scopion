@@ -229,11 +229,12 @@ x3::rule<assign_expr, ast::expr> const assign_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
 
-auto const identifier_def =
-    x3::raw[x3::lexeme[x3::alpha > *(x3::alnum | '_')]][detail::assign_str_as<ast::identifier>];
+auto const identifier_p = x3::alpha > *(x3::alnum | '_');
 
-auto const variable_def =
-    x3::raw[x3::lexeme[x3::alpha > *(x3::alnum | '_')]][detail::assign_str_as<ast::variable>];
+auto const identifier_def =
+    x3::raw[x3::lexeme[identifier_p]][detail::assign_str_as<ast::identifier>];
+
+auto const variable_def = x3::raw[x3::lexeme[identifier_p]][detail::assign_str_as<ast::variable>];
 
 auto const string_def = ('"' >> x3::lexeme[*(x3::lit("\\\"") | x3::char_ - '"')] >>
                          '"')[detail::assign_str_escaped_as<ast::string, '"', true>];
@@ -242,13 +243,12 @@ auto const raw_string_def = ('\'' >> x3::lexeme[*(x3::lit("\\'") | x3::char_ - '
                              '\'')[detail::assign_str_escaped_as<ast::string, '\''>];
 
 auto const pre_variable_def =
-    (x3::raw[x3::lexeme['@' > x3::alpha > *x3::alnum]])[detail::assign_str_as<ast::pre_variable>];
+    (x3::raw[x3::lexeme['@' > identifier_p]])[detail::assign_str_as<ast::pre_variable>];
 
 auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
 
 auto const struct_key_def =
-    x3::raw[x3::lexeme[(x3::alpha > *(x3::alnum | '_')) | x3::char_("+\\-*/%<>&|^~!") |
-                       (x3::char_("!=<>") > '=') |
+    x3::raw[x3::lexeme[identifier_p | x3::char_("+\\-*/%<>&|^~!") | (x3::char_("!=<>") > '=') |
                        x3::repeat(2)[x3::char_("+\\-<>&|")] |
                        "[]" |
                        "()"]][detail::assign_str_as<ast::struct_key>];
