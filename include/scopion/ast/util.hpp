@@ -104,7 +104,6 @@ namespace visitors_
 {
 class setter_visitor : boost::static_visitor<expr>
 {
-protected:
   std::function<void(attribute&)> f_;
 
 public:
@@ -127,17 +126,37 @@ public:
   expr operator()(operators val) const { return boost::apply_visitor(*this, val); }
 };
 
-struct setter_recursive_visitor : setter_visitor {
-  using setter_visitor::operator();
-  using setter_visitor::setter_visitor;
+class setter_recursive_visitor : boost::static_visitor<expr>
+{
+  std::function<void(attribute&)> f_;
+
+public:
+  template <typename T>
+  setter_recursive_visitor(T f) : f_(f)
+  {
+  }
 
   template <typename Op, size_t N>
   expr operator()(op<Op, N> val) const
   {
     f_(attr(val));
-    std::for_each(val.begin(), val.end(), [this](auto& x) { x = boost::apply_visitor(*this, x); });
+    std::for_each(ast::val(val).begin(), ast::val(val).end(),
+                  [this](auto& x) { x = boost::apply_visitor(*this, x); });
     return val;
   }
+
+  template <typename T>
+  expr operator()(T val) const
+  {
+    f_(attr(val));
+    return val;
+  }
+
+  expr operator()(expr val) const { return boost::apply_visitor(*this, val); }
+
+  expr operator()(value val) const { return boost::apply_visitor(*this, val); }
+
+  expr operator()(operators val) const { return boost::apply_visitor(*this, val); }
 };
 
 };  // namespace visitors_
@@ -145,13 +164,13 @@ struct setter_recursive_visitor : setter_visitor {
 template <typename T>
 expr set_lval(T t, bool val)
 {
-  return visitors_::setter_recursive_visitor([val](attribute& attr) { attr.lval = val; })(t);
+  return visitors_::setter_visitor([val](attribute& attr) { attr.lval = val; })(t);
 }
 
 template <typename T>
 expr set_to_call(T t, bool val)
 {
-  return visitors_::setter_recursive_visitor([val](attribute& attr) { attr.to_call = val; })(t);
+  return visitors_::setter_visitor([val](attribute& attr) { attr.to_call = val; })(t);
 }
 
 template <typename T>

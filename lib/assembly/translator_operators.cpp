@@ -292,26 +292,22 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
           arg_values.push_back(args[0]->getParent()->getLLVM());
       }
     } else {
-      if (ast::attr(op).survey) {
-        tocall = args[0]->getLLVM();
-      } else {
-        std::vector<value*> vary;
-        for (auto const& argast : ast::val(arglist)) {
-          auto rv = boost::apply_visitor(*this, argast);
-          vary.push_back(rv);
-          if (!rv->isLazy())
-            arg_values.push_back(rv->getLLVM());
-        }
-        if (isodot) {
-          auto ob_parent = boost::apply_visitor(*this, op_unpacked);
-          vary.push_back(ob_parent);
-          arg_values.push_back(ob_parent->getLLVM());
-        }
-
-        auto v    = evaluate(args[0], vary, *this);
-        tocall    = v->getLLVM();
-        ret_table = v->getRetTable();
+      std::vector<value*> vary;
+      for (auto const& argast : ast::val(arglist)) {
+        auto rv = boost::apply_visitor(*this, argast);
+        vary.push_back(rv);
+        if (!rv->isLazy())
+          arg_values.push_back(rv->getLLVM());
       }
+      if (isodot) {
+        auto ob_parent = boost::apply_visitor(*this, op_unpacked);
+        vary.push_back(ob_parent);
+        arg_values.push_back(ob_parent->getLLVM());
+      }
+
+      auto v    = evaluate(args[0], vary, *this);
+      tocall    = v->getLLVM();
+      ret_table = v->getRetTable();
     }
 
     auto destv =
@@ -486,60 +482,108 @@ value* translator::apply_op(ast::single_op<ast::dec> const& op, std::vector<valu
 
 value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<value*> const& args)
 {
-  if (!args[1]->getLLVM()->getType()->isLabelTy() || !args[2]->getLLVM()->getType()->isLabelTy())
-    throw error("The arguments of ternary operator should be a block", ast::attr(op).where,
+  if (args[0]->isLazy())
+    throw error("Conditional operator with lazy value is not supported", ast::attr(op).where,
                 code_range_);
 
-  llvm::BasicBlock* thenbb =
-      llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
-  llvm::BasicBlock* elsebb =
-      llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+  if (args[1]->getLLVM()->getType() != args[2]->getLLVM()->getType())
+    throw error("Conditional operator with incompatible value types (lhs: " +
+                    getNameString(args[1]->getLLVM()->getType()) +
+                    ", rhs: " + getNameString(args[2]->getLLVM()->getType()) + ")",
+                ast::attr(op).where, code_range_);
 
-  auto pb = builder_.GetInsertBlock();
-  auto pp = builder_.GetInsertPoint();
+  if (args[1]->getLLVM()->getType()->isLabelTy()) {
+    llvm::BasicBlock* thenbb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    llvm::BasicBlock* elsebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
 
-  llvm::BasicBlock* mergebb =
-      llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    auto pb = builder_.GetInsertBlock();
+    auto pp = builder_.GetInsertPoint();
 
-  bool mergebbShouldBeErased = true;
+    auto prevScope = thisScope_;
 
-  auto prevScope = thisScope_;
+    llvm::BasicBlock* mergebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
 
-  assert(ast::isa<ast::scope>(args[1]->getAst()) && ast::isa<ast::scope>(args[2]->getAst()) &&
-         "Applying non-scope value as scope");
-  auto secondsc = ast::unpack<ast::scope>(args[1]->getAst());
-  auto thirdsc  = ast::unpack<ast::scope>(args[2]->getAst());
+    bool mergebbShouldBeErased = true;
 
-  builder_.SetInsertPoint(thenbb);
-  thisScope_ = args[1];
-  if (apply_bb(secondsc, *this).first) {
+    assert(ast::isa<ast::scope>(args[1]->getAst()) && ast::isa<ast::scope>(args[2]->getAst()) &&
+           "Applying non-scope value as scope");
+    auto secondsc = ast::unpack<ast::scope>(args[1]->getAst());
+    auto thirdsc  = ast::unpack<ast::scope>(args[2]->getAst());
+
+    builder_.SetInsertPoint(thenbb);
+    thisScope_ = args[1];
+    if (apply_bb(secondsc, *this).first) {
+      builder_.CreateBr(mergebb);
+      mergebbShouldBeErased &= false;
+    }
+
+    builder_.SetInsertPoint(elsebb);
+    thisScope_ = args[2];
+    if (apply_bb(thirdsc, *this).first) {
+      builder_.CreateBr(mergebb);
+      mergebbShouldBeErased &= false;
+    }
+
+    thisScope_ = prevScope;
+
+    if (mergebbShouldBeErased)
+      mergebb->eraseFromParent();
+
+    builder_.SetInsertPoint(pb, pp);
+
+    builder_.CreateCondBr(args[0]->getLLVM(), thenbb, elsebb);
+
+    if (!mergebbShouldBeErased)
+      builder_.SetInsertPoint(mergebb);
+
+    return new value();  // Void
+  } else {
+    if (args[1]->isLazy() || args[2]->isLazy())
+      throw error("Conditional operator with lazy value is currently not supported",
+                  ast::attr(op).where, code_range_);
+
+    if (!std::equal(args[1]->fields().begin(), args[1]->fields().end(), args[2]->fields().begin(),
+                    args[2]->fields().end(), [](auto& s, auto& t) { return s.first == t.first; })) {
+      throw error("Conditional operator with different fields", ast::attr(op).where, code_range_);
+    }
+
+    auto pb = builder_.GetInsertBlock();
+    auto pp = builder_.GetInsertPoint();
+
+    auto destlv = createGCMalloc(ast::attr(op).lval ? args[1]->getLLVM()->getType()->getPointerTo()
+                                                    : args[1]->getLLVM()->getType());
+
+    llvm::BasicBlock* thenbb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    llvm::BasicBlock* elsebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    llvm::BasicBlock* mergebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+
+    auto lvaled_then = ast::set_lval(ast::val(op)[1], true);
+    auto lvaled_else = ast::set_lval(ast::val(op)[2], true);
+    value* thenv     = ast::attr(op).lval ? boost::apply_visitor(*this, lvaled_then) : args[1];
+    value* elsev     = ast::attr(op).lval ? boost::apply_visitor(*this, lvaled_else) : args[2];
+
+    builder_.SetInsertPoint(thenbb);
+    builder_.CreateStore(thenv->getLLVM(), destlv);
     builder_.CreateBr(mergebb);
-    mergebbShouldBeErased &= false;
-  }
-
-  builder_.SetInsertPoint(elsebb);
-  thisScope_ = args[2];
-  if (apply_bb(thirdsc, *this).first) {
+    builder_.SetInsertPoint(elsebb);
+    builder_.CreateStore(elsev->getLLVM(), destlv);
     builder_.CreateBr(mergebb);
-    mergebbShouldBeErased &= false;
-  }
+    builder_.SetInsertPoint(pb, pp);
+    builder_.CreateCondBr(args[0]->getLLVM(), thenbb, elsebb);
 
-  thisScope_ = prevScope;
-
-  if (mergebbShouldBeErased)
-    mergebb->eraseFromParent();
-
-  builder_.SetInsertPoint(pb, pp);
-
-  if (args[0]->isLazy())
-    throw error("Conditions with lazy value is not supported", ast::attr(op).where, code_range_);
-
-  builder_.CreateCondBr(args[0]->getLLVM(), thenbb, elsebb);
-
-  if (!mergebbShouldBeErased)
     builder_.SetInsertPoint(mergebb);
 
-  return new value();  // Void
+    auto destv       = new value(builder_.CreateLoad(destlv), op);
+    destv->symbols() = args[1]->symbols();
+    destv->fields()  = args[1]->fields();
+    return destv;
+  }
 }
 
 };  // namespace assembly
