@@ -23,8 +23,8 @@ class error
   uint64_t line_number_;
   uint64_t distance_;
   std::string line_;
+  std::string filename_;
   std::string message_;
-  uint8_t level_;
 
 public:
   error() = default;
@@ -32,8 +32,8 @@ public:
   error(std::string const& message,
         str_range_t const where,
         str_range_t const code,
-        uint8_t level = 0)
-      : message_(message), level_(level)
+        std::string const& filename = "")
+      : message_(message), filename_(filename)
   {
     line_number_ = std::count(code.begin(), where.begin(), '\n');
     auto r       = line_range(where, code);
@@ -41,11 +41,12 @@ public:
     distance_    = std::distance(r.begin(), where.begin());
   }
 
-  uint64_t line_number() const { return line_number_; }
-  std::string line() const { return line_; }
-  std::string what() const { return message_; }
-  uint64_t distance() const { return distance_; }
-  uint8_t level() const { return level_; }
+  uint64_t getLineNumber() const { return line_number_; }
+  std::string getLineContent() const { return line_; }
+  void setFilename(std::string const& s) { filename_ = s; }
+  std::string getFilename() const { return filename_; }
+  std::string getMessage() const { return message_; }
+  uint64_t getColumnNumber() const { return distance_; }
 };
 
 };  // namespace scopion

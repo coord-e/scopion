@@ -23,6 +23,7 @@ class translator : public boost::static_visitor<value*>
   std::shared_ptr<llvm::Module> module_;
   llvm::IRBuilder<>& builder_;
   context& ctx_;
+  std::string filename_;
   boost::iterator_range<std::string::const_iterator> const code_range_;
   value* thisScope_;
 

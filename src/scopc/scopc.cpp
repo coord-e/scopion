@@ -21,13 +21,15 @@ std::string getTmpFilePath()
   return std::string(tmpname);
 }
 
-void printError(scopion::error const& e)
+void printErrorWithType(scopion::error& err, std::string const& type)
 {
   std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-            << rang::style::reset << rang::fg::red << " @" << e.line_number() << rang::style::reset
-            << ": " << e.what() << std::endl
-            << e.line() << std::endl
-            << rang::fg::green << std::setw(e.distance() + 1) << "^" << rang::style::reset
+            << rang::style::reset << rang::fg::green
+            << " " + type + " Error: " << rang::style::reset << rang::style::bold
+            << err.getFilename() << "@" << err.getLineNumber() << rang::style::reset << ": "
+            << err.getMessage() << std::endl
+            << err.getLineContent() << std::endl
+            << rang::fg::green << std::setw(err.getColumnNumber() + 1) << "^" << rang::style::reset
             << std::endl;
 }
 
@@ -92,15 +94,10 @@ int main(int argc, char* argv[])
   scopion::context context(code);
   scopion::error err;
 
-  auto ast = scopion::parser::parse(context, err);
+  auto ast = scopion::parser::parse(context, p.rest()[0], err);
 
   if (!ast) {
-    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-              << rang::style::reset << rang::fg::red << ": parse error @" << err.line_number()
-              << rang::style::reset << ": " << err.what() << std::endl
-              << err.line() << std::endl
-              << rang::fg::green << std::setw(err.distance() + 1) << "^" << rang::style::reset
-              << std::endl;
+    printErrorWithType(err, "Parse");
     return -1;
   }
 
@@ -111,15 +108,9 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  auto mod = scopion::assembly::translate(*ast, outpath, context, err);
+  auto mod = scopion::assembly::translate(*ast, p.rest()[0], context, err);
   if (!mod) {
-    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-              << rang::style::reset << rang::fg::red << ": translator error @" << err.line_number()
-              << rang::style::reset << ": " << err.what() << std::endl
-              << err.line() << std::endl
-              << rang::fg::green << std::setw(err.distance() + 1) << "^" << rang::style::reset
-              << std::endl;
-
+    printErrorWithType(err, "Translate");
     return -1;
   }
 

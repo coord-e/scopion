@@ -30,6 +30,7 @@ translator::translator(std::shared_ptr<llvm::Module>& module,
     : boost::static_visitor<value*>(),
       module_(module),
       builder_(builder),
+      filename_(filename),
       code_range_(boost::make_iterator_range(ctx.code.begin(), ctx.code.end())),
       ctx_(ctx),
       thisScope_(new value())
@@ -54,10 +55,12 @@ value* translator::operator()(ast::operators astv)
 value* translator::operator()(ast::integer astv)
 {
   if (ast::attr(astv).lval)
-    throw error("An integer constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("An integer constant is not to be assigned", ast::attr(astv).where, code_range_,
+                filename_);
 
   if (ast::attr(astv).to_call)
-    throw error("An integer constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("An integer constant is not to be called", ast::attr(astv).where, code_range_,
+                filename_);
 
   return new value(llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(astv)), astv);
 }
@@ -65,10 +68,12 @@ value* translator::operator()(ast::integer astv)
 value* translator::operator()(ast::boolean astv)
 {
   if (ast::attr(astv).lval)
-    throw error("A boolean constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("A boolean constant is not to be assigned", ast::attr(astv).where, code_range_,
+                filename_);
 
   if (ast::attr(astv).to_call)
-    throw error("A boolean constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("A boolean constant is not to be called", ast::attr(astv).where, code_range_,
+                filename_);
 
   return new value(llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(astv)), astv);
 }
@@ -76,10 +81,12 @@ value* translator::operator()(ast::boolean astv)
 value* translator::operator()(ast::string const& astv)
 {
   if (ast::attr(astv).lval)
-    throw error("A string constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("A string constant is not to be assigned", ast::attr(astv).where, code_range_,
+                filename_);
 
   if (ast::attr(astv).to_call)
-    throw error("A string constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("A string constant is not to be called", ast::attr(astv).where, code_range_,
+                filename_);
 
   return new value(builder_.CreateGlobalStringPtr(ast::val(astv)), astv);
 }
@@ -87,7 +94,8 @@ value* translator::operator()(ast::string const& astv)
 value* translator::operator()(ast::pre_variable const& astv)
 {
   if (ast::attr(astv).lval)
-    throw error("Pre-defined variables cannnot be assigned", ast::attr(astv).where, code_range_);
+    throw error("Pre-defined variables cannnot be assigned", ast::attr(astv).where, code_range_,
+                filename_);
 
   auto const name = llvm::StringRef(ast::val(astv)).ltrim('@');
   if (auto fp = module_->getFunction(name))
@@ -99,13 +107,14 @@ value* translator::operator()(ast::pre_variable const& astv)
       if (itm != ast::attr(astv).attributes.end()) {  // found path to module
         std::ifstream ifs(itm->second);
         if (ifs.fail()) {
-          throw error("failed to open " + itm->second, ast::attr(astv).where, code_range_);
+          throw error("failed to open " + itm->second, ast::attr(astv).where, code_range_,
+                      filename_);
         }
         std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
         ifs.close();
 
         error err;
-        auto parsed = parser::parse(code, err);
+        auto parsed = parser::parse(code, itm->second, err);
         if (!parsed)
           throw err;
         translator tr(module_, builder_, itm->second, ctx_);
@@ -117,8 +126,8 @@ value* translator::operator()(ast::pre_variable const& astv)
         if (!module) {
           llvm::raw_os_ostream stream(std::cerr);
           err.print(iti->second.c_str(), stream);
-          throw error("Error happened during import of llvm ir", ast::attr(astv).where,
-                      code_range_);
+          throw error("Error happened during import of llvm ir", ast::attr(astv).where, code_range_,
+                      iti->second);
         }
         std::vector<llvm::Type*> fields;
         auto destv = new value(nullptr, astv);
@@ -150,18 +159,19 @@ value* translator::operator()(ast::pre_variable const& astv)
 
         return destv;
       } else {
-        throw error("Import path isn't specified", ast::attr(astv).where, code_range_);
+        throw error("Import path isn't specified", ast::attr(astv).where, code_range_, filename_);
       }
     } else if (name.equals("self")) {
       if (ast::attr(astv).lval)
-        throw error("Assigning to @self is not allowed", ast::attr(astv).where, code_range_);
+        throw error("Assigning to @self is not allowed", ast::attr(astv).where, code_range_,
+                    filename_);
 
       auto v       = ast::variable("__self");
       ast::attr(v) = ast::attr(astv);
       return operator()(v);
     } else {
       throw error("Pre-defined variable \"" + name.str() + "\" is not defined",
-                  ast::attr(astv).where, code_range_);
+                  ast::attr(astv).where, code_range_, filename_);
     }
   }
 }
@@ -183,7 +193,7 @@ value* translator::operator()(ast::variable const& astv)
       return vp;
     } else {
       throw error("\"" + ast::val(astv) + "\" has not declared in this scope",
-                  ast::attr(astv).where, code_range_);
+                  ast::attr(astv).where, code_range_, filename_);
     }
   }
   assert(false);
@@ -197,10 +207,12 @@ value* translator::operator()(ast::identifier const& astv)
 value* translator::operator()(ast::array const& astv)
 {
   if (ast::attr(astv).lval)
-    throw error("An array constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("An array constant is not to be assigned", ast::attr(astv).where, code_range_,
+                filename_);
 
   if (ast::attr(astv).to_call)
-    throw error("An array constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("An array constant is not to be called", ast::attr(astv).where, code_range_,
+                filename_);
 
   auto firstelem = boost::apply_visitor(*this, ast::val(astv)[0]);
   auto t         = ast::val(astv).empty() ? builder_.getVoidTy() : firstelem->getLLVM()->getType();
@@ -214,7 +226,7 @@ value* translator::operator()(ast::array const& astv)
     auto v = x.index() == 0 ? firstelem : boost::apply_visitor(*this, x.value());
     if (v->getLLVM()->getType() != t) {
       throw error("all elements of array must have the same type", ast::attr(astv).where,
-                  code_range_);
+                  code_range_, filename_);
     }
     v->setParent(destv);
     destv->symbols()[std::to_string(x.index())] = v;
@@ -281,7 +293,8 @@ value* translator::operator()(ast::structure const& astv)
 value* translator::operator()(ast::function const& fcv)
 {
   if (ast::attr(fcv).lval)
-    throw error("A function constant is not to be assigned", ast::attr(fcv).where, code_range_);
+    throw error("A function constant is not to be assigned", ast::attr(fcv).where, code_range_,
+                filename_);
 
   auto& args = ast::val(fcv).first;
 
@@ -302,7 +315,8 @@ value* translator::operator()(ast::function const& fcv)
 value* translator::operator()(ast::scope const& scv)
 {
   if (ast::attr(scv).lval)
-    throw error("A scope constant is not to be assigned", ast::attr(scv).where, code_range_);
+    throw error("A scope constant is not to be assigned", ast::attr(scv).where, code_range_,
+                filename_);
 
   auto bb = llvm::BasicBlock::Create(module_->getContext());  // empty
 

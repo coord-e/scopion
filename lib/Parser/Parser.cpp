@@ -375,13 +375,13 @@ struct expression {
     throw error(x.which() + " is expected but there is " +
                     (x.where() == last ? "nothing" : std::string{*x.where()}),
                 boost::make_iterator_range(x.where(), x.where()),
-                boost::make_iterator_range(first, last));
+                boost::make_iterator_range(first, last), "");
     return x3::error_handler_result::fail;
   }
 };
 };  // namespace grammar
 
-boost::optional<ast::expr> parse(context const& ctx, error& err)
+boost::optional<ast::expr> parse(context const& ctx, std::string const& filename, error& err)
 {
   ast::expr res;
 
@@ -390,11 +390,12 @@ boost::optional<ast::expr> parse(context const& ctx, error& err)
     if (!x3::phrase_parse(ctx.code.begin(), ctx.code.end(), grammar::expression, space_comment,
                           res)) {
       err = error("Parse failed for an unknown reason", boost::make_iterator_range(ctx.code),
-                  boost::make_iterator_range(ctx.code));
+                  boost::make_iterator_range(ctx.code), filename);
       return boost::none;
     }
   } catch (error& e) {
     err = e;
+    err.setFilename(filename);
     return boost::none;
   }
 

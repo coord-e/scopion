@@ -12,7 +12,7 @@ namespace scopion
 {
 namespace parser
 {
-boost::optional<ast::expr> parse(context const& ctx, error& err);
+boost::optional<ast::expr> parse(context const& ctx, std::string const& filename, error& err);
 
 };  // namespace parser
 
