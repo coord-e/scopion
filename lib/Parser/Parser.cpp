@@ -151,6 +151,22 @@ static auto const assign_op<ast::call, 2> = [](auto&& ctx) {
                                  x3::_where(ctx));
 };
 
+template <>
+static auto const assign_op<ast::inc, 1> = [](auto&& ctx) {
+  x3::_val(ctx) = ast::set_where(
+      ast::binary_op<ast::assign>({ast::set_lval(x3::_attr(ctx), true),
+                                   ast::binary_op<ast::add>({x3::_attr(ctx), ast::integer(1)})}),
+      x3::_where(ctx));
+};
+
+template <>
+static auto const assign_op<ast::dec, 1> = [](auto&& ctx) {
+  x3::_val(ctx) = ast::set_where(
+      ast::binary_op<ast::assign>({ast::set_lval(x3::_attr(ctx), true),
+                                   ast::binary_op<ast::sub>({x3::_attr(ctx), ast::integer(1)})}),
+      x3::_where(ctx));
+};
+
 static auto const assign_attr = [](auto&& ctx) {
   auto&& key = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
   // ast::identifier
