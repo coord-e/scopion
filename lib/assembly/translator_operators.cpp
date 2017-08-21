@@ -370,11 +370,8 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
   } else {  // specifing index with non-constant integer or pointer to pointer
     llvm::Value* ep;
 
-    if (!lval->getType()->getPointerElementType()->isPointerTy()) {
-      if (!lval->getType()->getPointerElementType()->isArrayTy()) {
-        throw error("Cannot get element from incompatible type " + getNameString(lval->getType()),
-                    ast::attr(op).where, code_range_);
-      } else if (args[0]->symbols().begin()->second->isLazy()) {
+    if (lval->getType()->getPointerElementType()->isArrayTy()) {
+      if (args[0]->symbols().begin()->second->isLazy()) {
         throw error(
             "Getting value from an array which contains lazy value with an index "
             "of non-constant value",
@@ -384,8 +381,10 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
       std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
       ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
                                       llvm::ArrayRef<llvm::Value*>(idxList));
-
     } else {
+      if (!llvm::GetElementPtrInst::getIndexedType(lval->getType()->getPointerElementType(), rval))
+        throw error("Cannot get element from incompatible type " + getNameString(lval->getType()),
+                    ast::attr(op).where, code_range_);
       ep = builder_.CreateGEP(lval->getType()->getPointerElementType(), lval, rval);
     }
 
