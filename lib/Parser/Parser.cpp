@@ -392,7 +392,8 @@ parsed parse(std::string const& code)
 {
   ast::expr tree;
 
-  auto const space_comment = x3::space | "/*" > *(x3::char_ - "*/") > "*/";
+  auto const space_comment =
+      "//" > *(x3::char_ - '\n') > '\n' | "/*" > *(x3::char_ - "*/") > "*/" | x3::space;
   if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree)) {
     throw std::runtime_error("detected error");
   }
