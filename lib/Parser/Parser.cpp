@@ -107,9 +107,9 @@ static auto const assign_func = [](auto&& ctx) {
 };
 
 static auto const assign_struct = [](auto&& ctx) {
-  std::map<ast::identifier, ast::expr> result;
+  std::map<ast::struct_key, ast::expr> result;
   for (auto const& v : x3::_attr(ctx)) {
-    auto name    = ast::unpack<ast::identifier>(boost::fusion::at<boost::mpl::int_<0>>(v));
+    auto name    = ast::unpack<ast::struct_key>(boost::fusion::at<boost::mpl::int_<0>>(v));
     auto&& val   = boost::fusion::at<boost::mpl::int_<1>>(v);
     result[name] = val;
   }
@@ -166,6 +166,7 @@ static auto const assign_attr = [](auto&& ctx) {
 struct variable;
 struct pre_variable;
 struct identifier;
+struct struct_key;
 struct string;
 struct raw_string;
 struct array;
@@ -197,6 +198,7 @@ struct expression;
 
 x3::rule<variable, ast::expr> const variable("variable");
 x3::rule<pre_variable, ast::expr> const pre_variable("pre-defined variable");
+x3::rule<struct_key, ast::expr> const struct_key("struct key");
 x3::rule<identifier, ast::expr> const identifier("identifier");
 x3::rule<string, ast::expr> const string("string");
 x3::rule<raw_string, ast::expr> const raw_string("raw string");
@@ -227,6 +229,9 @@ x3::rule<assign_expr, ast::expr> const assign_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
 
+auto const identifier_def =
+    x3::raw[x3::lexeme[x3::alpha > *(x3::alnum | '_')]][detail::assign_str_as<ast::identifier>];
+
 auto const variable_def =
     x3::raw[x3::lexeme[x3::alpha > *(x3::alnum | '_')]][detail::assign_str_as<ast::variable>];
 
@@ -239,16 +244,17 @@ auto const raw_string_def = ('\'' >> x3::lexeme[*(x3::lit("\\'") | x3::char_ - '
 auto const pre_variable_def =
     (x3::raw[x3::lexeme['@' > x3::alpha > *x3::alnum]])[detail::assign_str_as<ast::pre_variable>];
 
-auto const identifier_def =
+auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
+
+auto const struct_key_def =
     x3::raw[x3::lexeme[(x3::alpha > *(x3::alnum | '_')) | x3::char_("+\\-*/%<>&|^~!") |
                        (x3::char_("!=<>") > '=') |
                        x3::repeat(2)[x3::char_("+\\-<>&|")] |
                        "[]" |
-                       "()"]][detail::assign_str_as<ast::identifier>];
-auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assign_as<ast::array>];
+                       "()"]][detail::assign_str_as<ast::struct_key>];
 
 auto const structure_def =
-    ("[" >> *(identifier >> ":" >> expression >> -x3::lit(",")) >> "]")[detail::assign_struct];
+    ("[" >> *(struct_key >> ":" >> expression >> -x3::lit(",")) >> "]")[detail::assign_struct];
 
 auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> ")" >> "{") >
                            *(expression >> ";") > "}")[detail::assign_func];
@@ -265,9 +271,9 @@ auto const primary_def =
     function[detail::assign] | scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
-                          *((".:" > identifier)[detail::assign_op<ast::odot, 2>] |
-                            (".=" > identifier)[detail::assign_op<ast::adot, 2>] |
-                            ("." > identifier)[detail::assign_op<ast::dot, 2>]);
+                          *((".:" > struct_key)[detail::assign_op<ast::odot, 2>] |
+                            (".=" > struct_key)[detail::assign_op<ast::adot, 2>] |
+                            ("." > struct_key)[detail::assign_op<ast::dot, 2>]);
 
 auto const attr_expr_def = dot_expr[detail::assign] >>
                            *("#" >> identifier >> -(":" > attribute_val))[detail::assign_attr];
@@ -338,6 +344,7 @@ auto const expression_def = ret_expr[detail::assign];
 BOOST_SPIRIT_DEFINE(pre_variable,
                     variable,
                     identifier,
+                    struct_key,
                     string,
                     raw_string,
                     array,

@@ -41,6 +41,7 @@ public:
   }
 
   auto operator()(identifier const& val) const -> void { _s << ast::val(val); }
+  auto operator()(struct_key const& val) const -> void { _s << ast::val(val); }
 
   auto operator()(array const& val) const -> void
   {

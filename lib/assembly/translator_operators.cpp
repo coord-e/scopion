@@ -400,8 +400,8 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
 {
   auto lval = args[0]->getLLVM();
 
-  assert(ast::isa<ast::identifier>(ast::val(op)[1]) && "rhs of dot operator must be an identifier");
-  auto id = ast::val(ast::unpack<ast::identifier>(ast::val(op)[1]));
+  assert(ast::isa<ast::struct_key>(ast::val(op)[1]) && "rhs of dot operator must be a struct key");
+  auto id = ast::val(ast::unpack<ast::struct_key>(ast::val(op)[1]));
 
   if (!lval->getType()->isPointerTy())
     throw error("Cannot get \"" + id + "\" from non-pointer type " + getNameString(lval->getType()),

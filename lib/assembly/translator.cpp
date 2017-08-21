@@ -188,6 +188,11 @@ value* translator::operator()(ast::identifier const& astv)
   return new value();  // void
 }
 
+value* translator::operator()(ast::struct_key const& astv)
+{
+  return new value();  // void
+}
+
 value* translator::operator()(ast::array const& astv)
 {
   if (ast::attr(astv).lval)

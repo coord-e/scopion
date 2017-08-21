@@ -45,6 +45,7 @@ public:
   value* operator()(ast::structure const&);
   value* operator()(ast::function const&);
   value* operator()(ast::identifier const&);
+  value* operator()(ast::struct_key const&);
   value* operator()(ast::scope const&);
 
   template <typename Op, size_t N>

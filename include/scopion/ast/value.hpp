@@ -27,6 +27,9 @@ struct pre_variable : string {
 struct identifier : string {
   using string::string;
 };
+struct struct_key : string {
+  using string::string;
+};
 struct attribute_val : string {
   using string::string;
 };
@@ -34,7 +37,7 @@ using array = value_wrapper<std::vector<expr>>;
 struct arglist : array {
   using array::array;
 };
-using structure = value_wrapper<std::map<identifier, expr>>;
+using structure = value_wrapper<std::map<struct_key, expr>>;
 using function  = value_wrapper<std::pair<std::vector<identifier>, std::vector<expr>>>;
 
 struct scope : array {
@@ -47,6 +50,7 @@ using value = boost::variant<integer,
                              boost::recursive_wrapper<variable>,
                              boost::recursive_wrapper<pre_variable>,
                              boost::recursive_wrapper<identifier>,
+                             boost::recursive_wrapper<struct_key>,
                              boost::recursive_wrapper<array>,
                              boost::recursive_wrapper<arglist>,
                              boost::recursive_wrapper<structure>,
