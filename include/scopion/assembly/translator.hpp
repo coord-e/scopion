@@ -17,6 +17,15 @@ namespace scopion
 {
 namespace assembly
 {
+template <typename T>
+std::string getNameString(T* v)
+{
+  std::string type_string;
+  llvm::raw_string_ostream stream(type_string);
+  v->print(stream);
+  return stream.str();
+}
+
 class translator : public boost::static_visitor<value*>
 {
   std::shared_ptr<llvm::Module> module_;
@@ -99,15 +108,6 @@ public:
   value* getScope() const { return thisScope_; }
 
 private:
-  template <typename T>
-  std::string getNameString(T* v)
-  {
-    std::string type_string;
-    llvm::raw_string_ostream stream(type_string);
-    v->print(stream);
-    return stream.str();
-  }
-
   llvm::Value* createGCMalloc(llvm::Type* Ty,
                               llvm::Value* ArraySize  = nullptr,
                               const llvm::Twine& Name = "");

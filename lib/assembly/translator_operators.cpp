@@ -278,16 +278,31 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
                         getNameString(tocall->getType()) + ")",
                     ast::attr(op).where, code_range_);
       } else {
-        std::transform(ast::val(arglist).begin(), ast::val(arglist).end(),
-                       std::back_inserter(arg_values), [this, &op](auto& x) {
-                         auto rv = boost::apply_visitor(*this, x);
-                         if (rv->isLazy()) {
-                           throw error("Cannot pass a lazy value to c-style functions",
-                                       ast::attr(op).where, code_range_);
-                         } else {
-                           return rv->getLLVM();
-                         }
-                       });
+        auto functy = tocall->getType()->getPointerElementType();
+        if (functy->getFunctionNumParams() != ast::val(arglist).size() &&
+            !functy->isFunctionVarArg()) {
+          throw error("The number of arguments doesn't match: required " +
+                          std::to_string(functy->getFunctionNumParams()) + " but supplied " +
+                          std::to_string(ast::val(arglist).size()),
+                      ast::attr(op).where, code_range_);
+        }
+        for (auto const& arg : ast::val(arglist) | boost::adaptors::indexed()) {
+          auto rv = boost::apply_visitor(*this, arg.value());
+          if (rv->isLazy()) {
+            throw error("Cannot pass a lazy value to c-style functions", ast::attr(op).where,
+                        code_range_);
+          } else if (functy->getFunctionParamType(static_cast<unsigned>(arg.index())) !=
+                     rv->getLLVM()->getType()) {
+            throw error("Type mismatch on argument No." + std::to_string(arg.index()) +
+                            ": expected \"" +
+                            getNameString(
+                                functy->getFunctionParamType(static_cast<unsigned>(arg.index()))) +
+                            "\" but supplied \"" + getNameString(rv->getLLVM()->getType()) + "\"",
+                        ast::attr(op).where, code_range_);
+          } else {
+            arg_values.push_back(rv->getLLVM());
+          }
+        }
         if (isodot)
           arg_values.push_back(args[0]->getParent()->getLLVM());
       }
