@@ -262,8 +262,8 @@ auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> ")" >> "{"
 
 auto const scope_def = ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
 
-auto const attribute_val_def =
-    x3::raw[x3::lexeme[*(x3::alnum | '.' | '/')]][detail::assign_str_as<ast::attribute_val>];
+auto const attribute_val_def = x3::raw[x3::lexeme[*(x3::alnum | x3::char_("_\\-./*[]{}"))]]
+                                      [detail::assign_str_as<ast::attribute_val>];
 
 auto const primary_def =
     x3::int_[detail::assign_as<ast::integer>] | x3::bool_[detail::assign_as<ast::boolean>] |
