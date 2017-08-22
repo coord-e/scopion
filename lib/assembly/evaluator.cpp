@@ -159,6 +159,23 @@ value* evaluator::operator()(ast::function const& fcv)
     ret_type = builder_.getVoidTy();
   }
 
+  auto it = ast::attr(fcv).attributes.find("rettype");
+  if (it != ast::attr(fcv).attributes.end()) {
+    llvm::SMDiagnostic err;
+    auto t = llvm::parseType(it->second, err, *translator_.module_);
+    if (!t) {
+      llvm::raw_os_ostream stream(std::cerr);
+      err.print("", stream);
+      throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where,
+                  translator_.code_range_);
+    }
+    if (t != ret_type) {
+      throw error("Return type doesn't match: expected \"" + it->second + "\" but supplied \"" +
+                      getNameString(ret_type) + "\"",
+                  ast::attr(fcv).where, translator_.code_range_);
+    }
+  }
+
   func->eraseFromParent();  // remove old one
 
   llvm::Function* newfunc;
