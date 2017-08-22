@@ -4,6 +4,7 @@
 
 #include "scopion/error.hpp"
 
+#include <llvm/AsmParser/Parser.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
@@ -283,19 +284,83 @@ value* translator::operator()(ast::function const& fcv)
     throw error("A function constant is not to be assigned", ast::attr(fcv).where, code_range_);
 
   auto& args = ast::val(fcv).first;
+  if (std::all_of(args.begin(), args.end(),
+                  [](auto& x) {
+                    return ast::attr(x).attributes.find("type") != ast::attr(x).attributes.end();
+                  }) &&
+      ast::attr(fcv).attributes.find("rettype") != ast::attr(fcv).attributes.end() &&
+      ast::attr(fcv).attributes.find("lazy") == ast::attr(fcv).attributes.end()) {
+    std::vector<llvm::Type*> arg_types;
 
-  llvm::FunctionType* func_type = llvm::FunctionType::get(
-      builder_.getVoidTy(), std::vector<llvm::Type*>(args.size(), builder_.getInt32Ty()), false);
-  llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage);
+    auto parse = [this](auto& x, std::string const& key = "type") {
+      llvm::SMDiagnostic err;
+      auto type_name = ast::attr(x).attributes.at(key);
+      auto t         = llvm::parseType(type_name, err, *module_);
+      if (!t) {
+        llvm::raw_os_ostream stream(std::cerr);
+        err.print("", stream);
+        throw error("Failed to parse type name \"" + type_name + "\"", ast::attr(x).where,
+                    code_range_);
+      }
+      return t;
+    };
+    std::transform(args.begin(), args.end(), std::back_inserter(arg_types), parse);
 
-  auto destv = new value(func, fcv, true);  // is_lazy = true
+    auto ret_type = parse(fcv, "rettype");
 
-  // maybe useless
-  // for (auto const arg : args | boost::adaptors::indexed()) {
-  //   destv->symbols()[ast::val(arg.value())] = nullptr
-  // }
+    llvm::FunctionType* func_type =
+        llvm::FunctionType::get(ret_type, std::vector<llvm::Type*>(arg_types), false);
+    llvm::Function* func =
+        llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, "", module_.get());
 
-  return destv;
+    llvm::BasicBlock* newentry = llvm::BasicBlock::Create(module_->getContext(), "entry", func);
+
+    auto prevScope = thisScope_;
+
+    auto pb = builder_.GetInsertBlock();
+    auto pp = builder_.GetInsertPoint();
+
+    thisScope_ = new value(newentry, fcv);
+    builder_.SetInsertPoint(newentry);
+
+    auto selfptr                    = createGCMalloc(func->getType(), nullptr, "__self");
+    thisScope_->symbols()["__self"] = new value(selfptr, fcv);
+    builder_.CreateStore(func, selfptr);
+
+    auto it = func->getArgumentList().begin();
+    for (auto const& arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
+      auto name = ast::val(arg_name.value());
+      auto aptr = createGCMalloc(arg_types[arg_name.index()], nullptr, name);  // declare arguments
+      thisScope_->symbols()[name] = new value(aptr, arg_name.value());
+      auto tmpval                 = new value(&(*it), arg_name.value());
+      builder_.CreateStore(
+          tmpval->isFundamental() ? static_cast<llvm::Value*>(&(*it)) : builder_.CreateLoad(&(*it)),
+          aptr);
+      delete tmpval;
+      it++;
+    }
+
+    for (auto const& line : ast::val(fcv).second) {
+      boost::apply_visitor(*this, line);
+    }
+
+    if (ret_type->isVoidTy()) {
+      builder_.CreateRetVoid();
+    }
+
+    thisScope_ = prevScope;
+    builder_.SetInsertPoint(pb, pp);
+
+    return new value(func, fcv);
+  } else {  // lazy evaluation route
+    llvm::FunctionType* func_type = llvm::FunctionType::get(
+        builder_.getVoidTy(), std::vector<llvm::Type*>(args.size(), builder_.getInt32Ty()), false);
+    llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage);
+
+    auto destv = new value(func, fcv, true);  // is_lazy = true
+
+    return destv;
+  }
 }
 
 value* translator::operator()(ast::scope const& scv)
