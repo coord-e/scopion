@@ -232,7 +232,8 @@ x3::rule<expression, ast::expr> const expression("expression");
 auto const identifier_p = x3::alpha > *(x3::alnum | '_');
 
 auto const identifier_def =
-    x3::raw[x3::lexeme[identifier_p]][detail::assign_str_as<ast::identifier>];
+    x3::raw[x3::lexeme[identifier_p]][detail::assign_str_as<ast::identifier>] >>
+    *("#" >> identifier >> -(":" > attribute_val))[detail::assign_attr];
 
 auto const variable_def = x3::raw[x3::lexeme[identifier_p]][detail::assign_str_as<ast::variable>];
 
