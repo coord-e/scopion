@@ -7,15 +7,19 @@
 #include "scopion/ast/util.hpp"
 #include "scopion/ast/value.hpp"
 
+#include <llvm/AsmParser/Parser.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/raw_os_ostream.h>
 
 #include <boost/range/adaptor/indexed.hpp>
 
 #include <cassert>
+#include <string>
 #include <vector>
 
 namespace scopion
@@ -64,19 +68,39 @@ value* evaluator::operator()(ast::function const& fcv)
                 ast::attr(fcv).where, translator_.code_range_);
 
   std::vector<std::string> arg_names;
+  std::vector<llvm::Type*> arg_types_from_attr;
   std::transform(ast::val(fcv).first.begin(), ast::val(fcv).first.end(),
-                 std::back_inserter(arg_names), [](auto& x) {
+                 std::back_inserter(arg_names), [&arg_types_from_attr, &fcv, this](auto& x) {
+                   auto it       = ast::attr(x).attributes.find("type");
+                   llvm::Type* t = nullptr;
+                   if (it != ast::attr(x).attributes.end()) {
+                     llvm::SMDiagnostic err;
+                     t = llvm::parseType(it->second, err, *translator_.module_);
+                     if (!t) {
+                       llvm::raw_os_ostream stream(std::cerr);
+                       err.print("", stream);
+                       throw error("Failed to parse type name \"" + it->second + "\"",
+                                   ast::attr(fcv).where, translator_.code_range_);
+                     }
+                   }
+                   arg_types_from_attr.push_back(t);
                    return ast::val(x);  // x(ast::identifier)
                  });
 
   std::vector<llvm::Type*> arg_types;
   std::vector<llvm::Type*> arg_types_for_func;
 
-  for (auto const& arg_value : arguments_) {
-    auto type = arg_value->getLLVM()->getType();
-    if (!arg_value->isLazy())
+  for (auto const& v : arguments_ | boost::adaptors::indexed()) {
+    auto type = v.value()->getLLVM()->getType();
+    auto expt = arg_types_from_attr[v.index()];
+    if (expt)
+      if (expt != type)
+        throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
+                        getNameString(expt) + "\" but supplied \"" + getNameString(type) + "\"",
+                    ast::attr(fcv).where, translator_.code_range_);
+    if (!v.value()->isLazy())
       arg_types_for_func.push_back(type);
-    arg_types.push_back(arg_value->isFundamental() ? type : type->getPointerElementType());
+    arg_types.push_back(v.value()->isFundamental() ? type : type->getPointerElementType());
   }
 
   llvm::FunctionType* func_type =
