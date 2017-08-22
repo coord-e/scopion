@@ -58,10 +58,22 @@ public:
     std::vector<value*> args;
     std::vector<llvm::Value*> args_llvm;
     for (; it != ast::val(op).end(); it++) {
-      auto thev = it == ast::val(op).begin() ? target : boost::apply_visitor(*this, *it);
-      args.push_back(thev);
-      if (!thev->isLazy())
-        args_llvm.push_back(thev->getLLVM());
+      if (ast::isa<ast::arglist>(*it) && target->isStruct()) {  // unpack arglist
+        std::vector<ast::expr> al = ast::val(ast::unpack<ast::arglist>(*it));
+        for (auto const& x : al) {
+          auto thev = boost::apply_visitor(*this, x);
+
+          args.push_back(thev);
+          if (!thev->isLazy())
+            args_llvm.push_back(thev->getLLVM());
+        }
+      } else {
+        auto thev = it == ast::val(op).begin() ? target : boost::apply_visitor(*this, *it);
+
+        args.push_back(thev);
+        if (!thev->isLazy())
+          args_llvm.push_back(thev->getLLVM());
+      }
     }
 
     if (!target->isStruct()) {
