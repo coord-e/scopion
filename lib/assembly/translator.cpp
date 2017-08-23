@@ -203,14 +203,8 @@ value* translator::operator()(ast::pre_variable const& astv)
 
 value* translator::operator()(ast::variable const& astv)
 {
-  try {
-    auto vp = thisScope_->symbols().at(ast::val(astv));
-    vp->setName(ast::val(astv));
-    if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
-      return vp->copy();
-    else
-      return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
-  } catch (std::out_of_range&) {
+  auto it = thisScope_->symbols().find(ast::val(astv));
+  if (it == thisScope_->symbols().end()) {
     if (ast::attr(astv).lval) {
       // not found in symbols & to be assigned -> declaration
       auto vp = new value(nullptr, astv);
@@ -220,8 +214,14 @@ value* translator::operator()(ast::variable const& astv)
       throw error("\"" + ast::val(astv) + "\" has not declared in this scope",
                   ast::attr(astv).where, code_range_);
     }
+  } else {
+    auto vp = it->second;
+    vp->setName(ast::val(astv));
+    if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
+      return vp->copy();
+    else
+      return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
   }
-  assert(false);
 }
 
 value* translator::operator()(ast::identifier const& astv)

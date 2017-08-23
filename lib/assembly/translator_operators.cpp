@@ -364,25 +364,25 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     uint64_t aindex =
         llvm::cast<llvm::ConstantInt>(args[1]->getLLVM())->getValue().getLimitedValue();
     std::string istr = std::to_string(aindex);
-    try {
-      auto ep = args[0]->symbols().at(istr);
-
-      if (!ep->isLazy()) {
-        std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
-        auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
-                                            llvm::ArrayRef<llvm::Value*>(idxList));
-        ep->setLLVM(p);
-      }
-      ep->setName(istr);
-
-      if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
-        return ep->copy();
-      else
-        return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
-    } catch (std::out_of_range&) {
+    auto it          = args[0]->symbols().find(istr);
+    if (it == args[0]->symbols().end()) {
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
     }
+    auto ep = it->second;
+
+    if (!ep->isLazy()) {
+      std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
+      auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                          llvm::ArrayRef<llvm::Value*>(idxList));
+      ep->setLLVM(p);
+    }
+    ep->setName(istr);
+
+    if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
+      return ep->copy();
+    else
+      return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
   } else {  // specifing index with non-constant integer or pointer to pointer
     llvm::Value* ep;
 
