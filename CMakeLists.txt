@@ -79,3 +79,5 @@ if(NOT WITHOUT_TEST)
 endif()
 
 add_subdirectory(utils)
+
+include(cmake/cpack.cmake)
