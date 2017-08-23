@@ -33,7 +33,7 @@ std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr)
   for (auto it = insts.begin(); it != insts.end(); it++) {
     ll = boost::apply_visitor(tr, *it);
   }
-  auto cb = tr.builder_.GetInsertBlock();
+  auto cb = tr.getBuilder().GetInsertBlock();
   return std::make_pair(std::none_of(cb->begin(), cb->end(),
                                      [](auto& i) {
                                        return i.getOpcode() == llvm::Instruction::Ret ||

@@ -35,7 +35,6 @@ class translator : public boost::static_visitor<value*>
   value* thisScope_;
 
   friend struct evaluator;
-  friend std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr);
 
 public:
   translator(std::shared_ptr<llvm::Module>& module,
@@ -108,21 +107,25 @@ public:
   void setScope(value* v) { thisScope_ = v; }
   value* getScope() const { return thisScope_; }
 
+  std::shared_ptr<llvm::Module> getModule() const { return module_; }
+  llvm::IRBuilder<>& getBuilder() const { return builder_; }
+
   value* import(std::string const& path);
   value* importIR(std::string const& path, ast::expr const& astv);
   value* importCHeader(std::string const& path, ast::expr const& astv);
 
-private:
   llvm::Value* createGCMalloc(llvm::Type* Ty,
                               llvm::Value* ArraySize  = nullptr,
                               const llvm::Twine& Name = "");
 
+  llvm::Value* sizeofType(llvm::Type*);
+
+private:
   bool copyFull(value* src,
                 value* dest,
                 std::string const& name,
                 llvm::Value* newv = nullptr,
                 value* defp       = nullptr);
-  llvm::Value* sizeofType(llvm::Type*);
 
   value* apply_op(ast::binary_op<ast::add> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::sub> const&, std::vector<value*> const&);
