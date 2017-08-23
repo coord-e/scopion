@@ -30,6 +30,7 @@ class translator : public boost::static_visitor<value*>
 {
   std::shared_ptr<llvm::Module> module_;
   llvm::IRBuilder<>& builder_;
+  std::map<std::string, std::unique_ptr<llvm::Module>> loaded_map_;
   boost::iterator_range<std::string::const_iterator> const code_range_;
   value* thisScope_;
 
@@ -106,6 +107,10 @@ public:
 
   void setScope(value* v) { thisScope_ = v; }
   value* getScope() const { return thisScope_; }
+
+  value* import(std::string const& path);
+  value* importIR(std::string const& path, ast::expr const& astv);
+  value* importCHeader(std::string const& path, ast::expr const& astv);
 
 private:
   llvm::Value* createGCMalloc(llvm::Type* Ty,

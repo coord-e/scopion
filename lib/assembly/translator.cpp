@@ -40,6 +40,77 @@ translator::translator(std::shared_ptr<llvm::Module>& module,
                               llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
 }
 
+value* translator::import(std::string const& path)
+{
+  std::ifstream ifs(path);
+  if (ifs.fail()) {
+    return nullptr;
+  }
+  std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+  ifs.close();
+  auto parsed = parser::parse(code);
+  translator tr(module_, builder_, parsed.code);
+  return boost::apply_visitor(tr, parsed.ast);
+}
+
+value* translator::importIR(std::string const& path, ast::expr const& astv)
+{
+  std::unique_ptr<llvm::Module> module;
+  if (loaded_map_.count(path) != 0) {
+    module = std::move(loaded_map_[path]);
+  } else {
+    llvm::SMDiagnostic err;
+    module = llvm::parseIRFile(path, err, module_->getContext());
+    if (!module) {
+      llvm::raw_os_ostream stream(std::cerr);
+      err.print(path.c_str(), stream);
+      return nullptr;
+    }
+  }
+  auto destv = new value(nullptr, astv);
+
+  std::vector<llvm::Type*> fields;
+  uint32_t cnt = 0;
+  for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end(); ++i) {
+    // FIXME: find better way to avoid link error (zopen causes link error)
+    if (!i->getName().startswith("_") && !i->getName().startswith("llvm.") &&
+        !i->getName().equals("zopen")) {
+      llvm::Function* func;
+      if (!(func = module_->getFunction(i->getName())))
+        func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
+                                      i->getName(), module_.get());
+      auto vp                              = new value(func, astv);
+      destv->symbols()[i->getName().str()] = vp;
+      destv->fields()[i->getName().str()]  = cnt;
+      cnt++;
+      vp->setParent(destv);
+      fields.push_back(i->getType());
+    }
+  }
+
+  llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
+  structTy->setBody(fields);
+
+  auto ptr = builder_.CreateAlloca(structTy);
+  destv->setLLVM(ptr);
+
+  for (auto const& x : destv->fields()) {
+    auto p = builder_.CreateStructGEP(structTy, ptr, x.second);
+    builder_.CreateStore(destv->symbols()[x.first]->getLLVM(), p);
+    destv->symbols()[x.first]->setLLVM(p);
+  }
+
+  loaded_map_[path] = std::move(module);
+
+  return destv;
+}
+
+value* translator::importCHeader(std::string const& path, ast::expr const& astv)
+{
+  system((std::string("scopion-h2ir ") + path).c_str());
+  return importIR(std::string(getenv("HOME")) + "/.scopion/h2ir/" + path, astv);
+}
+
 value* translator::operator()(ast::value astv)
 {
   return boost::apply_visitor(*this, astv);
@@ -95,55 +166,24 @@ value* translator::operator()(ast::pre_variable const& astv)
     if (name.equals("import")) {
       auto itm = ast::attr(astv).attributes.find("m");
       auto iti = ast::attr(astv).attributes.find("ir");
+      auto its = ast::attr(astv).attributes.find("c");
       if (itm != ast::attr(astv).attributes.end()) {  // found path to module
-        std::ifstream ifs(itm->second);
-        if (ifs.fail()) {
-          throw error("failed to open " + itm->second, ast::attr(astv).where, code_range_);
-        }
-        std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-        ifs.close();
-        auto parsed = parser::parse(code);
-        translator tr(module_, builder_, parsed.code);
-        return boost::apply_visitor(tr, parsed.ast);
+        if (auto v = import(itm->second))
+          return v;
+        else
+          throw error("Failed to open " + itm->second, ast::attr(astv).where, code_range_);
       } else if (iti != ast::attr(astv).attributes.end()) {  // found path to ir
-        llvm::SMDiagnostic err;
-        std::unique_ptr<llvm::Module> module =
-            llvm::parseIRFile(iti->second, err, module_->getContext());
-        if (!module) {
-          llvm::raw_os_ostream stream(std::cerr);
-          err.print(iti->second.c_str(), stream);
+        if (auto v = importIR(iti->second, astv))
+          return v;
+        else
           throw error("Error happened during import of llvm ir", ast::attr(astv).where,
                       code_range_);
-        }
-        std::vector<llvm::Type*> fields;
-        auto destv = new value(nullptr, astv);
-
-        for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end();
-             ++i) {
-          llvm::Function* func;
-          if (!(func = module_->getFunction(i->getName())))
-            func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
-                                          i->getName(), module_.get());
-          auto vp                              = new value(func, astv);
-          destv->symbols()[i->getName().str()] = vp;
-          destv->fields()[i->getName().str()] = std::distance(module->getFunctionList().begin(), i);
-          vp->setParent(destv);
-          fields.push_back(i->getType());
-        }
-
-        llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
-        structTy->setBody(fields);
-
-        auto ptr = builder_.CreateAlloca(structTy);
-        destv->setLLVM(ptr);
-
-        for (auto const& x : destv->fields()) {
-          auto p = builder_.CreateStructGEP(structTy, ptr, x.second);
-          builder_.CreateStore(destv->symbols()[x.first]->getLLVM(), p);
-          destv->symbols()[x.first]->setLLVM(p);
-        }
-
-        return destv;
+      } else if (its != ast::attr(astv).attributes.end()) {  // found path to c header
+        if (auto v = importCHeader(its->second, astv))
+          return v;
+        else
+          throw error("Error happened during import of a c header", ast::attr(astv).where,
+                      code_range_);
       } else {
         throw error("Import path isn't specified", ast::attr(astv).where, code_range_);
       }

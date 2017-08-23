@@ -1,0 +1,26 @@
+#!/bin/bash
+
+INFILE=$1
+CACHEPATH="@SCOPION_CACHE_DIR@/h2ir/"`basename $INFILE`
+
+if [ ! -e "@SCOPION_CACHE_DIR@/h2ir/" ]; then
+  mkdir -p "@SCOPION_CACHE_DIR@/h2ir/"
+fi
+
+if [ ! -e $CACHEPATH ]; then
+
+TMPFILE0=$(mktemp)".c"
+TMPFILE1=$(mktemp)".h"
+TMPFILE2=$(mktemp)".c"
+echo '#include <'$INFILE'>' >> $TMPFILE0
+
+clang -E $TMPFILE0 -o $TMPFILE1
+
+echo '#include <'$INFILE'>' >> $TMPFILE2
+echo 'int main() {' >> $TMPFILE2
+ctags -x --c-kinds=fp $TMPFILE1 | awk '{ print "auto v"NR" = &"$1";" }' >> $TMPFILE2
+echo '}' >> $TMPFILE2
+
+clang $TMPFILE2 -c -S -emit-llvm -o- 2> /dev/null | grep -e 'declare' -e 'type' > $CACHEPATH
+
+fi
