@@ -107,7 +107,7 @@ public:
     _s << "{ ";
     for (auto const& e : ast::val(o)) {
       boost::apply_visitor(*this, e);
-      _s << " " << op_str<Op> << " ";
+      _s << " " << Op::str << " ";
     }
     _s << " }";
     if (attr(o).lval)
@@ -118,7 +118,7 @@ public:
   auto operator()(const ternary_op<T>& o) const -> void
   {
     _s << "{ ";
-    auto ops = op_str<T>;
+    auto ops = T::str;
     boost::apply_visitor(*this, ast::val(o)[0]);
     _s << " " << ops[0] << " ";
     boost::apply_visitor(*this, ast::val(o)[1]);

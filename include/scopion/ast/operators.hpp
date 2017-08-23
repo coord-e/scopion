@@ -11,37 +11,127 @@ namespace scopion
 {
 namespace ast
 {
-struct add;
-struct sub;
-struct mul;
-struct div;
-struct rem;
-struct shl;
-struct shr;
-struct iand;
-struct ior;
-struct ixor;
-struct land;
-struct lor;
-struct eeq;
-struct neq;
-struct gt;
-struct lt;
-struct gtq;
-struct ltq;
-struct assign;
-struct call;
-struct cond;
-struct dot;
-struct at;
-struct odot;
-struct adot;
+struct add {
+  static constexpr auto str             = "+";
+  static constexpr bool is_customizable = true;
+};
+struct sub {
+  static constexpr auto str             = "-";
+  static constexpr bool is_customizable = true;
+};
+struct mul {
+  static constexpr auto str             = "*";
+  static constexpr bool is_customizable = true;
+};
+struct div {
+  static constexpr auto str             = "/";
+  static constexpr bool is_customizable = true;
+};
+struct rem {
+  static constexpr auto str             = "%";
+  static constexpr bool is_customizable = true;
+};
+struct shl {
+  static constexpr auto str             = "<<";
+  static constexpr bool is_customizable = true;
+};
+struct shr {
+  static constexpr auto str             = ">>";
+  static constexpr bool is_customizable = true;
+};
+struct iand {
+  static constexpr auto str             = "&";
+  static constexpr bool is_customizable = true;
+};
+struct ior {
+  static constexpr auto str             = "|";
+  static constexpr bool is_customizable = true;
+};
+struct ixor {
+  static constexpr auto str             = "^";
+  static constexpr bool is_customizable = true;
+};
+struct land {
+  static constexpr auto str             = "&&";
+  static constexpr bool is_customizable = true;
+};
+struct lor {
+  static constexpr auto str             = "||";
+  static constexpr bool is_customizable = true;
+};
+struct eeq {
+  static constexpr auto str             = "==";
+  static constexpr bool is_customizable = true;
+};
+struct neq {
+  static constexpr auto str             = "!=";
+  static constexpr bool is_customizable = true;
+};
+struct gt {
+  static constexpr auto str             = ">";
+  static constexpr bool is_customizable = true;
+};
+struct lt {
+  static constexpr auto str             = "<";
+  static constexpr bool is_customizable = true;
+};
+struct gtq {
+  static constexpr auto str             = ">=";
+  static constexpr bool is_customizable = true;
+};
+struct ltq {
+  static constexpr auto str             = "<=";
+  static constexpr bool is_customizable = true;
+};
+struct assign {
+  static constexpr auto str             = "=";
+  static constexpr bool is_customizable = false;
+};
+struct call {
+  static constexpr auto str             = "()";
+  static constexpr bool is_customizable = true;
+};
+struct cond {
+  static constexpr auto str             = "?:";
+  static constexpr bool is_customizable = false;
+};
+struct dot {
+  static constexpr auto str             = ".";
+  static constexpr bool is_customizable = false;
+};
+struct at {
+  static constexpr auto str             = "[]";
+  static constexpr bool is_customizable = true;
+};
+struct odot {
+  static constexpr auto str             = ".:";
+  static constexpr bool is_customizable = false;
+};
+struct adot {
+  static constexpr auto str             = ".=";
+  static constexpr bool is_customizable = false;
+};
 
-struct ret;
-struct lnot;
-struct inot;
-struct inc;
-struct dec;
+struct ret {
+  static constexpr auto str             = "|>";
+  static constexpr bool is_customizable = false;
+};
+struct lnot {
+  static constexpr auto str             = "!";
+  static constexpr bool is_customizable = true;
+};
+struct inot {
+  static constexpr auto str             = "~";
+  static constexpr bool is_customizable = true;
+};
+struct inc {
+  static constexpr auto str             = "++";
+  static constexpr bool is_customizable = true;
+};
+struct dec {
+  static constexpr auto str             = "--";
+  static constexpr bool is_customizable = true;
+};
 
 template <class Op, size_t N>
 class op_base;

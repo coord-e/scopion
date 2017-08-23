@@ -57,7 +57,7 @@ public:
   value* operator()(ast::struct_key const&);
   value* operator()(ast::scope const&);
 
-  template <typename Op, size_t N>
+  template <typename Op, size_t N, std::enable_if_t<Op::is_customizable>* = nullptr>
   value* operator()(ast::op<Op, N> const& op)
   {
     auto it       = ast::val(op).begin();
@@ -90,9 +90,9 @@ public:
     } else {
       args.push_back(target);
       args_llvm.push_back(target->getLLVM());
-      auto f = target->symbols().find(ast::op_str<Op>);
+      auto f = target->symbols().find(Op::str);
       if (f == target->symbols().end())
-        throw error(std::string("no operator ") + ast::op_str<Op> + " is defined in the structure",
+        throw error(std::string("no operator ") + Op::str + " is defined in the structure",
                     ast::attr(op).where, code_range_);
       auto v         = evaluate(f->second, args, *this);
       auto ret_table = v->getRetTable();
@@ -102,6 +102,15 @@ public:
         destv->applyRetTable(ret_table);
       return destv;
     }
+  }
+
+  template <typename Op, size_t N, std::enable_if_t<!Op::is_customizable>* = nullptr>
+  value* operator()(ast::op<Op, N> const& op)
+  {
+    std::vector<value*> args;
+    std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
+                   [this](auto& o) { return boost::apply_visitor(*this, o); });
+    return apply_op(op, args);
   }
 
   void setScope(value* v) { thisScope_ = v; }
