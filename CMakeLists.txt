@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.8)
+cmake_policy(SET CMP0048 NEW)
 
-project(scopion CXX)
+project(scopion VERSION 0.0.2 LANGUAGES CXX)
 
 set(SCOPION_CACHE_DIR $ENV{HOME}/.scopion)
+
+include(cmake/gitinfo.cmake)
+
+add_subdirectory(include)
 
 if(APPLE)
     set(CMAKE_MACOSX_RPATH 1)
@@ -73,10 +78,4 @@ if(NOT WITHOUT_TEST)
    add_subdirectory(test)
 endif()
 
-configure_file(utils/scopion-h2ir.in utils/scopion-h2ir)
-
-install(DIRECTORY include/ DESTINATION include
-        FILES_MATCHING PATTERN "*.h")
-
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/utils/ DESTINATION bin
-FILE_PERMISSIONS OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ) # 755
+add_subdirectory(utils)
