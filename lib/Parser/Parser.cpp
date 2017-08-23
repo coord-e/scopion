@@ -24,7 +24,7 @@ namespace grammar
 {
 namespace detail
 {
-std::string unescape(std::string const& s)
+static std::string unescape(std::string const& s)
 {
   std::string res;
   auto it = s.begin();

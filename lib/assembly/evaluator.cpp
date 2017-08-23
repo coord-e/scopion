@@ -90,9 +90,9 @@ value* evaluator::operator()(ast::function const& fcv)
   std::vector<llvm::Type*> arg_types;
   std::vector<llvm::Type*> arg_types_for_func;
 
-  for (auto const& v : arguments_ | boost::adaptors::indexed()) {
+  for (auto const v : arguments_ | boost::adaptors::indexed()) {
     auto type = v.value()->getLLVM()->getType();
-    auto expt = arg_types_from_attr[v.index()];
+    auto expt = arg_types_from_attr[static_cast<unsigned long>(v.index())];
     if (expt)
       if (expt != type)
         throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
@@ -119,11 +119,12 @@ value* evaluator::operator()(ast::function const& fcv)
   translator_.getScope()->symbols()["__self"] =
       new value(translator_.createGCMalloc(func->getType(), nullptr, "__self"), fcv);
 
-  for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
-    auto vp = arguments_[arg_name.index()];
+  for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
+    auto ulindex = static_cast<unsigned long>(arg_name.index());
+    auto vp      = arguments_[ulindex];
     if (!vp->isLazy()) {
       translator_.getScope()->symbols()[arg_name.value()] = vp->copyWithNewLLVMValue(
-          translator_.createGCMalloc(arg_types[arg_name.index()], nullptr,
+          translator_.createGCMalloc(arg_types[ulindex], nullptr,
                                      arg_name.value()));  // declare arguments
     } else {
       translator_.getScope()->symbols()[arg_name.value()] = vp;
@@ -198,17 +199,18 @@ value* evaluator::operator()(ast::function const& fcv)
     translator_.getScope()->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(newfunc, selfptr);
 
-    auto it = newfunc->getArgumentList().begin();
-    for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
-      auto argv = arguments_[arg_name.index()];
+    auto ait = newfunc->getArgumentList().begin();
+    for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
+      auto ulindex = static_cast<unsigned long>(arg_name.index());
+      auto argv    = arguments_[ulindex];
       if (!argv->isLazy()) {
-        auto aptr = translator_.createGCMalloc(arg_types[arg_name.index()], nullptr,
+        auto aptr = translator_.createGCMalloc(arg_types[ulindex], nullptr,
                                                arg_name.value());  // declare arguments
         translator_.getScope()->symbols()[arg_name.value()] = argv->copyWithNewLLVMValue(aptr);
-        builder_.CreateStore(
-            argv->isFundamental() ? static_cast<llvm::Value*>(&(*it)) : builder_.CreateLoad(&(*it)),
-            aptr);
-        it++;
+        builder_.CreateStore(argv->isFundamental() ? static_cast<llvm::Value*>(&(*ait))
+                                                   : builder_.CreateLoad(&(*ait)),
+                             aptr);
+        ait++;
       } else {
         // std::cout << arg_name.value() << " is lazy" << std::endl;
         translator_.getScope()->symbols()[arg_name.value()] = argv;

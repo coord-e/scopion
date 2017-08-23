@@ -33,10 +33,10 @@ public:
         uint8_t level = 0)
       : message_(message), level_(level)
   {
-    line_number_ = std::count(code.begin(), where.begin(), '\n');
+    line_number_ = static_cast<uint64_t>(std::count(code.begin(), where.begin(), '\n'));
     auto r       = line_range(where, code);
     line_        = std::string(r.begin(), r.end());
-    distance_    = std::distance(r.begin(), where.begin());
+    distance_    = static_cast<uint64_t>(std::distance(r.begin(), where.begin()));
   }
 
   uint64_t line_number() const { return line_number_; }

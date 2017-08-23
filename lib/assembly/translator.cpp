@@ -129,7 +129,7 @@ value* translator::operator()(ast::integer astv)
   if (ast::attr(astv).to_call)
     throw error("An integer constant is not to be called", ast::attr(astv).where, code_range_);
 
-  return new value(llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(astv)), astv);
+  return new value(llvm::ConstantInt::getSigned(builder_.getInt32Ty(), ast::val(astv)), astv);
 }
 
 value* translator::operator()(ast::boolean astv)
@@ -287,7 +287,7 @@ value* translator::operator()(ast::structure const& astv)
   std::vector<llvm::Type*> fields;
   auto destv = new value(nullptr, astv);
 
-  for (auto const& m : ast::val(astv) | boost::adaptors::indexed()) {
+  for (auto const m : ast::val(astv) | boost::adaptors::indexed()) {
     auto vp                                     = boost::apply_visitor(*this, m.value().second);
     destv->symbols()[ast::val(m.value().first)] = vp;
     vp->setParent(destv);
@@ -368,9 +368,10 @@ value* translator::operator()(ast::function const& fcv)
     builder_.CreateStore(func, selfptr);
 
     auto it = func->getArgumentList().begin();
-    for (auto const& arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
+    for (auto const arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
       auto name = ast::val(arg_name.value());
-      auto aptr = createGCMalloc(arg_types[arg_name.index()], nullptr, name);  // declare arguments
+      auto aptr = createGCMalloc(arg_types[static_cast<unsigned long>(arg_name.index())], nullptr,
+                                 name);  // declare arguments
       thisScope_->symbols()[name] = new value(aptr, arg_name.value());
       auto tmpval                 = new value(&(*it), arg_name.value());
       builder_.CreateStore(

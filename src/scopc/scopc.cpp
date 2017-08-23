@@ -14,7 +14,7 @@
 
 #include "scopion/scopion.hpp"
 
-std::string getTmpFilePath()
+static std::string getTmpFilePath()
 {
   char* tmpname = strdup("/tmp/tmpfileXXXXXX");
   mkstemp(tmpname);
