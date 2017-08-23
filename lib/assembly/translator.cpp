@@ -2,6 +2,7 @@
 #include "scopion/assembly/value.hpp"
 #include "scopion/parser/parser.hpp"
 
+#include "scopion/config.hpp"
 #include "scopion/error.hpp"
 
 #include <llvm/AsmParser/Parser.h>
@@ -108,7 +109,7 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
 value* translator::importCHeader(std::string const& path, ast::expr const& astv)
 {
   system((std::string("scopion-h2ir ") + path).c_str());
-  return importIR(std::string(getenv("HOME")) + "/.scopion/h2ir/" + path, astv);
+  return importIR(std::string(SCOPION_CACHE_DIR) + "/h2ir/" + path, astv);
 }
 
 value* translator::operator()(ast::value astv)

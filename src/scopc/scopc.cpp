@@ -54,7 +54,11 @@ int main(int argc, char* argv[])
 |_______/     \______| \______/  | _|      |__|  \______/  |__| \__|)"
               << rang::style::reset << std::endl
               << std::endl
-              << "scopion compiler version 0.1" << std::endl;
+              << rang::style::bold << rang::fg::green << "[scopc]" << rang::style::reset
+              << ": scopion compiler" << std::endl
+              << "Version: " << SCOPION_VERSION << " Git: " << std::string(SCOPION_COMPILED_BRANCH)
+              << " " << SCOPION_COMPILED_COMMIT_HASH << std::endl
+              << "Compiled on: " << SCOPION_COMPILED_SYSTEM << std::endl;
     return 0;
   }
 
@@ -124,8 +128,8 @@ int main(int argc, char* argv[])
               << rang::style::reset << rang::fg::red << " @" << e.line_number()
               << rang::style::reset << ": " << e.what() << std::endl
               << e.line() << std::endl
-              << rang::fg::green << std::setw(e.distance() + 1) << "^" << rang::style::reset
-              << std::endl;
+              << rang::fg::green << std::setw(static_cast<int>(e.distance()) + 1) << "^"
+              << rang::style::reset << std::endl;
     return -1;
   }
 }

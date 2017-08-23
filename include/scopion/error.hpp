@@ -20,8 +20,8 @@ class error
     auto eol   = std::find(where.begin(), code.end(), '\n');
     return boost::make_iterator_range(sol, eol);
   }
-  uint64_t line_number_;
-  uint64_t distance_;
+  uint32_t line_number_;
+  uint32_t distance_;
   std::string line_;
   std::string message_;
   uint8_t level_;
@@ -33,15 +33,15 @@ public:
         uint8_t level = 0)
       : message_(message), level_(level)
   {
-    line_number_ = static_cast<uint64_t>(std::count(code.begin(), where.begin(), '\n'));
+    line_number_ = static_cast<uint32_t>(std::count(code.begin(), where.begin(), '\n'));
     auto r       = line_range(where, code);
     line_        = std::string(r.begin(), r.end());
-    distance_    = static_cast<uint64_t>(std::distance(r.begin(), where.begin()));
+    distance_    = static_cast<uint32_t>(std::distance(r.begin(), where.begin()));
   }
 
-  uint64_t line_number() const { return line_number_; }
+  uint32_t line_number() const { return line_number_; }
   std::string line() const { return line_; }
-  uint64_t distance() const { return distance_; }
+  uint32_t distance() const { return distance_; }
   uint8_t level() const { return level_; }
   std::string what() const { return message_; }
 };
