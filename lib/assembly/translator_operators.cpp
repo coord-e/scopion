@@ -292,7 +292,8 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
             throw error("Cannot pass a lazy value to c-style functions", ast::attr(op).where,
                         code_range_);
           } else if (functy->getFunctionParamType(static_cast<unsigned>(arg.index())) !=
-                     rv->getLLVM()->getType()) {
+                         rv->getLLVM()->getType() &&
+                     !functy->isFunctionVarArg()) {
             throw error("Type mismatch on argument No." + std::to_string(arg.index()) +
                             ": expected \"" +
                             getNameString(
