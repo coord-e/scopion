@@ -1,0 +1,12 @@
+(argc, argv){
+
+a = 20;
+b = 25;
+
+result = 0;
+
+a > b ? { result = 1; } : { result = 2; };
+
+(@import#c:stdio.h).printf("%d\n",result);
+
+}

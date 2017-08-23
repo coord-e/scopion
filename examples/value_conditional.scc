@@ -1,0 +1,23 @@
+(argc, argv){
+  io = @import#c:stdio.h;
+
+   v0 = true ? "gogogo" : "jojojo";
+  io.printf("%s\n", v0); /* gogogo */
+
+  v1 = false ? 1 : 2;
+  io.printf("%d\n", v1); /* 2 */
+
+  v2_1 = v2_2 = 0;
+  (true ? v2_1 : v2_2) = 10;
+  io.printf("%d\n", v2_1); /* 10 */
+  io.printf("%d\n", v2_2); /* 0 */
+
+  cond = false;
+  /* v2 = cond ? "kok" : 1; error! */
+
+  s = [a: 10, b: 20];
+  ns = s;
+  ns.b = 30;
+  v3 = cond ? s : ns;
+  io.printf("%d\n", v3.b); /* 30 */
+}

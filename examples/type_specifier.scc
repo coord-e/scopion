@@ -1,0 +1,17 @@
+(argc, argv){
+  f = (arg#type:i32, arg2#type:i32){
+    |> arg + arg2;
+  }#rettype:i32;
+
+  pass = (){
+    f = (arg#type:i32){
+      |> arg + 1;
+    }#rettype:i32;
+    |> f;
+  };
+
+  io = @import#c:stdio.h;
+
+  io.printf("%d\n", pass()(5));
+  //f(1, "k"); error!
+}

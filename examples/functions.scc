@@ -1,0 +1,18 @@
+(argc, argv){
+io = @import#c:stdio.h;
+
+a = (a,b, io){io.puts(b);|>a;};
+io.printf("%d\n", a(10, "nice", io));
+io.puts(a("cool", "nice", io));
+
+get = (v, ary){ |>ary[v]; };
+get2 = get;
+io.puts(get(1, ["ko", "go", "jo"]));
+io.printf("%d\n", get2(2, [1, 2, 3]));
+get2 = (v, ary){ |>ary[v-1]; };
+io.printf("%d\n", get2(2, [1, 2, 3]));
+exec = (f, arg, io){ |>f(arg, io); };
+p = (a, io){io.printf("got "); io.printf("%d\n",a); |>a+1;};
+exec(p, 5, io);
+io.printf("%d\n", exec((a, io){|>10+a;},5, io));
+}

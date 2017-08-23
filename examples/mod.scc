@@ -1,0 +1,4 @@
+[
+  value: 0,
+  func: (self) { self.vale = self.value + 1; |>self; },
+]
