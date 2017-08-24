@@ -1,0 +1,34 @@
+(argc, argv){
+  io = @import#c:stdio.h;
+
+  fs = [
+    value: 10,
+    values: ["ko", "jo", "myo"],
+    +: (rhs, this){
+      nv = this;
+      nv.value = rhs.value + this.value;
+      |> nv;
+    },
+    plus: (rhs, this){
+      nv = this;
+      nv.value = rhs.value + this.value;
+      |> nv;
+    },
+    []: (idx, this){
+      nv = this;
+      |> nv.values[idx];
+    },
+    func: (this){ this.value = this.value + 1; |>this; },
+    add: (v, this){ this.value = this.value + v; |>this; },
+  ];
+  fs.=func();
+  io.printf("%d\n", fs.value); /* 11 */
+  fs.=add(10);
+  io.printf("%d\n", fs.value); /* 21 */
+  fs2 = fs;
+  fs2.=add(20);
+  io.printf("%d\n", (fs + fs2).value); /* 62 */
+  io.printf("%d\n", fs.value); /* 21 */
+  io.printf("%d\n", fs2.value); /* 41 */
+  // io.puts(fs[1]); /* jo */
+}

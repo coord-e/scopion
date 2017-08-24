@@ -1,3 +1,24 @@
+/**
+* @file operators.hpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef SCOPION_AST_OPERATORS_H_
 #define SCOPION_AST_OPERATORS_H_
 
@@ -7,46 +28,143 @@
 
 #include <boost/variant.hpp>
 
-namespace scopion {
-namespace ast {
+namespace scopion
+{
+namespace ast
+{
+struct add {
+  static constexpr auto str             = "+";
+  static constexpr bool is_customizable = true;
+};
+struct sub {
+  static constexpr auto str             = "-";
+  static constexpr bool is_customizable = true;
+};
+struct mul {
+  static constexpr auto str             = "*";
+  static constexpr bool is_customizable = true;
+};
+struct div {
+  static constexpr auto str             = "/";
+  static constexpr bool is_customizable = true;
+};
+struct rem {
+  static constexpr auto str             = "%";
+  static constexpr bool is_customizable = true;
+};
+struct shl {
+  static constexpr auto str             = "<<";
+  static constexpr bool is_customizable = true;
+};
+struct shr {
+  static constexpr auto str             = ">>";
+  static constexpr bool is_customizable = true;
+};
+struct iand {
+  static constexpr auto str             = "&";
+  static constexpr bool is_customizable = true;
+};
+struct ior {
+  static constexpr auto str             = "|";
+  static constexpr bool is_customizable = true;
+};
+struct ixor {
+  static constexpr auto str             = "^";
+  static constexpr bool is_customizable = true;
+};
+struct land {
+  static constexpr auto str             = "&&";
+  static constexpr bool is_customizable = true;
+};
+struct lor {
+  static constexpr auto str             = "||";
+  static constexpr bool is_customizable = true;
+};
+struct eeq {
+  static constexpr auto str             = "==";
+  static constexpr bool is_customizable = true;
+};
+struct neq {
+  static constexpr auto str             = "!=";
+  static constexpr bool is_customizable = true;
+};
+struct gt {
+  static constexpr auto str             = ">";
+  static constexpr bool is_customizable = true;
+};
+struct lt {
+  static constexpr auto str             = "<";
+  static constexpr bool is_customizable = true;
+};
+struct gtq {
+  static constexpr auto str             = ">=";
+  static constexpr bool is_customizable = true;
+};
+struct ltq {
+  static constexpr auto str             = "<=";
+  static constexpr bool is_customizable = true;
+};
+struct assign {
+  static constexpr auto str             = "=";
+  static constexpr bool is_customizable = false;
+};
+struct call {
+  static constexpr auto str             = "()";
+  static constexpr bool is_customizable = true;
+};
+struct cond {
+  static constexpr auto str             = "?:";
+  static constexpr bool is_customizable = false;
+};
+struct dot {
+  static constexpr auto str             = ".";
+  static constexpr bool is_customizable = false;
+};
+struct at {
+  static constexpr auto str             = "[]";
+  static constexpr bool is_customizable = true;
+};
+struct odot {
+  static constexpr auto str             = ".:";
+  static constexpr bool is_customizable = false;
+};
+struct adot {
+  static constexpr auto str             = ".=";
+  static constexpr bool is_customizable = false;
+};
 
-struct add;
-struct sub;
-struct mul;
-struct div;
-struct rem;
-struct shl;
-struct shr;
-struct iand;
-struct ior;
-struct ixor;
-struct land;
-struct lor;
-struct eeq;
-struct neq;
-struct gt;
-struct lt;
-struct gtq;
-struct ltq;
-struct assign;
-struct call;
-struct cond;
-struct dot;
-struct at;
+struct ret {
+  static constexpr auto str             = "|>";
+  static constexpr bool is_customizable = false;
+};
+struct lnot {
+  static constexpr auto str             = "!";
+  static constexpr bool is_customizable = true;
+};
+struct inot {
+  static constexpr auto str             = "~";
+  static constexpr bool is_customizable = true;
+};
+struct inc {
+  static constexpr auto str             = "++";
+  static constexpr bool is_customizable = true;
+};
+struct dec {
+  static constexpr auto str             = "--";
+  static constexpr bool is_customizable = true;
+};
 
-struct ret;
-struct load;
-struct lnot;
-struct inot;
-struct inc;
-struct dec;
+template <class Op, size_t N>
+class op_base;
+template <class Op, size_t N>
+using op = value_wrapper<op_base<Op, N>>;
 
-template <class Op, size_t N> struct op_base;
-template <class Op, size_t N> using op = value_wrapper<op_base<Op, N>>;
-
-template <class Op> using single_op = op<Op, 1>;
-template <class Op> using binary_op = op<Op, 2>;
-template <class Op> using ternary_op = op<Op, 3>;
+template <class Op>
+using single_op = op<Op, 1>;
+template <class Op>
+using binary_op = op<Op, 2>;
+template <class Op>
+using ternary_op = op<Op, 3>;
 
 using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<sub>>,
@@ -71,13 +189,14 @@ using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<call>>,
                                  boost::recursive_wrapper<binary_op<at>>,
                                  boost::recursive_wrapper<binary_op<dot>>,
-                                 boost::recursive_wrapper<single_op<load>>,
+                                 boost::recursive_wrapper<binary_op<odot>>,
+                                 boost::recursive_wrapper<binary_op<adot>>,
                                  boost::recursive_wrapper<single_op<lnot>>,
                                  boost::recursive_wrapper<single_op<inot>>,
                                  boost::recursive_wrapper<single_op<inc>>,
                                  boost::recursive_wrapper<single_op<dec>>,
                                  boost::recursive_wrapper<ternary_op<cond>>>;
-}; // namespace ast
-}; // namespace scopion
+};  // namespace ast
+};  // namespace scopion
 
 #endif

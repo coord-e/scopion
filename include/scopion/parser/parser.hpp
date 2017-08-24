@@ -1,22 +1,43 @@
+/**
+* @file parser.hpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef SCOPION_PARSER_H_
 #define SCOPION_PARSER_H_
 
 #include "scopion/ast/ast.hpp"
 
-namespace scopion {
-namespace parser {
-
+namespace scopion
+{
+namespace parser
+{
 struct parsed {
   ast::expr ast;
-  std::string const &code;
-  parsed(ast::expr const &ast_, std::string const &code_)
-      : ast(ast_), code(code_) {}
+  std::string const& code;
+  parsed(ast::expr const& ast_, std::string const& code_) : ast(ast_), code(code_) {}
 };
 
-parsed parse(std::string const &code);
+parsed parse(std::string const& code);
 
-}; // namespace parser
+};  // namespace parser
 
-}; // namespace scopion
+};  // namespace scopion
 
-#endif // SCOPION_PARSER_H_
+#endif  // SCOPION_PARSER_H_

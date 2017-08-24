@@ -47,3 +47,5 @@ desktop.ini
 # CMake Building Directories
 build
 build_debug
+
+include/scopion/config.hpp

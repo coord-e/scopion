@@ -1,0 +1,12 @@
+(argc, argv){
+  io = @import#c:stdio.h;
+
+  function = [
+    value: (arg){ |> arg+10; },
+    (): (arg, a, self){
+      |> self.value(arg + a);
+    }
+  ];
+
+  io.printf("%d\n", function(2, 12));
+}

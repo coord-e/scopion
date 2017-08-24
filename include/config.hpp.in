@@ -1,0 +1,39 @@
+/**
+* @file config.hpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef SCOPION_CONFIG_HPP_
+#define SCOPION_CONFIG_HPP_
+
+#define SCOPION_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define SCOPION_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define SCOPION_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define SCOPION_VERSION_TWEAK @PROJECT_VERSION_TWEAK@
+#define SCOPION_VERSION "@PROJECT_VERSION@"
+
+#define SCOPION_COMPILED_COMPILER "@CMAKE_CXX_COMPILER@"
+#define SCOPION_COMPILED_SYSTEM "@CMAKE_SYSTEM@"
+#define SCOPION_COMPILED_GENERATOR "@CMAKE_GENERATOR@"
+#define SCOPION_COMPILED_COMMIT_HASH "@GIT_COMMIT_HASH@"
+#define SCOPION_COMPILED_BRANCH "@GIT_BRANCH@"
+
+#define SCOPION_CACHE_DIR "@SCOPION_CACHE_DIR@"
+
+#endif

@@ -1,3 +1,25 @@
+/**
+* @file translator_operators.cpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "scopion/assembly/evaluator.hpp"
 #include "scopion/assembly/translator.hpp"
 #include "scopion/assembly/value.hpp"
 
@@ -7,566 +29,600 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
-namespace scopion {
-namespace assembly {
+namespace scopion
+{
+namespace assembly
+{
+llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
+                                        llvm::Value* ArraySize,
+                                        const llvm::Twine& Name)
+{
+  assert(!ArraySize &&
+         "Parameter ArraySize is for compatibility with IRBuilder<>::CreateAlloca. Don't pass any "
+         "value.");
+  std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
+  auto sizelp                       = builder_.CreatePtrToInt(
+      builder_.CreateGEP(
+          Ty, llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(Ty->getPointerTo())),
+          idxList),
+      builder_.getInt64Ty());  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
 
-value_t translator::apply_op(ast::binary_op<ast::add> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateAdd(get_v(lhs), get_v(rhs));
+  std::vector<llvm::Value*> arg_values = {sizelp};
+  return builder_.CreatePointerCast(builder_.CreateCall(module_->getFunction("GC_malloc"),
+                                                        llvm::ArrayRef<llvm::Value*>(arg_values)),
+                                    Ty->getPointerTo(), Name);
 }
 
-value_t translator::apply_op(ast::binary_op<ast::sub> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateSub(get_v(lhs), get_v(rhs));
-}
+bool translator::copyFull(value* src,
+                          value* dest,
+                          std::string const& name,
+                          llvm::Value* newv,
+                          value* defp)
+{
+  auto parent = dest->getParent();
+  auto lval   = newv ? newv : dest->getLLVM();
+  auto rval   = src->getLLVM();
 
-value_t translator::apply_op(ast::binary_op<ast::mul> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateMul(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::div> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateSDiv(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::rem> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateSRem(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::shl> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateShl(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::shr> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateLShr(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::iand> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateAnd(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::ior> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateOr(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::ixor> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateXor(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::land> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateAnd(
-      builder_.CreateICmpNE(get_v(lhs),
-                            llvm::Constant::getNullValue(builder_.getInt1Ty())),
-      builder_.CreateICmpNE(
-          get_v(rhs), llvm::Constant::getNullValue(builder_.getInt1Ty())));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::lor> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateOr(
-      builder_.CreateICmpNE(get_v(lhs),
-                            llvm::Constant::getNullValue(builder_.getInt1Ty())),
-      builder_.CreateICmpNE(
-          get_v(rhs), llvm::Constant::getNullValue(builder_.getInt1Ty())));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::eeq> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpEQ(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::neq> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpNE(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::gt> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSGT(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::lt> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSLT(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::gtq> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSGE(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::ltq> const &op,
-                             value_t const lhs, value_t const rhs) {
-  return builder_.CreateICmpSLE(get_v(lhs), get_v(rhs));
-}
-
-value_t translator::apply_op(ast::binary_op<ast::assign> const &op,
-                             value_t const lhs, value_t const rhs) {
-
-  if (rhs.type() != typeid(llvm::Value *)) { // If rhs is lazy value
-    auto lvar =
-        ast::unpack<ast::variable>(ast::val(op)[0]); // auto6 lvar = not working
-    getSymbols(currentScope_)[ast::val(lvar)] = rhs; // just aliasing
-    return rhs;
-  }
-
-  auto lval = get_v(lhs);
-  auto rval = get_v(rhs);
-  if (!lval) { // first appear in the block (variable declaration)
-    auto lvar =
-        ast::unpack<ast::variable>(ast::val(op)[0]); // auto6 lvar = not working
-    if (rval->getType()->isVoidTy())
-      throw error("Cannot assign the value of void type", ast::attr(op).where,
-                  code_range_);
-    auto lptr = builder_.CreateAlloca(rval->getType(), nullptr, ast::val(lvar));
-    builder_.CreateStore(rval, lptr);
-    getSymbols(currentScope_)[ast::val(lvar)] = lptr;
-    return builder_.CreateLoad(lptr);
-  } else { // assigning
+  if (!src->isLazy()) {
     if (lval->getType()->isPointerTy()) {
-      if (lval->getType()->getPointerElementType() == rval->getType()) {
-        builder_.CreateStore(rval, lval);
+      if ((src->isFundamental() ? lval->getType()->getPointerElementType() : lval->getType()) ==
+          rval->getType()) {
+        if (src->isFundamental()) {
+          builder_.CreateStore(rval, lval);
+        } else {
+          std::vector<llvm::Type*> list;
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt8Ty()->getPointerTo());
+          list.push_back(builder_.getInt64Ty());
+          list.push_back(builder_.getInt32Ty());
+          list.push_back(builder_.getInt1Ty());
+          llvm::Function* fmemcpy =
+              llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
+
+          std::vector<llvm::Value*> arg_values;
+          arg_values.push_back(builder_.CreatePointerCast(lval, builder_.getInt8PtrTy()));
+          arg_values.push_back(builder_.CreatePointerCast(rval, builder_.getInt8PtrTy()));
+          arg_values.push_back(sizeofType(rval->getType()));
+          arg_values.push_back(builder_.getInt32(0));
+          arg_values.push_back(builder_.getInt1(0));
+          builder_.CreateCall(fmemcpy, llvm::ArrayRef<llvm::Value*>(arg_values));
+        }
       } else {
-        throw error(
-            "Cannot assign to different type of value (assigning " +
-                getNameString(rval->getType()) + " into " +
-                getNameString(lval->getType()->getPointerElementType()) + ")",
-            ast::attr(op).where, code_range_);
+        return false;
       }
     } else {
-      throw error("Cannot assign to non-pointer value (" +
-                      getNameString(lval->getType()) + ")",
-                  ast::attr(op).where, code_range_);
+      return false;
     }
-    return builder_.CreateLoad(lval);
   }
+
+  if (name != "") {
+    (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
+        src->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
+  }
+  return true;
 }
 
-value_t translator::apply_op(ast::binary_op<ast::call> const &op, value_t lhs,
-                             value_t const rhs) {
-  if (lhs.type() == typeid(llvm::Value *)) {
-    auto lval = get_v(lhs);
-    if (!lval->getType()->isPointerTy()) {
-      throw error("Cannot call a non-pointer value", ast::attr(op).where,
+llvm::Value* translator::sizeofType(llvm::Type* ptrT)
+{
+  std::vector<llvm::Value*> idxList = {builder_.getInt32(1)};
+  return builder_.CreatePtrToInt(
+      builder_.CreateGEP(ptrT->getPointerElementType(),
+                         llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(ptrT)),
+                         idxList),
+      builder_.getInt64Ty());
+  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
+}
+
+value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::sub> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::mul> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::div> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateSDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::rem> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateSRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::shl> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateShl(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::shr> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateLShr(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::iand> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateAnd(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::ior> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateOr(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::ixor> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateXor(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::land> const& op, std::vector<value*> const& args)
+{
+  return new value(
+      builder_.CreateAnd(builder_.CreateICmpNE(args[0]->getLLVM(),
+                                               llvm::Constant::getNullValue(builder_.getInt1Ty())),
+                         builder_.CreateICmpNE(args[1]->getLLVM(),
+                                               llvm::Constant::getNullValue(builder_.getInt1Ty()))),
+      op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::lor> const& op, std::vector<value*> const& args)
+{
+  return new value(
+      builder_.CreateOr(builder_.CreateICmpNE(args[0]->getLLVM(),
+                                              llvm::Constant::getNullValue(builder_.getInt1Ty())),
+                        builder_.CreateICmpNE(args[1]->getLLVM(),
+                                              llvm::Constant::getNullValue(builder_.getInt1Ty()))),
+      op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::eeq> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateICmpEQ(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::neq> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateICmpNE(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::gt> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateICmpSGT(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::lt> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateICmpSLT(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::gtq> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateICmpSGE(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::ltq> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateICmpSLE(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<value*> const& args)
+{
+  auto lval         = args[0]->getLLVM();
+  auto const rval   = args[1]->getLLVM();
+  auto const parent = args[0]->getParent();
+
+  auto const n = args[0]->getName();
+
+  if (rval->getType()->isVoidTy())
+    throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
+
+  if (!lval) {  // first appear in the block (variable declaration)
+    if (parent) {
+      if (parent->getLLVM()->getType()->isStructTy()) {  // structure
+        // [feature/var-struct-array] Add a member to the structure, store it to
+        // lval, and add args[1] to fields
+        throw error("Variadic structure: This feature is not supported yet", ast::attr(op).where,
+                    code_range_);
+      } else if (parent->getLLVM()->getType()->isArrayTy()) {  // array
+        // [feature/var-struct-array] Add an element to the array, store it to
+        // lval, and add args[1] to fields
+        throw error("Variadic array: This feature is not supported yet", ast::attr(op).where,
+                    code_range_);
+      } else {
+        assert(false);  // unreachable
+      }
+    } else {  // not a member of array or structure
+      assert(ast::val(op)[0].type() == typeid(ast::value) &&
+             "Assigning to operator expression with no parent");
+      lval = createGCMalloc(
+          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
+          nullptr, n);
+    }
+  }
+
+  if (!copyFull(args[1], args[0], n, lval)) {
+    throw error(
+        "Cannot assign to the value of incompatible type (lval: " + getNameString(lval->getType()) +
+            ", rval: " + getNameString(rval->getType()) + ")",
+        ast::attr(op).where, code_range_);
+  }
+  return args[1];
+}
+
+value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<value*> const& args)
+{
+  bool isadot = ast::isa<ast::binary_op<ast::adot>>(ast::val(op)[0]);
+  bool isodot = ast::isa<ast::binary_op<ast::odot>>(ast::val(op)[0]) || isadot;
+  ast::expr op_unpacked;
+  if (isodot) {
+    op_unpacked = isadot ? ast::val(ast::unpack<ast::binary_op<ast::adot>>(ast::val(op)[0]))[0]
+                         : ast::val(ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]))[0];
+  }
+
+  assert(args[1]->isVoid());  // args[1] should be arglist
+
+  if (args[0]->getLLVM()->getType()->isLabelTy()) {
+    if (isodot) {
+      throw error("Calling scope with odot operator is not allowed", ast::attr(op).where,
                   code_range_);
-    } else if (!lval->getType()->getPointerElementType()->isFunctionTy()) {
-      throw error("Cannot call a value which is not a function pointer",
-                  ast::attr(op).where, code_range_);
+    } else if (!ast::val(ast::unpack<ast::arglist>(ast::val(op)[1])).empty()) {
+      throw error("Calling scope with arguments is not allowed", ast::attr(op).where, code_range_);
     } else {
-      auto arglist = ast::unpack<ast::arglist>(ast::val(op)[1]);
-
-      std::vector<llvm::Value *> arg_values;
-
-      std::transform(ast::val(arglist).begin(), ast::val(arglist).end(),
-                     std::back_inserter(arg_values), [this](auto &x) {
-                       return get_v(boost::apply_visitor(*this, x));
-                     });
-      return builder_.CreateCall(lval,
-                                 llvm::ArrayRef<llvm::Value *>(arg_values));
+      return evaluate(args[0], std::vector<value*>{}, *this);
     }
-  }
-  if (lhs.type() == typeid(lazy_value<llvm::Function>))
-    return apply_lazy(boost::get<lazy_value<llvm::Function>>(lhs), op);
-  if (lhs.type() == typeid(lazy_value<llvm::BasicBlock>))
-    return apply_lazy(boost::get<lazy_value<llvm::BasicBlock>>(lhs), op);
+  } else {
+    llvm::Value* tocall;
+    std::vector<llvm::Value*> arg_values;
+    ret_table_t* ret_table = nullptr;
 
-  assert(false);
-  return nullptr;
+    auto arglist = ast::unpack<ast::arglist>(ast::val(op)[1]);
+
+    if (!args[0]->isLazy()) {
+      tocall = args[0]->getLLVM();
+      if (!tocall->getType()->isPointerTy()) {
+        throw error(
+            "Cannot call a non-pointer value (type: " + getNameString(tocall->getType()) + ")",
+            ast::attr(op).where, code_range_);
+      } else if (!tocall->getType()->getPointerElementType()->isFunctionTy()) {
+        throw error("Cannot call a value which is not a function pointer  (type: " +
+                        getNameString(tocall->getType()) + ")",
+                    ast::attr(op).where, code_range_);
+      } else {
+        auto functy = tocall->getType()->getPointerElementType();
+        if (functy->getFunctionNumParams() != ast::val(arglist).size() &&
+            !functy->isFunctionVarArg()) {
+          throw error("The number of arguments doesn't match: required " +
+                          std::to_string(functy->getFunctionNumParams()) + " but supplied " +
+                          std::to_string(ast::val(arglist).size()),
+                      ast::attr(op).where, code_range_);
+        }
+        for (auto const arg : ast::val(arglist) | boost::adaptors::indexed()) {
+          auto rv = boost::apply_visitor(*this, arg.value());
+          if (rv->isLazy()) {
+            throw error("Cannot pass a lazy value to c-style functions", ast::attr(op).where,
+                        code_range_);
+          } else if (functy->getFunctionParamType(static_cast<unsigned>(arg.index())) !=
+                         rv->getLLVM()->getType() &&
+                     !functy->isFunctionVarArg()) {
+            throw error("Type mismatch on argument No." + std::to_string(arg.index()) +
+                            ": expected \"" +
+                            getNameString(
+                                functy->getFunctionParamType(static_cast<unsigned>(arg.index()))) +
+                            "\" but supplied \"" + getNameString(rv->getLLVM()->getType()) + "\"",
+                        ast::attr(op).where, code_range_);
+          } else {
+            arg_values.push_back(rv->getLLVM());
+          }
+        }
+        if (isodot)
+          arg_values.push_back(args[0]->getParent()->getLLVM());
+      }
+    } else {
+      std::vector<value*> vary;
+      for (auto const& argast : ast::val(arglist)) {
+        auto rv = boost::apply_visitor(*this, argast);
+        vary.push_back(rv);
+        if (!rv->isLazy())
+          arg_values.push_back(rv->getLLVM());
+      }
+      if (isodot) {
+        auto ob_parent = boost::apply_visitor(*this, op_unpacked);
+        vary.push_back(ob_parent);
+        arg_values.push_back(ob_parent->getLLVM());
+      }
+
+      auto v    = evaluate(args[0], vary, *this);
+      tocall    = v->getLLVM();
+      ret_table = v->getRetTable();
+    }
+
+    auto destv =
+        new value(builder_.CreateCall(tocall, llvm::ArrayRef<llvm::Value*>(arg_values)), op);
+    if (ret_table)
+      destv->applyRetTable(ret_table);
+
+    if (isadot && !ast::attr(op).survey) {
+      auto lvaled               = ast::set_lval(op_unpacked, true);
+      std::vector<value*> argvs = {boost::apply_visitor(*this, lvaled), destv};
+      /* constructing ast::binary_op with dummy arguments */
+      return apply_op(ast::set_where(ast::binary_op<ast::assign>{{op, op}}, ast::attr(op).where),
+                      argvs);
+    }
+
+    return destv;
+  }
 }
 
-value_t translator::apply_op(ast::binary_op<ast::at> const &op,
-                             value_t const lhs, value_t const rhs) {
-  auto r = get_v(rhs);
+value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value*> const& args)
+{
+  auto r    = args[1]->getLLVM();
   auto rval = r->getType()->isPointerTy() ? builder_.CreateLoad(r) : r;
 
-  auto lval = get_v(lhs);
+  auto lval = args[0]->getLLVM();
 
   if (!rval->getType()->isIntegerTy()) {
-    throw error("Array's index must be integer, not " +
-                    getNameString(rval->getType()),
+    throw error("Array's index must be integer, not " + getNameString(rval->getType()),
                 ast::attr(op).where, code_range_);
   }
   if (!lval->getType()->isPointerTy()) {
-    throw error("Cannot get element from non-pointer type " +
-                    getNameString(lval->getType()),
+    throw error("Cannot get element from non-pointer type " + getNameString(lval->getType()),
                 ast::attr(op).where, code_range_);
   }
 
-  if (!lval->getType()->getPointerElementType()->isArrayTy()) {
-    lval = builder_.CreateLoad(get_v(lval));
-
-    if (!lval->getType()->getPointerElementType()->isArrayTy()) {
-      throw error("Cannot get element from non-array type " +
-                      getNameString(lval->getType()),
-                  ast::attr(op).where, code_range_);
+  if (llvm::isa<llvm::ConstantInt>(args[1]->getLLVM()) &&
+      lval->getType()->getPointerElementType()->isArrayTy()) {
+    uint32_t aindex =
+        static_cast<uint32_t>(llvm::cast<llvm::ConstantInt>(args[1]->getLLVM())
+                                  ->getValue()
+                                  .getLimitedValue(std::numeric_limits<uint32_t>::max()));
+    std::string istr = std::to_string(aindex);
+    auto it          = args[0]->symbols().find(istr);
+    if (it == args[0]->symbols().end()) {
+      throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
+                  code_range_);
     }
-  }
-  // Now lval's type is pointer to array
+    auto ep = it->second;
 
-  std::vector<llvm::Value *> idxList = {builder_.getInt32(0), rval};
-  auto ep =
-      builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
-                                 llvm::ArrayRef<llvm::Value *>(idxList));
-  if (ast::attr(op).lval)
-    return ep;
-  else
-    return builder_.CreateLoad(ep);
+    if (!ep->isLazy()) {
+      std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
+      auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                          llvm::ArrayRef<llvm::Value*>(idxList));
+      ep->setLLVM(p);
+    }
+    ep->setName(istr);
+
+    if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
+      return ep->copy();
+    else
+      return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
+  } else {  // specifing index with non-constant integer or pointer to pointer
+    llvm::Value* ep;
+
+    if (lval->getType()->getPointerElementType()->isArrayTy()) {
+      if (args[0]->symbols().begin()->second->isLazy()) {
+        throw error(
+            "Getting value from an array which contains lazy value with an index "
+            "of non-constant value",
+            ast::attr(op).where, code_range_);
+      }
+
+      std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
+      ep = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                      llvm::ArrayRef<llvm::Value*>(idxList));
+    } else {
+      if (!llvm::GetElementPtrInst::getIndexedType(lval->getType()->getPointerElementType(), rval))
+        throw error("Cannot get element from incompatible type " + getNameString(lval->getType()),
+                    ast::attr(op).where, code_range_);
+      ep = builder_.CreateGEP(lval->getType()->getPointerElementType(), lval, rval);
+    }
+
+    if (ast::attr(op).lval || ep->getType()->getPointerElementType()->isStructTy() ||
+        ep->getType()->getPointerElementType()->isArrayTy())
+      return new value(ep, op);
+    else
+      return new value(builder_.CreateLoad(ep), op);
+  }
 }
 
-value_t translator::apply_op(ast::binary_op<ast::dot> const &op, value_t lhs,
-                             value_t const rhs) {
-  auto lval = get_v(lhs);
+value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<value*> const& args)
+{
+  auto lval = args[0]->getLLVM();
 
-  auto id = ast::val(ast::unpack<ast::identifier>(ast::val(op)[0]));
+  assert(ast::isa<ast::struct_key>(ast::val(op)[1]) && "rhs of dot operator must be a struct key");
+  auto id = ast::val(ast::unpack<ast::struct_key>(ast::val(op)[1]));
 
   if (!lval->getType()->isPointerTy())
-    throw error("Cannot get \"" + id + "\" from non-pointer type " +
-                    getNameString(lval->getType()),
+    throw error("Cannot get \"" + id + "\" from non-pointer type " + getNameString(lval->getType()),
                 ast::attr(op).where, code_range_);
 
-  lval = lval->getType()->getPointerElementType()->isPointerTy()
-             ? builder_.CreateLoad(lval)
-             : lval;
-
-  auto typeString = getNameString(lval->getType());
+  lval = lval->getType()->getPointerElementType()->isPointerTy() ? builder_.CreateLoad(lval) : lval;
 
   if (!lval->getType()->getPointerElementType()->isStructTy())
-    throw error("Cannot get \"" + id + "\" from non-structure type " +
-                    typeString,
-                ast::attr(op).where, code_range_);
+    throw error(
+        "Cannot get \"" + id + "\" from non-structure type " + getNameString(lval->getType()),
+        ast::attr(op).where, code_range_);
 
-  std::string structName;
-  std::copy(typeString.begin() + 1, typeString.end() - 1,
-            std::back_inserter(structName)); // %TYPENAME* -> TYPENAME
-  auto &themap = fields_map[structName];
+  auto elm = args[0]->symbols().find(id);
 
-  auto it = std::find(themap.cbegin(), themap.cend(), id);
-  if (it == themap.end()) {
-    auto structContentStr = getNameString(module_->getTypeByName(structName));
-    throw error("No member named \"" + id + "\" in the structure of" +
-                    structContentStr.erase(0, structContentStr.find("=") + 1),
-                ast::attr(op).where,
-                code_range_); // %TYPENAME = type {...} -> type {...}
+  if (elm == args[0]->symbols().end()) {
+    throw error("No member named \"" + id + "\" in the structure", ast::attr(op).where,
+                code_range_);
   }
 
-  auto ptr = builder_.CreateStructGEP(
-      lval->getType()->getPointerElementType(), lval,
-      static_cast<uint32_t>(std::distance(themap.cbegin(), it)));
+  if (!elm->second->isLazy()) {
+    auto ptr = builder_.CreateStructGEP(lval->getType()->getPointerElementType(), lval,
+                                        args[0]->fields()[id]);
+    elm->second->setLLVM(ptr);
+  }
+  elm->second->setName(id);
 
-  if (ast::attr(op).lval)
-    return ptr;
+  if (ast::attr(op).lval || elm->second->isLazy() || !elm->second->isFundamental())
+    return elm->second->copy();
   else
-    return builder_.CreateLoad(ptr);
+    return elm->second->copyWithNewLLVMValue(builder_.CreateLoad(elm->second->getLLVM()));
 }
 
-value_t translator::apply_op(ast::single_op<ast::load> const &op,
-                             value_t const value) {
-  auto vv = get_v(value);
-  if (!vv->getType()->isPointerTy())
-    throw error("Cannot load from non-pointer type " +
-                    getNameString(vv->getType()),
+value* translator::apply_op(ast::binary_op<ast::odot> const& op, std::vector<value*> const& args)
+{
+  if (!ast::attr(op).to_call)
+    throw error("Objective dot operator without call operator", ast::attr(op).where, code_range_);
+  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
+}
+
+value* translator::apply_op(ast::binary_op<ast::adot> const& op, std::vector<value*> const& args)
+{
+  if (!ast::attr(op).to_call)
+    throw error("Objective dot operator without call operator", ast::attr(op).where, code_range_);
+  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
+}
+
+value* translator::apply_op(ast::single_op<ast::ret> const& op, std::vector<value*> const& args)
+{
+  builder_.CreateRet(args[0]->getLLVM());
+  auto newv = new value();
+  newv->setRetTable(args[0]->generateRetTable());
+  return newv;  // void+rettable
+}
+
+value* translator::apply_op(ast::single_op<ast::lnot> const& op, std::vector<value*> const& args)
+{
+  return new value(
+      builder_.CreateXor(builder_.CreateICmpNE(args[0]->getLLVM(),
+                                               llvm::Constant::getNullValue(builder_.getInt1Ty())),
+                         builder_.getInt32(1)),
+      op);
+}
+
+value* translator::apply_op(ast::single_op<ast::inot> const& op, std::vector<value*> const& args)
+{
+  return new value(builder_.CreateXor(args[0]->getLLVM(), builder_.getInt32(1)), op);
+}
+
+value* translator::apply_op(ast::single_op<ast::inc> const& op, std::vector<value*> const& args)
+{
+  assert(false);  // unreachable
+}
+
+value* translator::apply_op(ast::single_op<ast::dec> const& op, std::vector<value*> const& args)
+{
+  assert(false);  // unreachable
+}
+
+value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<value*> const& args)
+{
+  if (args[0]->isLazy())
+    throw error("Conditional operator with lazy value is not supported", ast::attr(op).where,
+                code_range_);
+
+  if (args[1]->getLLVM()->getType() != args[2]->getLLVM()->getType())
+    throw error("Conditional operator with incompatible value types (lhs: " +
+                    getNameString(args[1]->getLLVM()->getType()) +
+                    ", rhs: " + getNameString(args[2]->getLLVM()->getType()) + ")",
                 ast::attr(op).where, code_range_);
-  return builder_.CreateLoad(vv);
-}
 
-value_t translator::apply_op(ast::single_op<ast::ret> const &op,
-                             value_t const value) {
-  return builder_.CreateRet(get_v(value));
-}
+  if (args[1]->getLLVM()->getType()->isLabelTy()) {
+    llvm::BasicBlock* thenbb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    llvm::BasicBlock* elsebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
 
-value_t translator::apply_op(ast::single_op<ast::lnot> const &op,
-                             value_t const value) {
-  return builder_.CreateXor(
-      builder_.CreateICmpNE(get_v(value),
-                            llvm::Constant::getNullValue(builder_.getInt1Ty())),
-      builder_.getInt32(1));
-}
+    auto pb = builder_.GetInsertBlock();
+    auto pp = builder_.GetInsertPoint();
 
-value_t translator::apply_op(ast::single_op<ast::inot> const &op,
-                             value_t const value) {
-  return builder_.CreateXor(get_v(value), builder_.getInt32(1));
-}
+    auto prevScope = thisScope_;
 
-value_t translator::apply_op(ast::single_op<ast::inc> const &op,
-                             value_t const value) {
-  return builder_.CreateAdd(get_v(value), builder_.getInt32(1));
-}
+    llvm::BasicBlock* mergebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
 
-value_t translator::apply_op(ast::single_op<ast::dec> const &op,
-                             value_t const value) {
-  return builder_.CreateSub(get_v(value), builder_.getInt32(1));
-}
+    bool mergebbShouldBeErased = true;
 
-value_t translator::apply_op(ast::ternary_op<ast::cond> const &op,
-                             value_t const first, value_t const second,
-                             value_t const third) {
+    assert(ast::isa<ast::scope>(args[1]->getAst()) && ast::isa<ast::scope>(args[2]->getAst()) &&
+           "Applying non-scope value as scope");
+    auto secondsc = ast::unpack<ast::scope>(args[1]->getAst());
+    auto thirdsc  = ast::unpack<ast::scope>(args[2]->getAst());
 
-  if (second.type() != typeid(lazy_value<llvm::BasicBlock>) ||
-      third.type() != typeid(lazy_value<llvm::BasicBlock>))
-    throw error("The arguments of ternary operator should be a block",
-                ast::attr(op).where, code_range_);
+    builder_.SetInsertPoint(thenbb);
+    thisScope_ = args[1];
+    if (apply_bb(secondsc, *this).first) {
+      builder_.CreateBr(mergebb);
+      mergebbShouldBeErased &= false;
+    }
 
-  auto secondv = boost::get<lazy_value<llvm::BasicBlock>>(second);
-  auto thirdv = boost::get<lazy_value<llvm::BasicBlock>>(third);
+    builder_.SetInsertPoint(elsebb);
+    thisScope_ = args[2];
+    if (apply_bb(thirdsc, *this).first) {
+      builder_.CreateBr(mergebb);
+      mergebbShouldBeErased &= false;
+    }
 
-  llvm::BasicBlock *thenbb =
-      llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
-                               builder_.GetInsertBlock()->getParent());
-  llvm::BasicBlock *elsebb =
-      llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
-                               builder_.GetInsertBlock()->getParent());
+    thisScope_ = prevScope;
 
-  auto pb = builder_.GetInsertBlock();
-  auto pp = builder_.GetInsertPoint();
+    if (mergebbShouldBeErased)
+      mergebb->eraseFromParent();
 
-  llvm::BasicBlock *mergebb =
-      llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
-                               builder_.GetInsertBlock()->getParent());
+    builder_.SetInsertPoint(pb, pp);
 
-  bool mergebbShouldBeErased = true;
+    builder_.CreateCondBr(args[0]->getLLVM(), thenbb, elsebb);
 
-  auto prevScope = currentScope_;
+    if (!mergebbShouldBeErased)
+      builder_.SetInsertPoint(mergebb);
 
-  builder_.SetInsertPoint(thenbb);
-  secondv.setValue(thenbb);
-  currentScope_ = secondv;
-  if (apply_bb(secondv)) {
+    return new value();  // Void
+  } else {
+    if (args[1]->isLazy() || args[2]->isLazy())
+      throw error("Conditional operator with lazy value is currently not supported",
+                  ast::attr(op).where, code_range_);
+
+    if (!std::equal(args[1]->fields().begin(), args[1]->fields().end(), args[2]->fields().begin(),
+                    args[2]->fields().end(), [](auto& s, auto& t) { return s.first == t.first; })) {
+      throw error("Conditional operator with different fields", ast::attr(op).where, code_range_);
+    }
+
+    auto pb = builder_.GetInsertBlock();
+    auto pp = builder_.GetInsertPoint();
+
+    auto destlv = createGCMalloc(ast::attr(op).lval ? args[1]->getLLVM()->getType()->getPointerTo()
+                                                    : args[1]->getLLVM()->getType());
+
+    llvm::BasicBlock* thenbb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    llvm::BasicBlock* elsebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+    llvm::BasicBlock* mergebb =
+        llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+
+    auto lvaled_then = ast::set_lval(ast::val(op)[1], true);
+    auto lvaled_else = ast::set_lval(ast::val(op)[2], true);
+    value* thenv     = ast::attr(op).lval ? boost::apply_visitor(*this, lvaled_then) : args[1];
+    value* elsev     = ast::attr(op).lval ? boost::apply_visitor(*this, lvaled_else) : args[2];
+
+    builder_.SetInsertPoint(thenbb);
+    builder_.CreateStore(thenv->getLLVM(), destlv);
     builder_.CreateBr(mergebb);
-    mergebbShouldBeErased &= false;
-  }
-
-  builder_.SetInsertPoint(elsebb);
-  thirdv.setValue(elsebb);
-  currentScope_ = thirdv;
-  if (apply_bb(thirdv)) {
+    builder_.SetInsertPoint(elsebb);
+    builder_.CreateStore(elsev->getLLVM(), destlv);
     builder_.CreateBr(mergebb);
-    mergebbShouldBeErased &= false;
-  }
+    builder_.SetInsertPoint(pb, pp);
+    builder_.CreateCondBr(args[0]->getLLVM(), thenbb, elsebb);
 
-  currentScope_ = prevScope;
-
-  if (mergebbShouldBeErased)
-    mergebb->eraseFromParent();
-
-  builder_.SetInsertPoint(pb, pp);
-
-  builder_.CreateCondBr(get_v(first), thenbb, elsebb);
-
-  if (!mergebbShouldBeErased)
     builder_.SetInsertPoint(mergebb);
 
-  return value_t();
+    auto destv       = new value(builder_.CreateLoad(destlv), op);
+    destv->symbols() = args[1]->symbols();
+    destv->fields()  = args[1]->fields();
+    return destv;
+  }
 }
 
-template <typename T>
-llvm::Value *translator::apply_lazy(lazy_value<llvm::BasicBlock> value,
-                                    ast::value_wrapper<T> const &astv) {
-  auto pb = builder_.GetInsertBlock();
-  auto pp = builder_.GetInsertPoint();
-
-  auto nb = llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
-                                     builder_.GetInsertBlock()->getParent());
-
-  auto theblock =
-      llvm::BasicBlock::Create(module_->getContext(), createNewBBName(),
-                               builder_.GetInsertBlock()->getParent());
-  builder_.SetInsertPoint(theblock);
-  value.setValue(theblock);
-  auto prevScope = currentScope_;
-
-  currentScope_ = value;
-  bool non_rb = apply_bb(value);
-  if (non_rb)
-    builder_.CreateBr(nb);
-  else
-    nb->eraseFromParent();
-
-  currentScope_ = prevScope;
-
-  builder_.SetInsertPoint(pb, pp);
-
-  builder_.CreateBr(theblock);
-
-  if (non_rb)
-    builder_.SetInsertPoint(nb);
-
-  return nullptr;
-}
-
-template <typename T>
-llvm::Value *translator::apply_lazy(lazy_value<llvm::Function> value,
-                                    ast::value_wrapper<T> const &astv) {
-  auto arglist = ast::unpack<ast::arglist>(ast::val(astv)[1]);
-  // auto& arglist = not working eh?
-  if (value.getValue()
-          ->getType()
-          ->getPointerElementType()
-          ->getFunctionNumParams() != ast::val(arglist).size())
-    throw error("The number of arguments doesn't match: required " +
-                    std::to_string(value.getValue()
-                                       ->getType()
-                                       ->getPointerElementType()
-                                       ->getFunctionNumParams()) +
-                    " but supplied " + std::to_string(ast::val(arglist).size()),
-                ast::attr(astv).where, code_range_);
-
-  assert(value.symbols.size() == ast::val(arglist).size());
-  std::vector<std::string> arg_names;
-  for (auto const arg : value.symbols | boost::adaptors::indexed()) {
-    std::string::const_iterator it;
-    for (it = arg.value().first.cbegin(); *it != ':'; it++) {
-    }
-    arg_names.push_back(std::string(std::next(it), arg.value().first.cend()));
-  }
-
-  std::vector<value_t> arg_values;
-  std::vector<llvm::Type *> arg_types;
-  std::vector<llvm::Type *> arg_types_for_func;
-
-  std::transform(ast::val(arglist).begin(), ast::val(arglist).end(),
-                 std::back_inserter(arg_values),
-                 [this](auto &x) { return boost::apply_visitor(*this, x); });
-
-  for (auto const &arg_value : arg_values) {
-    auto type = get_v(arg_value)->getType();
-    if (arg_value.type() == typeid(llvm::Value *))
-      arg_types_for_func.push_back(type);
-    arg_types.push_back(type);
-  }
-
-  llvm::FunctionType *func_type =
-      llvm::FunctionType::get(builder_.getVoidTy(), arg_types_for_func, false);
-  llvm::Function *func =
-      llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
-                             value->getName(), module_.get());
-  llvm::BasicBlock *entry =
-      llvm::BasicBlock::Create(module_->getContext(),
-                               "entry_survey", // BasicBlockの名前
-                               func);
-  auto prevScope = currentScope_;
-  currentScope_ = lazy_value<llvm::BasicBlock>(entry, value.getInsts());
-
-  auto pb = builder_.GetInsertBlock();
-  auto pp = builder_.GetInsertPoint();
-
-  builder_.SetInsertPoint(entry); // entryの開始
-
-  getSymbols(currentScope_)["self"] =
-      builder_.CreateAlloca(func->getType(), nullptr, "self");
-
-  for (auto const &arg_name : arg_names | boost::adaptors::indexed()) {
-    if (arg_values[arg_name.index()].type() == typeid(llvm::Value *)) {
-      getSymbols(currentScope_)[arg_name.value()] =
-          builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
-                                arg_name.value()); // declare arguments
-    } else {
-      getSymbols(currentScope_)[arg_name.value()] =
-          arg_values[arg_name.index()];
-    }
-  }
-
-  for (auto const &line : value.getInsts()) {
-    auto e = ast::set_survey(line, true);
-    boost::apply_visitor(*this, e);
-  }
-
-  llvm::Type *ret_type = nullptr;
-  for (auto const &bb : *func) {
-    for (auto itr = bb.getInstList().begin(); itr != bb.getInstList().end();
-         ++itr) {
-      if ((*itr).getOpcode() == llvm::Instruction::Ret) {
-        if ((*itr).getOperand(0)->getType() != ret_type) {
-          if (ret_type == nullptr) {
-            ret_type = (*itr).getOperand(0)->getType();
-          } else {
-            throw error("All return values must have the same type",
-                        ast::attr(astv).where, code_range_);
-          }
-        }
-      }
-    }
-  }
-
-  if (!ret_type) {
-    builder_.CreateRetVoid();
-    ret_type = builder_.getVoidTy();
-  }
-
-  func->eraseFromParent(); // remove old one
-
-  llvm::Function *newfunc;
-  if (ast::attr(astv).survey) {
-    newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, arg_types_for_func, false),
-        llvm::Function::ExternalLinkage);
-  } else { // Create the real content of function if it
-           // isn't in survey
-
-    newfunc = llvm::Function::Create(
-        llvm::FunctionType::get(ret_type, arg_types_for_func, false),
-        llvm::Function::ExternalLinkage, value->getName(), module_.get());
-
-    llvm::BasicBlock *newentry =
-        llvm::BasicBlock::Create(module_->getContext(),
-                                 "entry", // BasicBlockの名前
-                                 newfunc);
-
-    currentScope_ = lazy_value<llvm::BasicBlock>(newentry, value.getInsts());
-    builder_.SetInsertPoint(newentry);
-
-    auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "self");
-    getSymbols(currentScope_)["self"] = selfptr;
-    builder_.CreateStore(newfunc, selfptr);
-
-    auto it = newfunc->getArgumentList().begin();
-    for (auto const &arg_name : arg_names | boost::adaptors::indexed()) {
-      auto argv = arg_values[arg_name.index()];
-      if (argv.type() == typeid(llvm::Value *)) {
-        auto aptr =
-            builder_.CreateAlloca(arg_types[arg_name.index()], nullptr,
-                                  arg_name.value()); // declare arguments
-        getSymbols(currentScope_)[arg_name.value()] = aptr;
-        builder_.CreateStore(&(*it), aptr);
-        it++;
-      } else {
-        std::cout << arg_name.value() << " is lazy" << std::endl;
-        getSymbols(currentScope_)[arg_name.value()] = argv;
-      }
-    }
-
-    for (auto const &line : value.getInsts()) {
-      boost::apply_visitor(*this, line);
-    }
-
-    if (ret_type->isVoidTy()) {
-      builder_.CreateRetVoid();
-    }
-  }
-
-  currentScope_ = prevScope;
-  builder_.SetInsertPoint(pb, pp); // entryを抜ける
-
-  // value.getValue()->eraseFromParent();
-
-  std::vector<llvm::Value *> arg_llvm_values;
-
-  for (auto const &arg_value : arg_values) {
-    if (arg_value.type() == typeid(llvm::Value *))
-      arg_llvm_values.push_back(get_v(arg_value));
-  }
-
-  return builder_.CreateCall(newfunc,
-                             llvm::ArrayRef<llvm::Value *>(arg_llvm_values));
-}
-
-}; // namespace assembly
-}; // namespace scopion
+};  // namespace assembly
+};  // namespace scopion

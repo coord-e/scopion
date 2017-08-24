@@ -1,0 +1,15 @@
+(argc, argv){
+index=1;
+index=index+1;
+func=(arg){
+io = @import#c:stdio.h;
+io.printf("%d\n", arg);
+};
+ary = [1,2,3];
+ary[index]=0;
+func(ary[index]);
+vprocess = (arg){
+|>arg+1;
+};
+func(ary[vprocess(0)]);
+}

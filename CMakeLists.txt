@@ -1,6 +1,32 @@
-cmake_minimum_required(VERSION 3.8)
+# CMakeLists.txt
+#
+# (c) copyright 2017 coord.e
+#
+# This file is part of scopion.
+#
+# scopion is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# scopion is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 
-project(scopion CXX)
+cmake_minimum_required(VERSION 3.8)
+cmake_policy(SET CMP0048 NEW)
+
+project(scopion VERSION 0.0.2 LANGUAGES CXX)
+
+set(SCOPION_CACHE_DIR $ENV{HOME}/.scopion)
+
+include(cmake/gitinfo.cmake)
+
+add_subdirectory(include)
 
 if(APPLE)
     set(CMAKE_MACOSX_RPATH 1)
@@ -11,30 +37,54 @@ if(NOT ENV{LLVM_DIR})
     set(ENV{LLVM_DIR} /usr/local/Cellar/llvm/4.0.0/)
 endif()
 
+if(NOT ENV{Clang_DIR})
+    set(ENV{Clang_DIR} /usr/local/Cellar/llvm/4.0.0/)
+endif()
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Weverything -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50")
-set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0 -fsanitize=address")
+set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Werror -Weverything -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-global-constructors -DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50")
+set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 set(CCMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native")
+
+option(ENABLE_CLANG_TIDY
+  "Enable clang-tidy's diagnosis. This sometimes makes building slow."
+  ON)
+if(ENABLE_CLANG_TIDY)
+  message(STATUS "Enable Clang-Tidy")
+set(CMAKE_CXX_CLANG_TIDY
+    clang-tidy
+      -checks=-*,google-readability-casting
+      -fix
+      -fix-errors
+      -header-filter=${CMAKE_CURRENT_SOURCE_DIR}/include)
+endif()
 
 include_directories(include)
 include_directories(SYSTEM extsrc/include)
 
-find_package(LLVM REQUIRED CONFIG)
-find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(LLVM 4.0 REQUIRED CONFIG)
+find_package(Boost 1.64.0 REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+#set(CLANG_LIBS clang clangAnalysis clangAST clangBasic clangCodeGen clangDriver clangEdit clangFrontend clangLex clangParse clangRewrite clangSema clangSerialization clangTooling)
+set(CLANG_LIBS )
+link_directories($ENV{LLVM_DIR}/lib)
+
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS}) # LLVM headers have a lot of warnings with -Weverything
 add_definitions(${LLVM_DEFINITIONS})
-llvm_map_components_to_libnames(LLVM_LIBRARIES all)
+
+llvm_map_components_to_libnames(LLVM_LIBRARIES core asmparser irreader native support target passes object interpreter)
 
 include_directories(${Boost_INCLUDE_DIRS})
+
+include(cmake/clang-format.cmake)
 
 if(NOT WITHOUT_TEST)
    enable_testing()
@@ -48,5 +98,6 @@ if(NOT WITHOUT_TEST)
    add_subdirectory(test)
 endif()
 
-install(DIRECTORY include/ DESTINATION include
-        FILES_MATCHING PATTERN "*.h")
+add_subdirectory(utils)
+
+include(cmake/cpack.cmake)

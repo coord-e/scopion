@@ -1,0 +1,5 @@
+(argc, argv){
+  io = @import#c:stdio.h;
+  io.printf("Hello,\tWorld.\n");
+  io.printf('Hello,\tWorld.\n');
+}

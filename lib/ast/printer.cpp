@@ -1,21 +1,46 @@
+/**
+* @file printer.cpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "scopion/ast/ast.hpp"
 
-namespace scopion {
-namespace ast {
-
-class printer : boost::static_visitor<void> {
-  std::ostream &_s;
+namespace scopion
+{
+namespace ast
+{
+class printer : boost::static_visitor<void>
+{
+  std::ostream& _s;
 
 public:
-  explicit printer(std::ostream &s) : _s(s) {}
+  explicit printer(std::ostream& s) : _s(s) {}
 
-  auto operator()(const value &v) const -> void {
+  auto operator()(const value& v) const -> void
+  {
     _s << "(";
     boost::apply_visitor(*this, v);
     _s << ")";
   }
 
-  auto operator()(const operators &v) const -> void {
+  auto operator()(const operators& v) const -> void
+  {
     _s << "(";
     boost::apply_visitor(*this, v);
     _s << ")";
@@ -23,15 +48,12 @@ public:
 
   auto operator()(ast::integer val) const -> void { _s << ast::val(val); }
 
-  auto operator()(ast::boolean val) const -> void {
-    _s << std::boolalpha << ast::val(val);
-  }
+  auto operator()(ast::boolean val) const -> void { _s << std::boolalpha << ast::val(val); }
 
-  auto operator()(ast::string const &val) const -> void {
-    _s << "\"" << ast::val(val) << "\"";
-  }
+  auto operator()(ast::string const& val) const -> void { _s << "\"" << ast::val(val) << "\""; }
 
-  auto operator()(variable const &val) const -> void {
+  auto operator()(variable const& val) const -> void
+  {
     _s << ast::val(val);
     if (attr(val).to_call)
       _s << "{}";
@@ -39,30 +61,34 @@ public:
       _s << "(lhs)";
   }
 
-  auto operator()(identifier const &val) const -> void { _s << ast::val(val); }
+  auto operator()(identifier const& val) const -> void { _s << ast::val(val); }
+  auto operator()(struct_key const& val) const -> void { _s << ast::val(val); }
 
-  auto operator()(array const &val) const -> void {
-    auto &&ary = ast::val(val);
+  auto operator()(array const& val) const -> void
+  {
+    auto&& ary = ast::val(val);
     _s << "[ ";
-    for (auto const &i : ary) {
+    for (auto const& i : ary) {
       boost::apply_visitor(*this, i);
       _s << ", ";
     }
     _s << "]";
   }
 
-  auto operator()(arglist const &val) const -> void {
-    auto &&ary = ast::val(val);
-    for (auto const &i : ary) {
+  auto operator()(arglist const& val) const -> void
+  {
+    auto&& ary = ast::val(val);
+    for (auto const& i : ary) {
       boost::apply_visitor(*this, i);
       _s << ", ";
     }
   }
 
-  auto operator()(structure const &val) const -> void {
-    auto &&ary = ast::val(val);
+  auto operator()(structure const& val) const -> void
+  {
+    auto&& ary = ast::val(val);
     _s << "{ ";
-    for (auto const &i : ary) {
+    for (auto const& i : ary) {
       (*this)(i.first);
       _s << ":";
       boost::apply_visitor(*this, i.second);
@@ -71,23 +97,25 @@ public:
     _s << "}";
   }
 
-  auto operator()(function const &val) const -> void {
+  auto operator()(function const& val) const -> void
+  {
     _s << "( ";
-    for (auto const &arg : ast::val(val).first) {
+    for (auto const& arg : ast::val(val).first) {
       (*this)(arg);
       _s << ", ";
     }
     _s << "){ ";
-    for (auto const &line : ast::val(val).second) {
+    for (auto const& line : ast::val(val).second) {
       boost::apply_visitor(*this, line);
       _s << "; ";
     }
     _s << "} ";
   }
 
-  auto operator()(scope const &val) const -> void {
+  auto operator()(scope const& val) const -> void
+  {
     _s << "{ ";
-    for (auto const &line : ast::val(val)) {
+    for (auto const& line : ast::val(val)) {
       boost::apply_visitor(*this, line);
       _s << "; ";
     }
@@ -95,68 +123,39 @@ public:
   }
 
   template <typename Op, size_t N>
-  auto operator()(const op<Op, N> &o) const -> void {
+  auto operator()(const op<Op, N>& o) const -> void
+  {
     _s << "{ ";
-    for (auto const &e : ast::val(o).exprs) {
+    for (auto const& e : ast::val(o)) {
       boost::apply_visitor(*this, e);
-      _s << " " << op_to_str(o) << " ";
+      _s << " " << Op::str << " ";
     }
     _s << " }";
     if (attr(o).lval)
       _s << "(lhs)";
   }
 
-  template <typename T> auto operator()(const ternary_op<T> &o) const -> void {
+  template <typename T>
+  auto operator()(const ternary_op<T>& o) const -> void
+  {
     _s << "{ ";
-    auto ops = op_to_str(o);
+    auto ops = T::str;
     boost::apply_visitor(*this, ast::val(o)[0]);
-    _s << " " << ops.first << " ";
+    _s << " " << ops[0] << " ";
     boost::apply_visitor(*this, ast::val(o)[1]);
-    _s << " " << ops.second << " ";
+    _s << " " << ops[1] << " ";
     boost::apply_visitor(*this, ast::val(o)[2]);
     _s << " }";
     if (attr(o).lval)
       _s << "(lhs)";
   }
+};  // class printer
 
-private:
-  std::string op_to_str(binary_op<add> const &) const { return "+"; }
-  std::string op_to_str(binary_op<sub> const &) const { return "-"; }
-  std::string op_to_str(binary_op<mul> const &) const { return "*"; }
-  std::string op_to_str(binary_op<div> const &) const { return "/"; }
-  std::string op_to_str(binary_op<rem> const &) const { return "%"; }
-  std::string op_to_str(binary_op<shl> const &) const { return "<<"; }
-  std::string op_to_str(binary_op<shr> const &) const { return ">>"; }
-  std::string op_to_str(binary_op<iand> const &) const { return "&"; }
-  std::string op_to_str(binary_op<ior> const &) const { return "|"; }
-  std::string op_to_str(binary_op<ixor> const &) const { return "^"; }
-  std::string op_to_str(binary_op<land> const &) const { return "&&"; }
-  std::string op_to_str(binary_op<lor> const &) const { return "||"; }
-  std::string op_to_str(binary_op<eeq> const &) const { return "=="; }
-  std::string op_to_str(binary_op<neq> const &) const { return "!="; }
-  std::string op_to_str(binary_op<gt> const &) const { return ">"; }
-  std::string op_to_str(binary_op<lt> const &) const { return "<"; }
-  std::string op_to_str(binary_op<gtq> const &) const { return ">="; }
-  std::string op_to_str(binary_op<ltq> const &) const { return "<="; }
-  std::string op_to_str(binary_op<assign> const &) const { return "="; }
-  std::string op_to_str(binary_op<call> const &) const { return "()"; }
-  std::string op_to_str(binary_op<at> const &) const { return "[]"; }
-  std::string op_to_str(binary_op<dot> const &) const { return "."; }
-  std::string op_to_str(single_op<load> const &) const { return "*"; }
-  std::string op_to_str(single_op<ret> const &) const { return "|>"; }
-  std::string op_to_str(single_op<lnot> const &) const { return "!"; }
-  std::string op_to_str(single_op<inot> const &) const { return "~"; }
-  std::string op_to_str(single_op<inc> const &) const { return "++"; }
-  std::string op_to_str(single_op<dec> const &) const { return "--"; }
-  decltype(auto) op_to_str(ternary_op<cond> const &) const {
-    return std::pair<std::string, std::string>("?", ":");
-  }
-}; // class printer
-
-std::ostream &operator<<(std::ostream &os, expr const &tree) {
+std::ostream& operator<<(std::ostream& os, expr const& tree)
+{
   boost::apply_visitor(printer(os), tree);
   return os;
 }
 
-}; // namespace ast
-}; // namespace scopion
+};  // namespace ast
+};  // namespace scopion

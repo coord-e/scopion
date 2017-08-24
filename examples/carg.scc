@@ -1,0 +1,10 @@
+(argc, argv){
+  io = @import#c:stdio.h;
+
+  io.printf("%c\n", "hello"[0]); //h
+  argc > 1 ? {
+    io.printf("%s\n", argv[1]);
+  }:{
+    io.printf("NO\n");
+  };
+}
