@@ -51,7 +51,13 @@ v1.real => 11
 - libgc
 - ctags
 ## Installation
-Prebuilt binaries is made in progress...
+
+### Binary downloads
+- [Debian/Ubuntu](https://github.com/coord-e/scopion/releases/download/v0.0.2/scopion_0.0.2-Linux_x86_64.deb)
+- [Other GNU/Linux](https://github.com/coord-e/scopion/releases/download/v0.0.2/scopion_0.0.2-Linux_x86_64.tar.bz2)
+- [Darwin (macOS)](https://github.com/coord-e/scopion/releases/download/v0.0.2/scopion_0.0.2-Darwin_x86_64.zip)
+
+Or you can [build from source](#build-from-source)
 
 
 ## Enjoy
@@ -81,7 +87,7 @@ git clone https://github.com/coord-e/scopion
 # make build directory and run cmake
 cd scopion
 mkdir build && cd $_
-cmake ..
+cmake .. -DCMAKE_CXX_COMPILER=clang++ # clang++ >=4.0 is required 
 #build and install (this may takes time)
 make -j 4 && make install
 ```
