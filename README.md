@@ -1,3 +1,6 @@
+<div style="text-align:center"><img src ="https://raw.githubusercontent.com/wiki/coord-e/scopion/scopion.png" /></div>
+
+
 # scopion
 scopion is a new programming language with simple syntax.
 
