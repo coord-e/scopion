@@ -1,3 +1,24 @@
+/**
+* @file translator.hpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef SCOPION_ASSEMBLY_TRANSLATOR_H_
 #define SCOPION_ASSEMBLY_TRANSLATOR_H_
 
@@ -35,7 +56,6 @@ class translator : public boost::static_visitor<value*>
   value* thisScope_;
 
   friend struct evaluator;
-  friend std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr);
 
 public:
   translator(std::shared_ptr<llvm::Module>& module,
@@ -58,7 +78,7 @@ public:
   value* operator()(ast::struct_key const&);
   value* operator()(ast::scope const&);
 
-  template <typename Op, size_t N>
+  template <typename Op, size_t N, std::enable_if_t<Op::is_customizable>* = nullptr>
   value* operator()(ast::op<Op, N> const& op)
   {
     auto it       = ast::val(op).begin();
@@ -91,9 +111,9 @@ public:
     } else {
       args.push_back(target);
       args_llvm.push_back(target->getLLVM());
-      auto f = target->symbols().find(ast::op_str<Op>);
+      auto f = target->symbols().find(Op::str);
       if (f == target->symbols().end())
-        throw error(std::string("no operator ") + ast::op_str<Op> + " is defined in the structure",
+        throw error(std::string("no operator ") + Op::str + " is defined in the structure",
                     ast::attr(op).where, code_range_);
       auto v         = evaluate(f->second, args, *this);
       auto ret_table = v->getRetTable();
@@ -105,24 +125,37 @@ public:
     }
   }
 
+  template <typename Op, size_t N, std::enable_if_t<!Op::is_customizable>* = nullptr>
+  value* operator()(ast::op<Op, N> const& op)
+  {
+    std::vector<value*> args;
+    std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
+                   [this](auto& o) { return boost::apply_visitor(*this, o); });
+    return apply_op(op, args);
+  }
+
   void setScope(value* v) { thisScope_ = v; }
   value* getScope() const { return thisScope_; }
+
+  std::shared_ptr<llvm::Module> getModule() const { return module_; }
+  llvm::IRBuilder<>& getBuilder() const { return builder_; }
 
   value* import(std::string const& path);
   value* importIR(std::string const& path, ast::expr const& astv);
   value* importCHeader(std::string const& path, ast::expr const& astv);
 
-private:
   llvm::Value* createGCMalloc(llvm::Type* Ty,
                               llvm::Value* ArraySize  = nullptr,
                               const llvm::Twine& Name = "");
 
+  llvm::Value* sizeofType(llvm::Type*);
+
+private:
   bool copyFull(value* src,
                 value* dest,
                 std::string const& name,
                 llvm::Value* newv = nullptr,
                 value* defp       = nullptr);
-  llvm::Value* sizeofType(llvm::Type*);
 
   value* apply_op(ast::binary_op<ast::add> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::sub> const&, std::vector<value*> const&);

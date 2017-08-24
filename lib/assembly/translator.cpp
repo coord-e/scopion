@@ -1,7 +1,29 @@
+/**
+* @file translator.cpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "scopion/assembly/translator.hpp"
 #include "scopion/assembly/value.hpp"
 #include "scopion/parser/parser.hpp"
 
+#include "scopion/config.hpp"
 #include "scopion/error.hpp"
 
 #include <llvm/AsmParser/Parser.h>
@@ -108,7 +130,7 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
 value* translator::importCHeader(std::string const& path, ast::expr const& astv)
 {
   system((std::string("scopion-h2ir ") + path).c_str());
-  return importIR(std::string(getenv("HOME")) + "/.scopion/h2ir/" + path, astv);
+  return importIR(std::string(SCOPION_CACHE_DIR) + "/h2ir/" + path, astv);
 }
 
 value* translator::operator()(ast::value astv)
@@ -129,7 +151,7 @@ value* translator::operator()(ast::integer astv)
   if (ast::attr(astv).to_call)
     throw error("An integer constant is not to be called", ast::attr(astv).where, code_range_);
 
-  return new value(llvm::ConstantInt::get(builder_.getInt32Ty(), ast::val(astv)), astv);
+  return new value(llvm::ConstantInt::getSigned(builder_.getInt32Ty(), ast::val(astv)), astv);
 }
 
 value* translator::operator()(ast::boolean astv)
@@ -203,14 +225,8 @@ value* translator::operator()(ast::pre_variable const& astv)
 
 value* translator::operator()(ast::variable const& astv)
 {
-  try {
-    auto vp = thisScope_->symbols().at(ast::val(astv));
-    vp->setName(ast::val(astv));
-    if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
-      return vp->copy();
-    else
-      return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
-  } catch (std::out_of_range&) {
+  auto it = thisScope_->symbols().find(ast::val(astv));
+  if (it == thisScope_->symbols().end()) {
     if (ast::attr(astv).lval) {
       // not found in symbols & to be assigned -> declaration
       auto vp = new value(nullptr, astv);
@@ -220,8 +236,14 @@ value* translator::operator()(ast::variable const& astv)
       throw error("\"" + ast::val(astv) + "\" has not declared in this scope",
                   ast::attr(astv).where, code_range_);
     }
+  } else {
+    auto vp = it->second;
+    vp->setName(ast::val(astv));
+    if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
+      return vp->copy();
+    else
+      return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
   }
-  assert(false);
 }
 
 value* translator::operator()(ast::identifier const& astv)
@@ -287,7 +309,7 @@ value* translator::operator()(ast::structure const& astv)
   std::vector<llvm::Type*> fields;
   auto destv = new value(nullptr, astv);
 
-  for (auto const& m : ast::val(astv) | boost::adaptors::indexed()) {
+  for (auto const m : ast::val(astv) | boost::adaptors::indexed()) {
     auto vp                                     = boost::apply_visitor(*this, m.value().second);
     destv->symbols()[ast::val(m.value().first)] = vp;
     vp->setParent(destv);
@@ -368,9 +390,10 @@ value* translator::operator()(ast::function const& fcv)
     builder_.CreateStore(func, selfptr);
 
     auto it = func->getArgumentList().begin();
-    for (auto const& arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
+    for (auto const arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
       auto name = ast::val(arg_name.value());
-      auto aptr = createGCMalloc(arg_types[arg_name.index()], nullptr, name);  // declare arguments
+      auto aptr = createGCMalloc(arg_types[static_cast<unsigned long>(arg_name.index())], nullptr,
+                                 name);  // declare arguments
       thisScope_->symbols()[name] = new value(aptr, arg_name.value());
       auto tmpval                 = new value(&(*it), arg_name.value());
       builder_.CreateStore(
@@ -414,55 +437,6 @@ value* translator::operator()(ast::scope const& scv)
   destv->symbols().insert(thisScope_->symbols().begin(), thisScope_->symbols().end());
 
   return destv;
-}
-
-template <>
-value* translator::operator()(ast::op<ast::odot, 2> const& op)
-{
-  std::vector<value*> args;
-  std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
-                 [this](auto& o) { return boost::apply_visitor(*this, o); });
-  return apply_op(op, args);
-}
-template <>
-value* translator::operator()(ast::op<ast::adot, 2> const& op)
-{
-  std::vector<value*> args;
-  std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
-                 [this](auto& o) { return boost::apply_visitor(*this, o); });
-  return apply_op(op, args);
-}
-template <>
-value* translator::operator()(ast::op<ast::assign, 2> const& op)
-{
-  std::vector<value*> args;
-  std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
-                 [this](auto& o) { return boost::apply_visitor(*this, o); });
-  return apply_op(op, args);
-}
-template <>
-value* translator::operator()(ast::op<ast::dot, 2> const& op)
-{
-  std::vector<value*> args;
-  std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
-                 [this](auto& o) { return boost::apply_visitor(*this, o); });
-  return apply_op(op, args);
-}
-template <>
-value* translator::operator()(ast::op<ast::ret, 1> const& op)
-{
-  std::vector<value*> args;
-  std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
-                 [this](auto& o) { return boost::apply_visitor(*this, o); });
-  return apply_op(op, args);
-}
-template <>
-value* translator::operator()(ast::op<ast::cond, 3> const& op)
-{
-  std::vector<value*> args;
-  std::transform(ast::val(op).begin(), ast::val(op).end(), std::back_inserter(args),
-                 [this](auto& o) { return boost::apply_visitor(*this, o); });
-  return apply_op(op, args);
 }
 
 };  // namespace assembly

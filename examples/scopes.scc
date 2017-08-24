@@ -1,0 +1,12 @@
+(argc, argv){
+
+io = @import#c:stdio.h;
+
+ret = {
+io.printf("%d\n", 1+1);
+[a: 1, b: 5];
+}();
+
+io.printf("%d\n", ret.b);
+
+}

@@ -1,3 +1,24 @@
+/**
+* @file translator_operators.cpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "scopion/assembly/evaluator.hpp"
 #include "scopion/assembly/translator.hpp"
 #include "scopion/assembly/value.hpp"
@@ -8,8 +29,7 @@
 
 #include <algorithm>
 #include <iostream>
-
-#include <csignal>
+#include <limits>
 
 namespace scopion
 {
@@ -286,7 +306,7 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
                           std::to_string(ast::val(arglist).size()),
                       ast::attr(op).where, code_range_);
         }
-        for (auto const& arg : ast::val(arglist) | boost::adaptors::indexed()) {
+        for (auto const arg : ast::val(arglist) | boost::adaptors::indexed()) {
           auto rv = boost::apply_visitor(*this, arg.value());
           if (rv->isLazy()) {
             throw error("Cannot pass a lazy value to c-style functions", ast::attr(op).where,
@@ -332,11 +352,11 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
       destv->applyRetTable(ret_table);
 
     if (isadot && !ast::attr(op).survey) {
-      auto lvaled              = ast::set_lval(op_unpacked, true);
-      std::vector<value*> args = {boost::apply_visitor(*this, lvaled), destv};
+      auto lvaled               = ast::set_lval(op_unpacked, true);
+      std::vector<value*> argvs = {boost::apply_visitor(*this, lvaled), destv};
       /* constructing ast::binary_op with dummy arguments */
       return apply_op(ast::set_where(ast::binary_op<ast::assign>{{op, op}}, ast::attr(op).where),
-                      args);
+                      argvs);
     }
 
     return destv;
@@ -361,28 +381,30 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
 
   if (llvm::isa<llvm::ConstantInt>(args[1]->getLLVM()) &&
       lval->getType()->getPointerElementType()->isArrayTy()) {
-    uint64_t aindex =
-        llvm::cast<llvm::ConstantInt>(args[1]->getLLVM())->getValue().getLimitedValue();
+    uint32_t aindex =
+        static_cast<uint32_t>(llvm::cast<llvm::ConstantInt>(args[1]->getLLVM())
+                                  ->getValue()
+                                  .getLimitedValue(std::numeric_limits<uint32_t>::max()));
     std::string istr = std::to_string(aindex);
-    try {
-      auto ep = args[0]->symbols().at(istr);
-
-      if (!ep->isLazy()) {
-        std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
-        auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
-                                            llvm::ArrayRef<llvm::Value*>(idxList));
-        ep->setLLVM(p);
-      }
-      ep->setName(istr);
-
-      if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
-        return ep->copy();
-      else
-        return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
-    } catch (std::out_of_range&) {
+    auto it          = args[0]->symbols().find(istr);
+    if (it == args[0]->symbols().end()) {
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
                   code_range_);
     }
+    auto ep = it->second;
+
+    if (!ep->isLazy()) {
+      std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
+      auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
+                                          llvm::ArrayRef<llvm::Value*>(idxList));
+      ep->setLLVM(p);
+    }
+    ep->setName(istr);
+
+    if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
+      return ep->copy();
+    else
+      return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
   } else {  // specifing index with non-constant integer or pointer to pointer
     llvm::Value* ep;
 

@@ -17,8 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.8)
 
-add_subdirectory(assembly)
-# add_subdirectory(ast)
-add_subdirectory(parser)
+configure_file(config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/scopion/config.hpp)
+
+install(DIRECTORY . DESTINATION include
+FILES_MATCHING PATTERN "*.hpp")

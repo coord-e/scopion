@@ -1,3 +1,23 @@
+/**
+* @file evaluator.cpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include "scopion/assembly/evaluator.hpp"
 #include "scopion/assembly/translator.hpp"
@@ -33,7 +53,7 @@ std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr)
   for (auto it = insts.begin(); it != insts.end(); it++) {
     ll = boost::apply_visitor(tr, *it);
   }
-  auto cb = tr.builder_.GetInsertBlock();
+  auto cb = tr.getBuilder().GetInsertBlock();
   return std::make_pair(std::none_of(cb->begin(), cb->end(),
                                      [](auto& i) {
                                        return i.getOpcode() == llvm::Instruction::Ret ||
@@ -90,9 +110,9 @@ value* evaluator::operator()(ast::function const& fcv)
   std::vector<llvm::Type*> arg_types;
   std::vector<llvm::Type*> arg_types_for_func;
 
-  for (auto const& v : arguments_ | boost::adaptors::indexed()) {
+  for (auto const v : arguments_ | boost::adaptors::indexed()) {
     auto type = v.value()->getLLVM()->getType();
-    auto expt = arg_types_from_attr[v.index()];
+    auto expt = arg_types_from_attr[static_cast<unsigned long>(v.index())];
     if (expt)
       if (expt != type)
         throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
@@ -119,11 +139,12 @@ value* evaluator::operator()(ast::function const& fcv)
   translator_.getScope()->symbols()["__self"] =
       new value(translator_.createGCMalloc(func->getType(), nullptr, "__self"), fcv);
 
-  for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
-    auto vp = arguments_[arg_name.index()];
+  for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
+    auto ulindex = static_cast<unsigned long>(arg_name.index());
+    auto vp      = arguments_[ulindex];
     if (!vp->isLazy()) {
       translator_.getScope()->symbols()[arg_name.value()] = vp->copyWithNewLLVMValue(
-          translator_.createGCMalloc(arg_types[arg_name.index()], nullptr,
+          translator_.createGCMalloc(arg_types[ulindex], nullptr,
                                      arg_name.value()));  // declare arguments
     } else {
       translator_.getScope()->symbols()[arg_name.value()] = vp;
@@ -198,17 +219,18 @@ value* evaluator::operator()(ast::function const& fcv)
     translator_.getScope()->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(newfunc, selfptr);
 
-    auto it = newfunc->getArgumentList().begin();
-    for (auto const& arg_name : arg_names | boost::adaptors::indexed()) {
-      auto argv = arguments_[arg_name.index()];
+    auto ait = newfunc->getArgumentList().begin();
+    for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
+      auto ulindex = static_cast<unsigned long>(arg_name.index());
+      auto argv    = arguments_[ulindex];
       if (!argv->isLazy()) {
-        auto aptr = translator_.createGCMalloc(arg_types[arg_name.index()], nullptr,
+        auto aptr = translator_.createGCMalloc(arg_types[ulindex], nullptr,
                                                arg_name.value());  // declare arguments
         translator_.getScope()->symbols()[arg_name.value()] = argv->copyWithNewLLVMValue(aptr);
-        builder_.CreateStore(
-            argv->isFundamental() ? static_cast<llvm::Value*>(&(*it)) : builder_.CreateLoad(&(*it)),
-            aptr);
-        it++;
+        builder_.CreateStore(argv->isFundamental() ? static_cast<llvm::Value*>(&(*ait))
+                                                   : builder_.CreateLoad(&(*ait)),
+                             aptr);
+        ait++;
       } else {
         // std::cout << arg_name.value() << " is lazy" << std::endl;
         translator_.getScope()->symbols()[arg_name.value()] = argv;

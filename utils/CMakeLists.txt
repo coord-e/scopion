@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.6)
 
-add_subdirectory(assembly)
-# add_subdirectory(ast)
-add_subdirectory(parser)
+configure_file(scopion-h2ir.in ${CMAKE_CURRENT_BINARY_DIR}/scopion-h2ir)
+
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/scopion-h2ir DESTINATION bin)

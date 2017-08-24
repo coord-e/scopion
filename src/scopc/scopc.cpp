@@ -1,3 +1,24 @@
+/**
+* @file scopc.cpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <cstdio>
 #include <fstream>
 #include <functional>
@@ -14,7 +35,7 @@
 
 #include "scopion/scopion.hpp"
 
-std::string getTmpFilePath()
+static std::string getTmpFilePath()
 {
   char* tmpname = strdup("/tmp/tmpfileXXXXXX");
   mkstemp(tmpname);
@@ -54,7 +75,11 @@ int main(int argc, char* argv[])
 |_______/     \______| \______/  | _|      |__|  \______/  |__| \__|)"
               << rang::style::reset << std::endl
               << std::endl
-              << "scopion compiler version 0.1" << std::endl;
+              << rang::style::bold << rang::fg::green << "[scopc]" << rang::style::reset
+              << ": scopion compiler" << std::endl
+              << "Version: " << SCOPION_VERSION << " Git: " << std::string(SCOPION_COMPILED_BRANCH)
+              << " " << SCOPION_COMPILED_COMMIT_HASH << std::endl
+              << "Compiled on: " << SCOPION_COMPILED_SYSTEM << std::endl;
     return 0;
   }
 
@@ -124,8 +149,8 @@ int main(int argc, char* argv[])
               << rang::style::reset << rang::fg::red << " @" << e.line_number()
               << rang::style::reset << ": " << e.what() << std::endl
               << e.line() << std::endl
-              << rang::fg::green << std::setw(e.distance() + 1) << "^" << rang::style::reset
-              << std::endl;
+              << rang::fg::green << std::setw(static_cast<int>(e.distance()) + 1) << "^"
+              << rang::style::reset << std::endl;
     return -1;
   }
 }

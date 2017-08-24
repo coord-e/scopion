@@ -1,0 +1,11 @@
+(argc, argv){
+  io = @import#c:stdio.h;
+
+  int = 0;
+  int++;
+  io.printf("%d\n", int); // 1
+  io.printf("%d\n", ++int); // 2
+  int--;
+  io.printf("%d\n", int); // 1
+  io.printf("%d\n", --int); // 0
+}

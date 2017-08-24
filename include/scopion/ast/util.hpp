@@ -1,3 +1,24 @@
+/**
+* @file util.hpp
+*
+* (c) copyright 2017 coord.e
+*
+* This file is part of scopion.
+*
+* scopion is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* scopion is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with scopion.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef SCOPION_AST_UTIL_H_
 #define SCOPION_AST_UTIL_H_
 
@@ -13,70 +34,6 @@ namespace scopion
 {
 namespace ast
 {
-template <typename Op>
-static constexpr auto op_str = "";
-
-template <>
-static constexpr auto op_str<add> = "+";
-template <>
-static constexpr auto op_str<sub> = "-";
-template <>
-static constexpr auto op_str<mul> = "*";
-template <>
-static constexpr auto op_str<div> = "/";
-template <>
-static constexpr auto op_str<rem> = "%";
-template <>
-static constexpr auto op_str<shl> = "<<";
-template <>
-static constexpr auto op_str<shr> = ">>";
-template <>
-static constexpr auto op_str<iand> = "&";
-template <>
-static constexpr auto op_str<ior> = "|";
-template <>
-static constexpr auto op_str<ixor> = "^";
-template <>
-static constexpr auto op_str<land> = "&&";
-template <>
-static constexpr auto op_str<lor> = "||";
-template <>
-static constexpr auto op_str<eeq> = "==";
-template <>
-static constexpr auto op_str<neq> = "!=";
-template <>
-static constexpr auto op_str<gt> = ">";
-template <>
-static constexpr auto op_str<lt> = "<";
-template <>
-static constexpr auto op_str<gtq> = ">=";
-template <>
-static constexpr auto op_str<ltq> = "<=";
-template <>
-static constexpr auto op_str<assign> = "=";
-template <>
-static constexpr auto op_str<call> = "()";
-template <>
-static constexpr auto op_str<at> = "[]";
-template <>
-static constexpr auto op_str<dot> = ".";
-template <>
-static constexpr auto op_str<odot> = ".:";
-template <>
-static constexpr auto op_str<adot> = ".=";
-template <>
-static constexpr auto op_str<ret> = "|>";
-template <>
-static constexpr auto op_str<lnot> = "!";
-template <>
-static constexpr auto op_str<inot> = "~";
-template <>
-static constexpr auto op_str<inc> = "++";
-template <>
-static constexpr auto op_str<dec> = "--";
-template <>
-static constexpr auto op_str<cond> = "?:";
-
 template <typename T>
 T& val(value_wrapper<T>& w)
 {

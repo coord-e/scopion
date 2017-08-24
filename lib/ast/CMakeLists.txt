@@ -19,6 +19,8 @@
 
 cmake_minimum_required(VERSION 2.8)
 
-add_subdirectory(assembly)
-# add_subdirectory(ast)
-add_subdirectory(parser)
+file(GLOB files *.cpp)
+
+add_library(ast STATIC ${files})
+
+target_link_libraries(ast ${Boost_LIBRARIES})

@@ -1,0 +1,72 @@
+(argc, argv){
+  p = [
+    io: @import#c:stdio.h,
+    printn: (int, self){
+      self.io.printf("%d\n", int);
+    },
+  ];
+  a = 0;
+  p.:printn(a); /* 0 */
+  a = 10;
+  p.:printn(a); /* 10 */
+
+  b = a;
+  a = 0;
+  p.:printn(b); /* 10 */
+
+  s = [
+  child: [
+    a: 1,
+  ],
+    a: 0,
+  ];
+  p.:printn(s.a); /* 0 */
+  p.:printn(s.child.a); /* 1 */
+  s.a = 10;
+  s.child.a = 20;
+  p.:printn(s.a); /* 10 */
+  p.:printn(s.child.a); /* 20 */
+
+  ns = s;
+  s.a = 20;
+  s.child.a = 30;
+  p.:printn(ns.a); /* 10 */
+  p.:printn(ns.child.a); /* 20 */
+
+  fs = [
+    a: 120,
+    f: (int){ |>int+1; },
+  ];
+  fs.f(1);
+  func = (struc){ |> struc.f(struc.a); };
+  p.:printn(func(fs)); /* 121 */
+
+  ar = [0, 1, 2, 3];
+  p.:printn(ar[0]); /* 0 */
+  p.:printn(ar[1]); /* 1 */
+  ar[0] = 10;
+  ar[1] = 20;
+  p.:printn(ar[0]); /* 10 */
+  p.:printn(ar[1]); /* 20 */
+
+  arr = ar;
+  ar[0] = 20;
+  ar[1] = 30;
+  p.:printn(arr[0]); /* 10 */
+  p.:printn(arr[1]); /* 20 */
+
+  i = 0;
+  p.:printn(ar[i]); /* 20 */
+  i = i + 1;
+  p.:printn(ar[i]); /* 30 */
+
+  fary = [(io){io.printf("v1\n");}, (io){io.printf("v1\n");}];
+  fary[0](p.io); /* v1 */
+  fary[0 + 1](p.io); /* v2 */
+  /* fary[i](p.io); error! */
+
+  ss = s;
+  ns = ss;
+  ss.a = 90;
+  p.:printn(ns.a); /* 20 */
+}

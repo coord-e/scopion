@@ -1,5 +1,5 @@
 /**
-* @file assembly.hpp
+* @file config.hpp
 *
 * (c) copyright 2017 coord.e
 *
@@ -19,13 +19,21 @@
 * along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SCOPION_ASSEMBLY_H_
-#define SCOPION_ASSEMBLY_H_
+#ifndef SCOPION_CONFIG_HPP_
+#define SCOPION_CONFIG_HPP_
 
-#include "scopion/assembly/context.hpp"
-#include "scopion/assembly/evaluator.hpp"
-#include "scopion/assembly/module.hpp"
-#include "scopion/assembly/translator.hpp"
-#include "scopion/assembly/value.hpp"
+#define SCOPION_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define SCOPION_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define SCOPION_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define SCOPION_VERSION_TWEAK @PROJECT_VERSION_TWEAK@
+#define SCOPION_VERSION "@PROJECT_VERSION@"
 
-#endif  // SCOPION_ASSEMBLY_H_
+#define SCOPION_COMPILED_COMPILER "@CMAKE_CXX_COMPILER@"
+#define SCOPION_COMPILED_SYSTEM "@CMAKE_SYSTEM@"
+#define SCOPION_COMPILED_GENERATOR "@CMAKE_GENERATOR@"
+#define SCOPION_COMPILED_COMMIT_HASH "@GIT_COMMIT_HASH@"
+#define SCOPION_COMPILED_BRANCH "@GIT_BRANCH@"
+
+#define SCOPION_CACHE_DIR "@SCOPION_CACHE_DIR@"
+
+#endif

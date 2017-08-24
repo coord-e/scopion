@@ -1,4 +1,4 @@
-# CMakeLists.txt
+# gitinfo.cmake - get and store about current state of git
 #
 # (c) copyright 2017 coord.e
 #
@@ -17,8 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.6)
 
-add_subdirectory(assembly)
-# add_subdirectory(ast)
-add_subdirectory(parser)
+execute_process(
+  COMMAND git rev-parse --abbrev-ref HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_BRANCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+  COMMAND git log -1 --format=%h
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
