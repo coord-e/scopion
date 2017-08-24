@@ -67,19 +67,20 @@ endif()
 include_directories(include)
 include_directories(SYSTEM extsrc/include)
 
-find_package(LLVM REQUIRED CONFIG)
-find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(LLVM 4.0 REQUIRED CONFIG)
+find_package(Boost 1.64.0 REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-set(CLANG_LIBS clang clangAnalysis clangAST clangBasic clangCodeGen clangDriver clangEdit clangFrontend clangLex clangParse clangRewrite clangSema clangSerialization clangTooling)
+#set(CLANG_LIBS clang clangAnalysis clangAST clangBasic clangCodeGen clangDriver clangEdit clangFrontend clangLex clangParse clangRewrite clangSema clangSerialization clangTooling)
+set(CLANG_LIBS )
 link_directories($ENV{LLVM_DIR}/lib)
 
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS}) # LLVM headers have a lot of warnings with -Weverything
 add_definitions(${LLVM_DEFINITIONS})
 
-llvm_map_components_to_libnames(LLVM_LIBRARIES all)
+llvm_map_components_to_libnames(LLVM_LIBRARIES core asmparser irreader native support target passes object interpreter)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
