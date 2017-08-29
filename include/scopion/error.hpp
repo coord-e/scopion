@@ -23,10 +23,14 @@
 #define SCOPION_ERROR_H_
 
 #include <algorithm>
+#include <iomanip>
+#include <iostream>
 
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/range/iterator_range.hpp>
+
+#include "rang.hpp"
 
 namespace scopion
 {
@@ -54,7 +58,7 @@ public:
         uint8_t level = 0)
       : message_(message), level_(level)
   {
-    line_number_ = static_cast<uint32_t>(std::count(code.begin(), where.begin(), '\n'));
+    line_number_ = static_cast<uint32_t>(std::count(code.begin(), where.begin(), '\n')) + 1;
     auto r       = line_range(where, code);
     line_        = std::string(r.begin(), r.end());
     distance_    = static_cast<uint32_t>(std::distance(r.begin(), where.begin()));
@@ -66,6 +70,17 @@ public:
   uint8_t level() const { return level_; }
   std::string what() const { return message_; }
 };
+
+template <class Char, class Traits>
+std::basic_ostream<Char, Traits>& operator<<(std::basic_ostream<Char, Traits>& os, const error& e)
+{
+  return os << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+            << rang::style::reset << rang::fg::red << " @" << e.line_number() << rang::style::reset
+            << ": " << e.what() << std::endl
+            << e.line() << std::endl
+            << rang::fg::green << std::setw(static_cast<int>(e.distance()) + 1) << "^"
+            << rang::style::reset;
+}
 
 };  // namespace scopion
 

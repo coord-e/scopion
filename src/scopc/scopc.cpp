@@ -22,7 +22,6 @@
 #include <cstdio>
 #include <fstream>
 #include <functional>
-#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -109,7 +108,7 @@ int main(int argc, char* argv[])
 
     if (outtype == "ast") {
       std::ofstream f(outpath);
-      f << ast.ast;
+      f << ast.ast << std::endl;
       f.close();
       return 0;
     }
@@ -145,12 +144,7 @@ int main(int argc, char* argv[])
 
     system(("gcc " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
   } catch (scopion::error const& e) {
-    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-              << rang::style::reset << rang::fg::red << " @" << e.line_number()
-              << rang::style::reset << ": " << e.what() << std::endl
-              << e.line() << std::endl
-              << rang::fg::green << std::setw(static_cast<int>(e.distance()) + 1) << "^"
-              << rang::style::reset << std::endl;
+    std::cerr << e << std::endl;
     return -1;
   }
 }

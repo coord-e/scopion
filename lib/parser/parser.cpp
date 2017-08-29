@@ -19,9 +19,9 @@
 * along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "scopion/parser/parser.hpp"
 #include "scopion/ast/ast.hpp"
 #include "scopion/error.hpp"
-#include "scopion/parser/parser.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/fusion/include/at.hpp>
