@@ -117,27 +117,47 @@ llvm::Value* translator::sizeofType(llvm::Type* ptrT)
 
 value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::sub> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::mul> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::div> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateSDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateSDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::rem> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateSRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateSRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::shl> const& op, std::vector<value*> const& args)

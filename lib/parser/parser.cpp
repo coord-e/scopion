@@ -233,6 +233,8 @@ struct assign_expr;
 struct ret_expr;
 struct expression;
 
+x3::real_parser<double, x3::strict_real_policies<double>> const strict_double;
+
 x3::rule<variable, ast::expr> const variable("variable");
 x3::rule<pre_variable, ast::expr> const pre_variable("pre-defined variable");
 x3::rule<struct_key, ast::expr> const struct_key("struct key");
@@ -303,15 +305,16 @@ auto const attribute_val_def = x3::raw[x3::lexeme[*(x3::alnum | x3::char_("_\\-.
                                       [detail::assign_str_as<ast::attribute_val>];
 
 auto const primary_def =
-    x3::int_[detail::assign_as<ast::integer>] | x3::bool_[detail::assign_as<ast::boolean>] |
-    string[detail::assign] | raw_string[detail::assign] | variable[detail::assign] |
-    pre_variable[detail::assign] | structure[detail::assign] | array[detail::assign] |
-    function[detail::assign] | scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
+    strict_double[detail::assign_as<ast::decimal>] | x3::int_[detail::assign_as<ast::integer>] |
+    x3::bool_[detail::assign_as<ast::boolean>] | string[detail::assign] |
+    raw_string[detail::assign] | variable[detail::assign] | pre_variable[detail::assign] |
+    structure[detail::assign] | array[detail::assign] | function[detail::assign] |
+    scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
                           *((".:" > struct_key)[detail::assign_op<ast::odot, 2>] |
                             (".=" > struct_key)[detail::assign_op<ast::adot, 2>] |
-                            ("." > struct_key)[detail::assign_op<ast::dot, 2>]);
+                            ("." >> struct_key)[detail::assign_op<ast::dot, 2>]);
 
 auto const attr_expr_def = dot_expr[detail::assign] >>
                            *("#" >> identifier >> -(":" > attribute_val))[detail::assign_attr];

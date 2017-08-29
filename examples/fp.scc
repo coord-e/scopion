@@ -1,0 +1,6 @@
+(argc, argv){
+  io = @import#c:stdio.h;
+  fp = 0.01;
+  fp2 = 0.2;
+  io.printf("%f\n", fp + fp2); // 0.21
+}

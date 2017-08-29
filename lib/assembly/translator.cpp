@@ -154,6 +154,17 @@ value* translator::operator()(ast::integer astv)
   return new value(llvm::ConstantInt::getSigned(builder_.getInt32Ty(), ast::val(astv)), astv);
 }
 
+value* translator::operator()(ast::decimal astv)
+{
+  if (ast::attr(astv).lval)
+    throw error("An integer constant is not to be assigned", ast::attr(astv).where, code_range_);
+
+  if (ast::attr(astv).to_call)
+    throw error("An integer constant is not to be called", ast::attr(astv).where, code_range_);
+
+  return new value(llvm::ConstantFP::get(builder_.getDoubleTy(), ast::val(astv)), astv);
+}
+
 value* translator::operator()(ast::boolean astv)
 {
   if (ast::attr(astv).lval)

@@ -66,6 +66,7 @@ public:
   value* operator()(ast::operators);
 
   value* operator()(ast::integer);
+  value* operator()(ast::decimal);
   value* operator()(ast::boolean);
   value* operator()(ast::string const&);
   value* operator()(ast::pre_variable const&);

@@ -37,6 +37,7 @@ namespace ast
 struct expr;
 
 using integer = value_wrapper<int>;
+using decimal = value_wrapper<double>;
 using boolean = value_wrapper<bool>;
 using string  = value_wrapper<std::string>;
 struct variable : string {
@@ -66,6 +67,7 @@ struct scope : array {
 };
 
 using value = boost::variant<integer,
+                             decimal,
                              boolean,
                              boost::recursive_wrapper<string>,
                              boost::recursive_wrapper<variable>,
