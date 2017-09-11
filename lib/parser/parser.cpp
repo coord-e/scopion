@@ -218,6 +218,7 @@ struct attr_expr;
 struct call_expr;
 struct pre_sinop_expr;
 struct post_sinop_expr;
+struct pow_expr;
 struct mul_expr;
 struct add_expr;
 struct shift_expr;
@@ -253,6 +254,7 @@ x3::rule<attr_expr, ast::expr> const attr_expr("expression");
 x3::rule<call_expr, ast::expr> const call_expr("expression");
 x3::rule<pre_sinop_expr, ast::expr> const pre_sinop_expr("expression");
 x3::rule<post_sinop_expr, ast::expr> const post_sinop_expr("expression");
+x3::rule<pow_expr, ast::expr> const pow_expr("expression");
 x3::rule<mul_expr, ast::expr> const mul_expr("expression");
 x3::rule<add_expr, ast::expr> const add_expr("expression");
 x3::rule<shift_expr, ast::expr> const shift_expr("expression");
@@ -334,9 +336,12 @@ auto const pre_sinop_expr_def = post_sinop_expr[detail::assign] |
                                 ("++" > post_sinop_expr)[detail::assign_op<ast::inc, 1>] |
                                 ("--" > post_sinop_expr)[detail::assign_op<ast::dec, 1>];
 
-auto const mul_expr_def = pre_sinop_expr[detail::assign] >>
-                          *(("*" > pre_sinop_expr)[detail::assign_op<ast::mul, 2>] |
-                            ("/" > pre_sinop_expr)[detail::assign_op<ast::div, 2>]);
+auto const pow_expr_def = pre_sinop_expr[detail::assign] >>
+                          *(("**" > pre_sinop_expr)[detail::assign_op<ast::pow, 2>]);
+
+auto const mul_expr_def = pow_expr[detail::assign] >>
+                          *(("*" > pow_expr)[detail::assign_op<ast::mul, 2>] |
+                            ("/" > pow_expr)[detail::assign_op<ast::div, 2>]);
 
 auto const add_expr_def = mul_expr[detail::assign] >>
                           *(("+" > mul_expr)[detail::assign_op<ast::add, 2>] |
@@ -399,6 +404,7 @@ BOOST_SPIRIT_DEFINE(pre_variable,
                     call_expr,
                     pre_sinop_expr,
                     post_sinop_expr,
+                    pow_expr,
                     mul_expr,
                     shift_expr,
                     cmp_expr,

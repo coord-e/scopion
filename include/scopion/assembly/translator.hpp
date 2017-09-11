@@ -160,6 +160,7 @@ private:
 
   value* apply_op(ast::binary_op<ast::add> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::sub> const&, std::vector<value*> const&);
+  value* apply_op(ast::binary_op<ast::pow> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::mul> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::div> const&, std::vector<value*> const&);
   value* apply_op(ast::binary_op<ast::rem> const&, std::vector<value*> const&);

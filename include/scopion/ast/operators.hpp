@@ -40,6 +40,10 @@ struct sub {
   static constexpr auto str             = "-";
   static constexpr bool is_customizable = true;
 };
+struct pow {
+  static constexpr auto str             = "**";
+  static constexpr bool is_customizable = true;
+};
 struct mul {
   static constexpr auto str             = "*";
   static constexpr bool is_customizable = true;
@@ -168,6 +172,7 @@ using ternary_op = op<Op, 3>;
 
 using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<sub>>,
+                                 boost::recursive_wrapper<binary_op<pow>>,
                                  boost::recursive_wrapper<binary_op<mul>>,
                                  boost::recursive_wrapper<binary_op<div>>,
                                  boost::recursive_wrapper<binary_op<rem>>,

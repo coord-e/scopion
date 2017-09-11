@@ -133,6 +133,28 @@ value* translator::apply_op(ast::binary_op<ast::sub> const& op, std::vector<valu
     return new value(builder_.CreateFSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
+value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<value*> const& args)
+{
+  std::vector<llvm::Type*> list;
+  llvm::Value* lv;
+  if (args[0]->getLLVM()->getType()->isDoubleTy())
+    lv = args[0]->getLLVM();
+  else
+    lv = builder_.CreateSIToFP(args[0]->getLLVM(), builder_.getDoubleTy());
+
+  list.push_back(lv->getType());
+  list.push_back(args[1]->getLLVM()->getType());
+  llvm::Function* fpow = llvm::Intrinsic::getDeclaration(
+      module_.get(),
+      args[1]->getLLVM()->getType()->isIntegerTy() ? llvm::Intrinsic::powi : llvm::Intrinsic::pow,
+      list);
+
+  std::vector<llvm::Value*> arg_values;
+  arg_values.push_back(lv);
+  arg_values.push_back(args[1]->getLLVM());
+  return new value(builder_.CreateCall(fpow, llvm::ArrayRef<llvm::Value*>(arg_values)), op);
+}
+
 value* translator::apply_op(ast::binary_op<ast::mul> const& op, std::vector<value*> const& args)
 {
   if (std::none_of(args.begin(), args.end(),
