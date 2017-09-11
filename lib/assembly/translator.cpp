@@ -95,8 +95,7 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
   uint32_t cnt = 0;
   for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end(); ++i) {
     // FIXME: find better way to avoid link error (zopen causes link error)
-    if (!i->getName().startswith("_") && !i->getName().startswith("llvm.") &&
-        !i->getName().equals("zopen")) {
+    if (!i->getName().startswith("llvm.")) {
       llvm::Function* func;
       if (!(func = module_->getFunction(i->getName())))
         func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
@@ -129,8 +128,9 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
 
 value* translator::importCHeader(std::string const& path, ast::expr const& astv)
 {
-  system((std::string("scopion-h2ir ") + path).c_str());
-  return importIR(std::string(SCOPION_CACHE_DIR) + "/h2ir/" + path, astv);
+  auto h2irpath = std::string(SCOPION_CACHE_DIR) + "/h2ir";
+  system(("bash " + h2irpath + "/scopion-h2ir " + path).c_str());
+  return importIR(h2irpath + "/cache/" + path, astv);
 }
 
 value* translator::operator()(ast::value astv)
