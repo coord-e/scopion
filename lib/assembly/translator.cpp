@@ -279,7 +279,7 @@ value* translator::operator()(ast::array const& astv)
   auto t         = ast::val(astv).empty() ? builder_.getVoidTy() : firstelem->getLLVM()->getType();
   t              = firstelem->isFundamental() ? t : t->getPointerElementType();
   auto aryType   = llvm::ArrayType::get(t, ast::val(astv).size());
-  auto aryPtr    = createGCMalloc(aryType);  // Allocate necessary memory
+  auto aryPtr    = builder_.CreateAlloca(aryType);  // Allocate necessary memory
   auto destv     = new value(aryPtr, astv);
 
   std::vector<value*> values;
@@ -333,7 +333,7 @@ value* translator::operator()(ast::structure const& astv)
   llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
   structTy->setBody(fields);
 
-  auto ptr = createGCMalloc(structTy);
+  auto ptr = builder_.CreateAlloca(structTy);
   destv->setLLVM(ptr);
 
   uint32_t i = 0;
@@ -396,15 +396,16 @@ value* translator::operator()(ast::function const& fcv)
     thisScope_ = new value(newentry, fcv);
     builder_.SetInsertPoint(newentry);
 
-    auto selfptr                    = createGCMalloc(func->getType(), nullptr, "__self");
+    auto selfptr                    = builder_.CreateAlloca(func->getType(), nullptr, "__self");
     thisScope_->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(func, selfptr);
 
     auto it = func->getArgumentList().begin();
     for (auto const arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
       auto name = ast::val(arg_name.value());
-      auto aptr = createGCMalloc(arg_types[static_cast<unsigned long>(arg_name.index())], nullptr,
-                                 name);  // declare arguments
+      auto aptr =
+          builder_.CreateAlloca(arg_types[static_cast<unsigned long>(arg_name.index())], nullptr,
+                                name);  // declare arguments
       thisScope_->symbols()[name] = new value(aptr, arg_name.value());
       auto tmpval                 = new value(&(*it), arg_name.value());
       builder_.CreateStore(

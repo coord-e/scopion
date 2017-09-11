@@ -137,15 +137,15 @@ value* evaluator::operator()(ast::function const& fcv)
   builder_.SetInsertPoint(entry);
 
   translator_.getScope()->symbols()["__self"] =
-      new value(translator_.createGCMalloc(func->getType(), nullptr, "__self"), fcv);
+      new value(builder_.CreateAlloca(func->getType(), nullptr, "__self"), fcv);
 
   for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
     auto ulindex = static_cast<unsigned long>(arg_name.index());
     auto vp      = arguments_[ulindex];
     if (!vp->isLazy()) {
-      translator_.getScope()->symbols()[arg_name.value()] = vp->copyWithNewLLVMValue(
-          translator_.createGCMalloc(arg_types[ulindex], nullptr,
-                                     arg_name.value()));  // declare arguments
+      translator_.getScope()->symbols()[arg_name.value()] =
+          vp->copyWithNewLLVMValue(builder_.CreateAlloca(arg_types[ulindex], nullptr,
+                                                         arg_name.value()));  // declare arguments
     } else {
       translator_.getScope()->symbols()[arg_name.value()] = vp;
     }
@@ -215,7 +215,7 @@ value* evaluator::operator()(ast::function const& fcv)
     translator_.setScope(new value(newentry, fcv));
     builder_.SetInsertPoint(newentry);
 
-    auto selfptr = translator_.createGCMalloc(newfunc->getType(), nullptr, "__self");
+    auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "__self");
     translator_.getScope()->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(newfunc, selfptr);
 
@@ -224,8 +224,8 @@ value* evaluator::operator()(ast::function const& fcv)
       auto ulindex = static_cast<unsigned long>(arg_name.index());
       auto argv    = arguments_[ulindex];
       if (!argv->isLazy()) {
-        auto aptr = translator_.createGCMalloc(arg_types[ulindex], nullptr,
-                                               arg_name.value());  // declare arguments
+        auto aptr = builder_.CreateAlloca(arg_types[ulindex], nullptr,
+                                          arg_name.value());  // declare arguments
         translator_.getScope()->symbols()[arg_name.value()] = argv->copyWithNewLLVMValue(aptr);
         builder_.CreateStore(argv->isFundamental() ? static_cast<llvm::Value*>(&(*ait))
                                                    : builder_.CreateLoad(&(*ait)),

@@ -262,11 +262,15 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
         assert(false);  // unreachable
       }
     } else {  // not a member of array or structure
-      assert(ast::val(op)[0].type() == typeid(ast::value) &&
-             "Assigning to operator expression with no parent");
-      lval = createGCMalloc(
-          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
-          nullptr, n);
+      assert(ast::isa<ast::variable>(ast::val(op)[0]) &&
+             "Assigning to non-variable expression with no parent");
+      auto va = ast::unpack<ast::variable>(ast::val(op)[0]);
+      auto thety =
+          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType();
+      if (ast::attr(va).attributes.count("heap"))
+        lval = createGCMalloc(thety, nullptr, n);
+      else
+        lval = builder_.CreateAlloca(thety, nullptr, n);
     }
   }
 
@@ -611,8 +615,9 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
     auto pb = builder_.GetInsertBlock();
     auto pp = builder_.GetInsertPoint();
 
-    auto destlv = createGCMalloc(ast::attr(op).lval ? args[1]->getLLVM()->getType()->getPointerTo()
-                                                    : args[1]->getLLVM()->getType());
+    auto destlv =
+        builder_.CreateAlloca(ast::attr(op).lval ? args[1]->getLLVM()->getType()->getPointerTo()
+                                                 : args[1]->getLLVM()->getType());
 
     llvm::BasicBlock* thenbb =
         llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
