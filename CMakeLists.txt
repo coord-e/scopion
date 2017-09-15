@@ -22,7 +22,8 @@ cmake_policy(SET CMP0048 NEW)
 
 project(scopion VERSION 0.0.2 LANGUAGES CXX)
 
-set(SCOPION_CACHE_DIR $ENV{HOME}/.scopion)
+set(SCOPION_ETC_DIR ${CMAKE_INSTALL_PREFIX}/etc/scopion)
+set(SCOPION_CACHE_DIR .scopion)
 
 include(cmake/gitinfo.cmake)
 

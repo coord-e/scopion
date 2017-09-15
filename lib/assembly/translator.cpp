@@ -128,9 +128,9 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
 
 value* translator::importCHeader(std::string const& path, ast::expr const& astv)
 {
-  auto h2irpath = std::string(SCOPION_CACHE_DIR) + "/h2ir";
-  system(("bash " + h2irpath + "/scopion-h2ir " + path).c_str());
-  return importIR(h2irpath + "/cache/" + path, astv);
+  auto h2irpath = std::string(std::getenv("HOME")) + "/" SCOPION_CACHE_DIR "/h2ir/";
+  system((std::string("bash " SCOPION_ETC_DIR "/h2ir/scopion-h2ir ") + path).c_str());
+  return importIR(h2irpath + path, astv);
 }
 
 value* translator::operator()(ast::value astv)
