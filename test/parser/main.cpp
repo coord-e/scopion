@@ -59,8 +59,8 @@ TEST_F(parserTest, structVal)
   EXPECT_EQ(parser::parse("(){[a:10,b:\"koko\"];}").ast,
             ast::expr(ast::function({{},
                                      std::vector<ast::expr>{ast::structure(
-                                         {{ast::identifier("a"), ast::integer(10)},
-                                          {ast::identifier("b"), ast::string("koko")}})}})));
+                                         {{ast::struct_key("a"), ast::integer(10)},
+                                          {ast::struct_key("b"), ast::string("koko")}})}})));
 }
 
 TEST_F(parserTest, arrayVal)
