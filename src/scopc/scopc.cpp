@@ -142,7 +142,8 @@ int main(int argc, char* argv[])
     if (outtype == "asm")
       return 0;
 
-    system(("gcc " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
+    system(
+        ("clang " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
   } catch (scopion::error const& e) {
     std::cerr << e << std::endl;
     return -1;
