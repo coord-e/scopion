@@ -35,11 +35,7 @@ if(APPLE)
 endif()
 
 if(NOT ENV{LLVM_DIR})
-    set(ENV{LLVM_DIR} /usr/local/Cellar/llvm/4.0.0/)
-endif()
-
-if(NOT ENV{Clang_DIR})
-    set(ENV{Clang_DIR} /usr/local/Cellar/llvm/4.0.0/)
+    set(ENV{LLVM_DIR} /usr/local/opt/llvm/)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -74,8 +70,6 @@ find_package(Boost 1.64.0 REQUIRED)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-#set(CLANG_LIBS clang clangAnalysis clangAST clangBasic clangCodeGen clangDriver clangEdit clangFrontend clangLex clangParse clangRewrite clangSema clangSerialization clangTooling)
-set(CLANG_LIBS )
 link_directories($ENV{LLVM_DIR}/lib)
 
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS}) # LLVM headers have a lot of warnings with -Weverything

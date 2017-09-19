@@ -23,4 +23,4 @@ file(GLOB files *.cpp)
 
 add_library(assembly STATIC ${files})
 
-target_link_libraries(assembly ${CLANG_LIBS} ${LLVM_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(assembly ${LLVM_LIBRARIES} ${Boost_LIBRARIES})
