@@ -64,7 +64,7 @@ endif()
 include_directories(include)
 include_directories(SYSTEM extsrc/include)
 
-find_package(LLVM 4.0 REQUIRED CONFIG)
+find_package(LLVM 5.0 REQUIRED CONFIG)
 find_package(Boost 1.64.0 REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

@@ -66,9 +66,9 @@ std::unique_ptr<module> module::create(parser::parsed const& tree,
 
   std::vector<llvm::Value*> arg_llvm_values;
   std::vector<value*> arg_values;
-  for (auto& x : main_func->getArgumentList()) {
-    arg_llvm_values.push_back(&x);
-    arg_values.push_back(new value(&x, ast::expr{}));
+  for (auto it = main_func->arg_begin(); it != main_func->arg_end(); it++) {
+    arg_llvm_values.push_back(it);
+    arg_values.push_back(new value(it, ast::expr{}));
   }
 
   llvm::Value* ret = builder.CreateCall(evaluate(val, arg_values, tr)->getLLVM(),
@@ -95,7 +95,7 @@ void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
   llvm::PassManagerBuilder builder;
   builder.OptLevel           = optLevel;
   builder.SizeLevel          = sizeLevel;
-  builder.Inliner            = llvm::createFunctionInliningPass(optLevel, sizeLevel);
+  builder.Inliner            = llvm::createFunctionInliningPass(optLevel, sizeLevel, true);
   builder.DisableUnitAtATime = false;
   builder.DisableUnrollLoops = false;
   builder.LoopVectorize      = true;

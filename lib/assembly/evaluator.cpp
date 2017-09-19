@@ -219,7 +219,7 @@ value* evaluator::operator()(ast::function const& fcv)
     translator_.getScope()->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(newfunc, selfptr);
 
-    auto ait = newfunc->getArgumentList().begin();
+    auto ait = newfunc->arg_begin();
     for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
       auto ulindex = static_cast<unsigned long>(arg_name.index());
       auto argv    = arguments_[ulindex];

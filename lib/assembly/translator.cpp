@@ -400,7 +400,7 @@ value* translator::operator()(ast::function const& fcv)
     thisScope_->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(func, selfptr);
 
-    auto it = func->getArgumentList().begin();
+    auto it = func->arg_begin();
     for (auto const arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
       auto name = ast::val(arg_name.value());
       auto aptr =

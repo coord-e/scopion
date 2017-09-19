@@ -47,7 +47,7 @@ v1.real => 11
 
 # Getting started
 ## Prerequirements
-- llvm, clang (v4.0.0~)
+- llvm, clang (v5.0.0~)
 - libgc
 - ctags
 ## Installation
