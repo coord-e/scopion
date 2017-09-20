@@ -46,10 +46,13 @@ namespace scopion
 {
 namespace assembly
 {
-std::unique_ptr<module> translate(ast::expr const& tree, error& err, std::string const& filename)
+std::unique_ptr<module> translate(ast::expr const& tree,
+                                  error& err,
+                                  boost::optional<boost::filesystem::path> const& path)
 {
   auto ctx = new llvm::LLVMContext();
-  std::shared_ptr<llvm::Module> mod(new llvm::Module(filename, *ctx));
+  std::shared_ptr<llvm::Module> mod(
+      new llvm::Module(path ? path->filename().string() : "notafile", *ctx));
   llvm::IRBuilder<> builder(mod->getContext());
 
   std::vector<llvm::Type*> args_type = {builder.getInt32Ty(),

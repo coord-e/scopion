@@ -24,15 +24,17 @@
 
 #include "scopion/ast/ast.hpp"
 
+#include <boost/filesystem/path.hpp>
 #include <boost/optional.hpp>
 
 namespace scopion
 {
 namespace parser
 {
-boost::optional<ast::expr> parse(std::string const& code,
-                                 error& err,
-                                 std::string const& filename = "<not a file>");
+boost::optional<ast::expr> parse(
+    std::string const& code,
+    error& err,
+    boost::optional<boost::filesystem::path> const& path = boost::none);
 
 };  // namespace parser
 

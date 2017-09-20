@@ -26,6 +26,8 @@
 #include <memory>
 #include <stdexcept>
 
+#include <boost/filesystem/path.hpp>
+
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Host.h>
 
@@ -91,9 +93,9 @@ int main(int argc, char* argv[])
   }
 
   auto outpath = p.get<std::string>("output") != "-" ? p.get<std::string>("output") : "/dev/stdout";
-  auto inpath  = p.rest()[0];
+  boost::filesystem::path inpath = p.rest()[0];
 
-  std::ifstream ifs(inpath);
+  std::ifstream ifs(inpath.string());
   if (ifs.fail()) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
               << rang::style::reset << ": failed to open \"" << inpath << "\"" << std::endl;
