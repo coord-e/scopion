@@ -66,7 +66,7 @@ value* translator::import(std::string const& path)
   ifs.close();
   auto parsed = parser::parse(code);
   translator tr(module_, builder_);
-  return boost::apply_visitor(tr, parsed.ast);
+  return boost::apply_visitor(tr, parsed);
 }
 
 value* translator::importIR(std::string const& path, ast::expr const& astv)

@@ -458,9 +458,10 @@ struct expression {
 
 };  // namespace grammar
 
-parsed parse(std::string const& code)
+ast::expr parse(std::string const& code)
 {
   ast::expr tree;
+
   auto cr = grammar::detail::get_current_range();
   grammar::detail::set_current_range(str_range_t(code.begin(), code.end()));
 
@@ -471,7 +472,7 @@ parsed parse(std::string const& code)
   }
   grammar::detail::set_current_range(cr);
 
-  return parsed(tree, code);
+  return tree;
 }
 
 };  // namespace parser

@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 
     if (outtype == "ast") {
       std::ofstream f(outpath);
-      f << ast.ast << std::endl;
+      f << ast << std::endl;
       f.close();
       return 0;
     }
