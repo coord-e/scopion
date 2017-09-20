@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
   p.footer("filename ...");
 
   if (!p.parse(argc, argv)) {
-    std::cout << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
               << rang::style::reset << ": " << p.error_full() << p.usage();
     return 0;
   }
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
   }
 
   if (p.exist("version")) {
-    std::cout << rang::style::reset << rang::fg::green <<
+    std::cerr << rang::style::reset << rang::fg::green <<
         R"(
      _______.  ______   ______   .______    __    ______   .__   __.
     /       | /      | /  __  \  |   _  \  |  |  /  __  \  |  \ |  |
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
   }
 
   if (p.rest().empty()) {
-    std::cout << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
               << rang::style::reset << ": no input file specified." << std::endl
               << p.usage();
     return 0;
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
 
   std::ifstream ifs(p.rest()[0]);
   if (ifs.fail()) {
-    std::cout << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
               << rang::style::reset << ": failed to open \"" << p.rest()[0] << "\"" << std::endl;
     return 0;
   }
