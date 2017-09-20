@@ -113,19 +113,16 @@ int main(int argc, char* argv[])
       return 0;
     }
 
-    scopion::assembly::context ctx;
-    auto mod = scopion::assembly::module::create(ast, ctx, outpath);
+    auto mod = scopion::assembly::translate(ast, outpath);
 
     if (p.exist("optimize")) {
       auto opt = static_cast<uint8_t>(p.get<int>("optimize"));
       mod->optimize(opt, opt);
     }
 
-    std::string ir = mod->irgen();
-
     auto irpath = outtype == "ir" ? outpath : getTmpFilePath() + ".ll";
     std::ofstream f(irpath);
-    f << ir;
+    mod->printIR(f);
     f.close();
     if (outtype == "ir")
       return 0;

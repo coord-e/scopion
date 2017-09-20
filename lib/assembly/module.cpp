@@ -34,6 +34,8 @@
 #include <llvm/InitializePasses.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/IPO/Inliner.h>
@@ -43,11 +45,10 @@ namespace scopion
 {
 namespace assembly
 {
-std::unique_ptr<module> module::create(parser::parsed const& tree,
-                                       context& ctx,
-                                       std::string const& name)
+std::unique_ptr<module> translate(parser::parsed const& tree, std::string const& name)
 {
-  std::shared_ptr<llvm::Module> mod(new llvm::Module(name, ctx.llvmcontext));
+  auto ctx = new llvm::LLVMContext();
+  std::shared_ptr<llvm::Module> mod(new llvm::Module(name, *ctx));
   llvm::IRBuilder<> builder(mod->getContext());
 
   std::vector<llvm::Type*> args_type = {builder.getInt32Ty(),
@@ -79,19 +80,32 @@ std::unique_ptr<module> module::create(parser::parsed const& tree,
   return std::unique_ptr<module>(new module(mod, val));
 }
 
-std::string module::irgen()
+module::module(std::shared_ptr<llvm::Module>& module, value* val_)
+    : llvm_module_(module), value_(val_)
+{
+}
+
+void module::printIR(std::ostream& os) const
+{
+  llvm::raw_os_ostream stream(os);
+
+  llvm_module_->print(stream, nullptr);
+}
+
+std::string module::getPrintedIR() const
 {
   std::string result;
   llvm::raw_string_ostream stream(result);
 
-  module_->print(stream, nullptr);
+  llvm_module_->print(stream, nullptr);
   return result;
 }
 
 void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
 {
-  llvm::legacy::PassManager* pm          = new llvm::legacy::PassManager();
-  llvm::legacy::FunctionPassManager* fpm = new llvm::legacy::FunctionPassManager(module_.get());
+  llvm::legacy::PassManager* pm = new llvm::legacy::PassManager();
+  llvm::legacy::FunctionPassManager* fpm =
+      new llvm::legacy::FunctionPassManager(llvm_module_.get());
   llvm::PassManagerBuilder builder;
   builder.OptLevel           = optLevel;
   builder.SizeLevel          = sizeLevel;
@@ -102,14 +116,19 @@ void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
   builder.SLPVectorize       = true;
   builder.populateModulePassManager(*pm);
   builder.populateFunctionPassManager(*fpm);
-  pm->run(*module_);
+  pm->run(*llvm_module_);
 
   fpm->doInitialization();
-  for (auto& f : module_->getFunctionList()) {
+  for (auto& f : llvm_module_->getFunctionList()) {
     fpm->run(f);
     f.optForSize();
   }
   fpm->doFinalization();
+}
+
+value* module::getValue() const
+{
+  return value_;
 }
 
 };  // namespace assembly

@@ -42,8 +42,7 @@ TEST_F(assemblyTest, variable)
         ast::single_op<ast::ret>(
             {ast::binary_op<ast::add>({ast::variable("test"), ast::integer(1)})})}});
 
-  assembly::context ctx;
-  auto res = scopion::assembly::module::create(parser::parsed(tree, ""), ctx, "testing")->irgen();
+  auto res = scopion::assembly::translate(parser::parsed(tree, ""), "testing")->getPrintedIR();
   auto str = R"(
 define i32 @1() {
 entry:

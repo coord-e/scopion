@@ -22,37 +22,42 @@
 #ifndef SCOPION_ASSEMBLY_MODULE_H_
 #define SCOPION_ASSEMBLY_MODULE_H_
 
-#include "scopion/assembly/context.hpp"
 #include "scopion/assembly/translator.hpp"
 #include "scopion/assembly/value.hpp"
 
 #include "scopion/parser/parser.hpp"
 
 #include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 
 namespace scopion
 {
 namespace assembly
 {
+class module;
+
+std::unique_ptr<module> translate(parser::parsed const& tree, std::string const& name = "");
+
 class module
 {
-  std::shared_ptr<llvm::Module> module_;
+  friend std::unique_ptr<module> translate(parser::parsed const& tree, std::string const& name);
+
+  std::shared_ptr<llvm::Module> llvm_module_;
+  value* value_;
 
 public:
-  value* val;
+  module(module&) = delete;
+  module& operator=(const module&) = delete;
 
-  static std::unique_ptr<module> create(parser::parsed const& tree,
-                                        context& ctx,
-                                        std::string const& name = "");
-
-  std::string irgen();
+  void printIR(std::ostream& os) const;
+  std::string getPrintedIR() const;
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
+  value* getValue() const;
+
 private:
-  module(std::shared_ptr<llvm::Module>& module, value* val_) : module_(std::move(module)), val(val_)
-  {
-  }
+  module(std::shared_ptr<llvm::Module>& module, value* val_);
 };
 
 };  // namespace assembly
