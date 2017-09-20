@@ -26,6 +26,7 @@
 #include <memory>
 #include <stdexcept>
 
+#include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
 #include <llvm/ADT/Triple.h>
@@ -93,8 +94,7 @@ int main(int argc, char* argv[])
   }
 
   auto outpath = p.get<std::string>("output") != "-" ? p.get<std::string>("output") : "/dev/stdout";
-  boost::filesystem::path inpath = p.rest()[0];
-
+  boost::filesystem::path inpath = boost::filesystem::absolute(p.rest()[0]);
   std::ifstream ifs(inpath.string());
   if (ifs.fail()) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"

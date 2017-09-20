@@ -42,6 +42,9 @@
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/range/iterator_range.hpp>
 
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+
 namespace scopion
 {
 namespace assembly
@@ -61,23 +64,26 @@ void translator::insertGCInit()
   builder_.CreateCall(module_->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
 }
 
-value* translator::import(std::string const& path)
+value* translator::import(std::string const& path, ast::pre_variable const& astv)
 {
-  std::ifstream ifs(path);
+  auto thisp   = ast::attr(astv).where.getPath();
+  auto abspath = boost::filesystem::absolute(
+      path, thisp ? thisp->parent_path() : boost::filesystem::current_path());
+  std::ifstream ifs(abspath.string());
   if (ifs.fail()) {
     return nullptr;
   }
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
   ifs.close();
   error err;
-  auto parsed = parser::parse(code, err, boost::filesystem::path(path));
+  auto parsed = parser::parse(code, err, abspath);
   if (!parsed)
     throw err;
   translator tr(module_, builder_);
   return boost::apply_visitor(tr, *parsed);
 }
 
-value* translator::importIR(std::string const& path, ast::expr const& astv)
+value* translator::importIR(std::string const& path, ast::pre_variable const& astv)
 {
   std::unique_ptr<llvm::Module> module;
   if (loaded_map_.count(path) != 0) {
@@ -128,7 +134,7 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
   return destv;
 }
 
-value* translator::importCHeader(std::string const& path, ast::expr const& astv)
+value* translator::importCHeader(std::string const& path, ast::pre_variable const& astv)
 {
   auto h2irpath = std::string(std::getenv("HOME")) + "/" SCOPION_CACHE_DIR "/h2ir/";
   system((std::string("bash " SCOPION_ETC_DIR "/h2ir/scopion-h2ir ") + path).c_str());
@@ -212,7 +218,7 @@ value* translator::operator()(ast::pre_variable const& astv)
       auto iti = ast::attr(astv).attributes.find("ir");
       auto its = ast::attr(astv).attributes.find("c");
       if (itm != ast::attr(astv).attributes.end()) {  // found path to module
-        if (auto v = import(itm->second))
+        if (auto v = import(itm->second, astv))
           return v;
         else
           throw error("Failed to open " + itm->second, ast::attr(astv).where, errorType::Translate);

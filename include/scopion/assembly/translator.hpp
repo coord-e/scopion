@@ -139,9 +139,9 @@ public:
   std::shared_ptr<llvm::Module> getModule() const { return module_; }
   llvm::IRBuilder<>& getBuilder() const { return builder_; }
 
-  value* import(std::string const& path);
-  value* importIR(std::string const& path, ast::expr const& astv);
-  value* importCHeader(std::string const& path, ast::expr const& astv);
+  value* import(std::string const& path, ast::pre_variable const& astv);
+  value* importIR(std::string const& path, ast::pre_variable const& astv);
+  value* importCHeader(std::string const& path, ast::pre_variable const& astv);
 
   llvm::Value* createGCMalloc(llvm::Type* Ty,
                               llvm::Value* ArraySize  = nullptr,
