@@ -36,7 +36,7 @@ namespace scopion
 {
 using str_range_t = boost::iterator_range<std::string::const_iterator>;
 
-enum class errorType { Parse, Translate, Internal, Bug };
+enum class errorType { Parse, Translate, Internal, Bug, None };
 
 static std::string getErrorTypeString(errorType et)
 {
@@ -49,6 +49,8 @@ static std::string getErrorTypeString(errorType et)
       return "Internal Error";
     case errorType::Bug:
       return "Bug";
+    case errorType::None:
+      return "No Error";
   }
 }
 
@@ -86,19 +88,24 @@ class error
 {
   std::string message_;
   locationInfo location_;
-  errorType type_;
+  errorType type_ = errorType::None;
+  bool has_error_;
 
 public:
   error(std::string const& message, locationInfo const& where, errorType type)
-      : message_(message), location_(where), type_(type)
+      : message_(message), location_(where), type_(type), has_error_(true)
   {
   }
+
+  error() : has_error_(false) {}
 
   locationInfo& getLocInfo() { return location_; }
   locationInfo const& getLocInfo() const { return location_; }
   errorType getErrorType() const { return type_; }
   std::string getErrorString() const { return getErrorTypeString(type_); }
   std::string getMessage() const { return message_; }
+
+  bool hasError() const { return has_error_; }
 };
 
 template <class Char, class Traits>

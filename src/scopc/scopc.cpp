@@ -103,46 +103,49 @@ int main(int argc, char* argv[])
 
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
-  try {
-    auto ast = scopion::parser::parse(code);
-
-    if (outtype == "ast") {
-      std::ofstream f(outpath);
-      f << ast << std::endl;
-      f.close();
-      return 0;
-    }
-
-    auto mod = scopion::assembly::translate(ast, outpath);
-
-    if (p.exist("optimize")) {
-      auto opt = static_cast<uint8_t>(p.get<int>("optimize"));
-      mod->optimize(opt, opt);
-    }
-
-    auto irpath = outtype == "ir" ? outpath : getTmpFilePath() + ".ll";
-    std::ofstream f(irpath);
-    mod->printIR(f);
-    f.close();
-    if (outtype == "ir")
-      return 0;
-
-    auto asmpath = outtype == "asm" ? outpath : getTmpFilePath() + ".s";
-
-    auto const archstr = p.get<std::string>("arch") != "native"
-                             ? p.get<std::string>("arch")
-                             : llvm::sys::getDefaultTargetTriple();
-    llvm::Triple triple(archstr);
-
-    system(("llc -mtriple=" + triple.getTriple() + " -filetype asm " + irpath + " -o=" + asmpath)
-               .c_str());
-    if (outtype == "asm")
-      return 0;
-
-    system(
-        ("clang " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
-  } catch (scopion::error const& e) {
-    std::cerr << e << std::endl;
+  scopion::error err;
+  auto ast = scopion::parser::parse(code, err);
+  if (!ast) {
+    std::cerr << err << std::endl;
     return -1;
   }
+
+  if (outtype == "ast") {
+    std::ofstream f(outpath);
+    f << *ast << std::endl;
+    f.close();
+    return 0;
+  }
+
+  auto mod = scopion::assembly::translate(*ast, outpath, err);
+  if (!mod) {
+    std::cerr << err << std::endl;
+    return -1;
+  }
+
+  if (p.exist("optimize")) {
+    auto opt = static_cast<uint8_t>(p.get<int>("optimize"));
+    mod->optimize(opt, opt);
+  }
+
+  auto irpath = outtype == "ir" ? outpath : getTmpFilePath() + ".ll";
+  std::ofstream f(irpath);
+  mod->printIR(f);
+  f.close();
+  if (outtype == "ir")
+    return 0;
+
+  auto asmpath = outtype == "asm" ? outpath : getTmpFilePath() + ".s";
+
+  auto const archstr = p.get<std::string>("arch") != "native" ? p.get<std::string>("arch")
+                                                              : llvm::sys::getDefaultTargetTriple();
+  llvm::Triple triple(archstr);
+
+  system(("llc -mtriple=" + triple.getTriple() + " -filetype asm " + irpath + " -o=" + asmpath)
+             .c_str());
+  if (outtype == "asm")
+    return 0;
+
+  return system(
+      ("clang " + asmpath + " -lgc --target=" + triple.getTriple() + " -o " + outpath).c_str());
 }

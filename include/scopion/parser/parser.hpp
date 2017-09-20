@@ -24,11 +24,13 @@
 
 #include "scopion/ast/ast.hpp"
 
+#include <boost/optional.hpp>
+
 namespace scopion
 {
 namespace parser
 {
-ast::expr parse(std::string const& code);
+boost::optional<ast::expr> parse(std::string const& code, error& err);
 
 };  // namespace parser
 

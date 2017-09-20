@@ -64,9 +64,12 @@ value* translator::import(std::string const& path)
   }
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
   ifs.close();
-  auto parsed = parser::parse(code);
+  error err;
+  auto parsed = parser::parse(code, err);
+  if (!parsed)
+    throw err;
   translator tr(module_, builder_);
-  return boost::apply_visitor(tr, parsed);
+  return boost::apply_visitor(tr, *parsed);
 }
 
 value* translator::importIR(std::string const& path, ast::expr const& astv)

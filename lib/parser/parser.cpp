@@ -459,7 +459,7 @@ struct expression {
 
 };  // namespace grammar
 
-ast::expr parse(std::string const& code)
+boost::optional<ast::expr> parse(std::string const& code, error& err)
 {
   ast::expr tree;
 
@@ -468,8 +468,14 @@ ast::expr parse(std::string const& code)
 
   auto const space_comment =
       "//" > *(x3::char_ - '\n') > '\n' | "/*" > *(x3::char_ - "*/") > "*/" | x3::space;
-  if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree)) {
-    throw error("Unknown error has detected", locationInfo{}, errorType::Parse);
+
+  try {
+    if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree))
+      throw error("Unknown error has detected", locationInfo{}, errorType::Parse);
+  } catch (error& e) {
+    err = e;
+    grammar::detail::set_current_range(cr);
+    return boost::none;
   }
   grammar::detail::set_current_range(cr);
 

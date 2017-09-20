@@ -46,7 +46,7 @@ namespace scopion
 {
 namespace assembly
 {
-std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name)
+std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name, error& err)
 {
   auto ctx = new llvm::LLVMContext();
   std::shared_ptr<llvm::Module> mod(new llvm::Module(name, *ctx));
@@ -58,14 +58,6 @@ std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name
       llvm::Function::Create(llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
                              llvm::Function::ExternalLinkage, "main", mod.get());
 
-  translator tr(mod, builder);
-
-  builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
-
-  builder.CreateCall(mod->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
-
-  auto val = boost::apply_visitor(tr, tree);
-
   std::vector<llvm::Value*> arg_llvm_values;
   std::vector<value*> arg_values;
   for (auto it = main_func->arg_begin(); it != main_func->arg_end(); it++) {
@@ -73,14 +65,28 @@ std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name
     arg_values.push_back(new value(it, ast::expr{}));
   }
 
-  llvm::Value* ret = builder.CreateCall(evaluate(val, arg_values, tr)->getLLVM(),
-                                        llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
+  builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
+
+  value* val;
+  llvm::Value* etlv;
+  try {
+    translator tr(mod, builder);
+    builder.CreateCall(mod->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
+    val  = boost::apply_visitor(tr, tree);
+    etlv = evaluate(val, arg_values, tr)->getLLVM();
+  } catch (error& e) {
+    err = e;
+    return nullptr;
+  }
+
+  llvm::Value* ret = builder.CreateCall(etlv, llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
 
   builder.CreateRet(ret->getType()->isVoidTy() ? builder.getInt32(0) : ret);
 
   llvm::raw_os_ostream stream(std::cerr);
   if (llvm::verifyModule(*mod, &stream)) {
-    throw error("Invaild IR has generated", locationInfo{}, errorType::Bug);
+    err = error("Invaild IR has generated", locationInfo{}, errorType::Bug);
+    return nullptr;
   }
 
   return std::unique_ptr<module>(new module(mod, val));

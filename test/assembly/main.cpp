@@ -42,7 +42,10 @@ TEST_F(assemblyTest, variable)
         ast::single_op<ast::ret>(
             {ast::binary_op<ast::add>({ast::variable("test"), ast::integer(1)})})}});
 
-  auto res = scopion::assembly::translate(tree, "testing")->getPrintedIR();
+  scopion::error err;
+  auto res = scopion::assembly::translate(tree, "testing", err);
+  ASSERT_TRUE(static_cast<bool>(res));
+
   auto str = R"(
 define i32 @1() {
 entry:
@@ -56,7 +59,7 @@ entry:
   ret i32 %2
 }
 )";
-  EXPECT_EQ(str, res);
+  EXPECT_EQ(str, res->getPrintedIR());
 }
 
 }  // namespace

@@ -37,17 +37,19 @@ namespace assembly
 {
 class module;
 
-std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name = "");
+std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name, error& err);
 
 class module
 {
-  friend std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name);
+  friend std::unique_ptr<module> translate(ast::expr const& tree,
+                                           std::string const& name,
+                                           error& err);
 
   std::shared_ptr<llvm::Module> llvm_module_;
   value* value_;
 
 public:
-  module(module&) = delete;
+  module(const module&) = delete;
   module& operator=(const module&) = delete;
 
   void printIR(std::ostream& os) const;
