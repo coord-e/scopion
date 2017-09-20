@@ -469,7 +469,7 @@ ast::expr parse(std::string const& code)
   auto const space_comment =
       "//" > *(x3::char_ - '\n') > '\n' | "/*" > *(x3::char_ - "*/") > "*/" | x3::space;
   if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree)) {
-    throw std::runtime_error("detected error");
+    throw error("Unknown error has detected", locationInfo{}, errorType::Parse);
   }
   grammar::detail::set_current_range(cr);
 
