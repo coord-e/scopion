@@ -34,10 +34,10 @@
 
 namespace scopion
 {
+using str_range_t = boost::iterator_range<std::string::const_iterator>;
+
 class error
 {
-  using str_range_t = boost::iterator_range<std::string::const_iterator>;
-
   static str_range_t line_range(str_range_t const where, str_range_t const code)
   {
     auto range = boost::make_iterator_range(code.begin(), where.begin());

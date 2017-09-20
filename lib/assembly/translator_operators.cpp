@@ -76,8 +76,6 @@ bool translator::copyFull(value* src,
           list.push_back(builder_.getInt8Ty()->getPointerTo());
           list.push_back(builder_.getInt8Ty()->getPointerTo());
           list.push_back(builder_.getInt64Ty());
-          list.push_back(builder_.getInt32Ty());
-          list.push_back(builder_.getInt1Ty());
           llvm::Function* fmemcpy =
               llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
 
