@@ -31,6 +31,10 @@
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/spirit/home/x3.hpp>
 
+#include <boost/spirit/home/x3/support/ast/variant.hpp>
+#include <boost/spirit/home/x3/support/context.hpp>
+#include <boost/spirit/home/x3/support/utility/lambda_visitor.hpp>
+
 #include <array>
 #include <map>
 #include <type_traits>
@@ -45,6 +49,25 @@ namespace grammar
 {
 namespace detail
 {
+static str_range_t _current_range;
+
+static void set_current_range(str_range_t range)
+{
+  _current_range = range;
+}
+
+static str_range_t get_current_range()
+{
+  return _current_range;
+}
+
+template <typename T>
+T set_where_r(T val, str_range_t where)
+{
+  attr(val).where = locationInfo(where, get_current_range());
+  return val;
+}
+
 static std::string unescape(std::string const& s)
 {
   std::string res;
@@ -99,7 +122,7 @@ static auto const assign = [](auto&& ctx) { x3::_val(ctx) = x3::_attr(ctx); };
 template <typename T>
 static auto const assign_str_as = [](auto&& ctx) {
   std::string str(x3::_attr(ctx).begin(), x3::_attr(ctx).end());
-  x3::_val(ctx) = ast::set_where(T(str), x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(T(str), x3::_where(ctx));
 };
 
 template <typename T, char C, bool Es = false>
@@ -111,12 +134,12 @@ static auto const assign_str_escaped_as = [](auto&& ctx) {
     else  // unused_type
       rs = rs + C;
   }
-  x3::_val(ctx) = ast::set_where(T(Es ? unescape(rs) : rs), x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(T(Es ? unescape(rs) : rs), x3::_where(ctx));
 };
 
 template <typename T>
 static auto const assign_as =
-    [](auto&& ctx) { x3::_val(ctx) = ast::set_where(T(x3::_attr(ctx)), x3::_where(ctx)); };
+    [](auto&& ctx) { x3::_val(ctx) = set_where_r(T(x3::_attr(ctx)), x3::_where(ctx)); };
 
 static auto const assign_func = [](auto&& ctx) {
   auto&& args  = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
@@ -124,7 +147,7 @@ static auto const assign_func = [](auto&& ctx) {
   std::vector<ast::identifier> result;
   std::transform(args.begin(), args.end(), std::back_inserter(result),
                  [](auto&& x) { return ast::unpack<ast::identifier>(x); });
-  x3::_val(ctx) = ast::set_where(ast::function({result, lines}), x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(ast::function({result, lines}), x3::_where(ctx));
 };
 
 static auto const assign_struct = [](auto&& ctx) {
@@ -134,7 +157,7 @@ static auto const assign_struct = [](auto&& ctx) {
     auto&& val   = boost::fusion::at<boost::mpl::int_<1>>(v);
     result[name] = val;
   }
-  x3::_val(ctx) = ast::set_where(ast::structure(result), x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(ast::structure(result), x3::_where(ctx));
 };
 
 template <typename Op, size_t N>
@@ -144,37 +167,36 @@ static auto const assign_op = [](auto&& ctx) {
   auto it = ary.begin();
   *it     = x3::_val(ctx);
   boost::fusion::for_each(x3::_attr(ctx), [&it](auto&& v) { *(++it) = v; });
-  x3::_val(ctx) = ast::set_where(ast::op<Op, N>(ary), x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(ast::op<Op, N>(ary), x3::_where(ctx));
 };
 
 template <typename Op>
 static auto const assign_op<Op, 2> = [](auto&& ctx) {
-  x3::_val(ctx) =
-      ast::set_where(ast::binary_op<Op>({x3::_val(ctx), x3::_attr(ctx)}), x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(ast::binary_op<Op>({x3::_val(ctx), x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <typename Op>
 static auto const assign_op<Op, 1> = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(ast::single_op<Op>({x3::_attr(ctx)}), x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(ast::single_op<Op>({x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <>
 static auto const assign_op<ast::assign, 2> = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(
-      ast::binary_op<ast::assign>({ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)}),
-      x3::_where(ctx));
+  x3::_val(ctx) =
+      set_where_r(ast::binary_op<ast::assign>({ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)}),
+                  x3::_where(ctx));
 };
 
 template <>
 static auto const assign_op<ast::call, 2> = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(ast::binary_op<ast::call>({ast::set_to_call(x3::_val(ctx), true),
-                                                            ast::arglist(x3::_attr(ctx))}),
-                                 x3::_where(ctx));
+  x3::_val(ctx) = set_where_r(ast::binary_op<ast::call>({ast::set_to_call(x3::_val(ctx), true),
+                                                         ast::arglist(x3::_attr(ctx))}),
+                              x3::_where(ctx));
 };
 
 template <>
 static auto const assign_op<ast::inc, 1> = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(
+  x3::_val(ctx) = set_where_r(
       ast::binary_op<ast::assign>({ast::set_lval(x3::_attr(ctx), true),
                                    ast::binary_op<ast::add>({x3::_attr(ctx), ast::integer(1)})}),
       x3::_where(ctx));
@@ -182,7 +204,7 @@ static auto const assign_op<ast::inc, 1> = [](auto&& ctx) {
 
 template <>
 static auto const assign_op<ast::dec, 1> = [](auto&& ctx) {
-  x3::_val(ctx) = ast::set_where(
+  x3::_val(ctx) = set_where_r(
       ast::binary_op<ast::assign>({ast::set_lval(x3::_attr(ctx), true),
                                    ast::binary_op<ast::sub>({x3::_attr(ctx), ast::integer(1)})}),
       x3::_where(ctx));
@@ -428,22 +450,26 @@ struct expression {
   {
     throw error(x.which() + " is expected but there is " +
                     (x.where() == last ? "nothing" : std::string{*x.where()}),
-                boost::make_iterator_range(x.where(), x.where()),
-                boost::make_iterator_range(first, last));
+                locationInfo(boost::make_iterator_range(x.where(), x.where()),
+                             boost::make_iterator_range(first, last)));
     return x3::error_handler_result::fail;
   }
 };
+
 };  // namespace grammar
 
 parsed parse(std::string const& code)
 {
   ast::expr tree;
+  auto cr = grammar::detail::get_current_range();
+  grammar::detail::set_current_range(str_range_t(code.begin(), code.end()));
 
   auto const space_comment =
       "//" > *(x3::char_ - '\n') > '\n' | "/*" > *(x3::char_ - "*/") > "*/" | x3::space;
   if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree)) {
     throw std::runtime_error("detected error");
   }
+  grammar::detail::set_current_range(cr);
 
   return parsed(tree, code);
 }

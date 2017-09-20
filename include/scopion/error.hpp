@@ -36,8 +36,7 @@ namespace scopion
 {
 using str_range_t = boost::iterator_range<std::string::const_iterator>;
 
-class error
-{
+struct locationInfo {
   static str_range_t line_range(str_range_t const where, str_range_t const code)
   {
     auto range = boost::make_iterator_range(code.begin(), where.begin());
@@ -48,15 +47,9 @@ class error
   uint32_t line_number_;
   uint32_t distance_;
   std::string line_;
-  std::string message_;
-  uint8_t level_;
 
 public:
-  error(std::string const& message,
-        str_range_t const where,
-        str_range_t const code,
-        uint8_t level = 0)
-      : message_(message), level_(level)
+  locationInfo(str_range_t where, str_range_t code)
   {
     line_number_ = static_cast<uint32_t>(std::count(code.begin(), where.begin(), '\n')) + 1;
     auto r       = line_range(where, code);
@@ -64,24 +57,42 @@ public:
     distance_    = static_cast<uint32_t>(std::distance(r.begin(), where.begin()));
   }
 
-  uint32_t line_number() const { return line_number_; }
-  std::string line() const { return line_; }
-  uint32_t distance() const { return distance_; }
-  uint8_t level() const { return level_; }
-  std::string what() const { return message_; }
+  locationInfo() {}
+
+  uint32_t getLineNumber() const { return line_number_; }
+  std::string getLineContent() const { return line_; }
+  uint32_t getColumnNumber() const { return distance_; }
+};
+
+class error
+{
+  std::string message_;
+  locationInfo location_;
+  uint8_t level_;
+
+public:
+  error(std::string const& message, locationInfo const& where, uint8_t level = 0)
+      : message_(message), location_(where), level_(level)
+  {
+  }
+
+  locationInfo& getLocInfo() { return location_; }
+  locationInfo const& getLocInfo() const { return location_; }
+  uint8_t getLevel() const { return level_; }
+  std::string getMessage() const { return message_; }
 };
 
 template <class Char, class Traits>
 std::basic_ostream<Char, Traits>& operator<<(std::basic_ostream<Char, Traits>& os, const error& e)
 {
+  auto loc = e.getLocInfo();
   return os << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-            << rang::style::reset << rang::fg::red << " @" << e.line_number() << rang::style::reset
-            << ": " << e.what() << std::endl
-            << e.line() << std::endl
-            << rang::fg::green << std::setw(static_cast<int>(e.distance()) + 1) << "^"
+            << rang::style::reset << rang::fg::red << " @" << loc.getLineNumber()
+            << rang::style::reset << ": " << e.getMessage() << std::endl
+            << loc.getLineContent() << std::endl
+            << rang::fg::green << std::setw(static_cast<int>(loc.getColumnNumber()) + 1) << "^"
             << rang::style::reset;
 }
-
 };  // namespace scopion
 
 #endif  // SCOPION_EXCEPTIONS_H_
