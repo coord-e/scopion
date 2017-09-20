@@ -70,7 +70,7 @@ value* translator::import(std::string const& path)
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
   ifs.close();
   error err;
-  auto parsed = parser::parse(code, err);
+  auto parsed = parser::parse(code, err, path);
   if (!parsed)
     throw err;
   translator tr(module_, builder_);

@@ -46,6 +46,7 @@ namespace grammar
 namespace detail
 {
 static str_range_t _current_range;
+static std::string _current_filename;
 
 static void set_current_range(str_range_t range)
 {
@@ -57,10 +58,20 @@ static str_range_t get_current_range()
   return _current_range;
 }
 
+static void set_current_filename(std::string const& filename)
+{
+  _current_filename = filename;
+}
+
+static std::string get_current_filename()
+{
+  return _current_filename;
+}
+
 template <typename T>
 T set_where_r(T val, str_range_t where)
 {
-  attr(val).where = locationInfo(where, get_current_range());
+  attr(val).where = locationInfo(where, get_current_range(), get_current_filename());
   return val;
 }
 
@@ -444,23 +455,26 @@ struct expression {
                                     Exception const& x,
                                     Context const& context)
   {
-    throw error(x.which() + " is expected but there is " +
-                    (x.where() == last ? "nothing" : std::string{*x.where()}),
-                locationInfo(boost::make_iterator_range(x.where(), x.where()),
-                             boost::make_iterator_range(first, last)),
-                errorType::Parse);
+    throw error(
+        x.which() + " is expected but there is " +
+            (x.where() == last ? "nothing" : std::string{*x.where()}),
+        locationInfo(boost::make_iterator_range(x.where(), x.where()),
+                     boost::make_iterator_range(first, last), detail::get_current_filename()),
+        errorType::Parse);
     return x3::error_handler_result::fail;
   }
 };
 
 };  // namespace grammar
 
-boost::optional<ast::expr> parse(std::string const& code, error& err)
+boost::optional<ast::expr> parse(std::string const& code, error& err, std::string const& filename)
 {
   ast::expr tree;
 
   auto cr = grammar::detail::get_current_range();
+  auto cf = grammar::detail::get_current_filename();
   grammar::detail::set_current_range(str_range_t(code.begin(), code.end()));
+  grammar::detail::set_current_filename(filename);
 
   auto const space_comment =
       "//" > *(x3::char_ - '\n') > '\n' | "/*" > *(x3::char_ - "*/") > "*/" | x3::space;
@@ -471,9 +485,11 @@ boost::optional<ast::expr> parse(std::string const& code, error& err)
   } catch (error& e) {
     err = e;
     grammar::detail::set_current_range(cr);
+    grammar::detail::set_current_filename(cf);
     return boost::none;
   }
   grammar::detail::set_current_range(cr);
+  grammar::detail::set_current_filename(cf);
 
   return tree;
 }

@@ -37,13 +37,15 @@ namespace assembly
 {
 class module;
 
-std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name, error& err);
+std::unique_ptr<module> translate(ast::expr const& tree,
+                                  error& err,
+                                  std::string const& filename = "<not a file>");
 
 class module
 {
   friend std::unique_ptr<module> translate(ast::expr const& tree,
-                                           std::string const& name,
-                                           error& err);
+                                           error& err,
+                                           std::string const& filename);
 
   std::shared_ptr<llvm::Module> llvm_module_;
   value* value_;

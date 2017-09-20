@@ -43,7 +43,7 @@ TEST_F(assemblyTest, variable)
             {ast::binary_op<ast::add>({ast::variable("test"), ast::integer(1)})})}});
 
   scopion::error err;
-  auto res = scopion::assembly::translate(tree, "testing", err);
+  auto res = scopion::assembly::translate(tree, err);
   ASSERT_TRUE(static_cast<bool>(res));
 
   auto str = R"(

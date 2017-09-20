@@ -91,11 +91,12 @@ int main(int argc, char* argv[])
   }
 
   auto outpath = p.get<std::string>("output") != "-" ? p.get<std::string>("output") : "/dev/stdout";
+  auto inpath  = p.rest()[0];
 
-  std::ifstream ifs(p.rest()[0]);
+  std::ifstream ifs(inpath);
   if (ifs.fail()) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-              << rang::style::reset << ": failed to open \"" << p.rest()[0] << "\"" << std::endl;
+              << rang::style::reset << ": failed to open \"" << inpath << "\"" << std::endl;
     return 0;
   }
 
@@ -104,7 +105,7 @@ int main(int argc, char* argv[])
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
   scopion::error err;
-  auto ast = scopion::parser::parse(code, err);
+  auto ast = scopion::parser::parse(code, err, inpath);
   if (!ast) {
     std::cerr << err << std::endl;
     return -1;
@@ -117,7 +118,7 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  auto mod = scopion::assembly::translate(*ast, outpath, err);
+  auto mod = scopion::assembly::translate(*ast, err, inpath);
   if (!mod) {
     std::cerr << err << std::endl;
     return -1;

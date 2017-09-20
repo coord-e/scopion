@@ -64,11 +64,13 @@ struct locationInfo {
   }
   uint32_t line_number_;
   uint32_t distance_;
-  std::string line_;
+  std::string line_;     /* should be string_view!? */
+  std::string filename_; /* should be string_view!? */
   bool is_empty_;
 
 public:
-  locationInfo(str_range_t where, str_range_t code) : is_empty_(false)
+  locationInfo(str_range_t where, str_range_t code, std::string const& filename)
+      : filename_(filename), is_empty_(false)
   {
     line_number_ = static_cast<uint32_t>(std::count(code.begin(), where.begin(), '\n')) + 1;
     auto r       = line_range(where, code);
@@ -80,6 +82,7 @@ public:
 
   uint32_t getLineNumber() const { return line_number_; }
   std::string getLineContent() const { return line_; }
+  std::string getFileName() const { return filename_; }
   uint32_t getColumnNumber() const { return distance_; }
   bool isEmpty() const { return is_empty_; }
 };
@@ -122,7 +125,8 @@ std::basic_ostream<Char, Traits>& operator<<(std::basic_ostream<Char, Traits>& o
     os << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]" << rang::style::reset
        << " " << e.getErrorString() << ": ";
   if (!loc.isEmpty())
-    os << rang::fg::magenta << "@" << loc.getLineNumber() << rang::style::reset << ": ";
+    os << rang::fg::magenta << loc.getFileName() << "@" << loc.getLineNumber() << rang::style::reset
+       << ": ";
 
   os << rang::style::reset << e.getMessage() << std::endl;
   if (!loc.isEmpty())

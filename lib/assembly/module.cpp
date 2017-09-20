@@ -46,10 +46,10 @@ namespace scopion
 {
 namespace assembly
 {
-std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name, error& err)
+std::unique_ptr<module> translate(ast::expr const& tree, error& err, std::string const& filename)
 {
   auto ctx = new llvm::LLVMContext();
-  std::shared_ptr<llvm::Module> mod(new llvm::Module(name, *ctx));
+  std::shared_ptr<llvm::Module> mod(new llvm::Module(filename, *ctx));
   llvm::IRBuilder<> builder(mod->getContext());
 
   std::vector<llvm::Type*> args_type = {builder.getInt32Ty(),
