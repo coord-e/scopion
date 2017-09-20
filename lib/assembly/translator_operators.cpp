@@ -39,6 +39,7 @@ llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
                                         llvm::Value* ArraySize,
                                         const llvm::Twine& Name)
 {
+  gc_used_ = true;
   assert(!ArraySize &&
          "Parameter ArraySize is for compatibility with IRBuilder<>::CreateAlloca. Don't pass any "
          "value.");

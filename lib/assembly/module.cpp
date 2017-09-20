@@ -65,13 +65,14 @@ std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name
     arg_values.push_back(new value(it, ast::expr{}));
   }
 
-  builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
+  auto mainbb = llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func);
+  builder.SetInsertPoint(mainbb);
+
+  translator tr(mod, builder);
 
   value* val;
   llvm::Value* etlv;
   try {
-    translator tr(mod, builder);
-    builder.CreateCall(mod->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
     val  = boost::apply_visitor(tr, tree);
     etlv = evaluate(val, arg_values, tr)->getLLVM();
   } catch (error& e) {
@@ -83,13 +84,20 @@ std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name
 
   builder.CreateRet(ret->getType()->isVoidTy() ? builder.getInt32(0) : ret);
 
+  if (tr.hasGCUsed()) {
+    builder.SetInsertPoint(mainbb, mainbb->begin());
+    tr.insertGCInit();
+  }
+
+  auto destv      = std::unique_ptr<module>(new module(mod, val));
+  destv->gc_used_ = tr.hasGCUsed();
+
   llvm::raw_os_ostream stream(std::cerr);
   if (llvm::verifyModule(*mod, &stream)) {
     err = error("Invaild IR has generated", locationInfo{}, errorType::Bug);
     return nullptr;
   }
-
-  return std::unique_ptr<module>(new module(mod, val));
+  return destv;
 }
 
 module::module(std::shared_ptr<llvm::Module>& module, value* val_)
@@ -141,6 +149,11 @@ void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
 value* module::getValue() const
 {
   return value_;
+}
+
+bool module::hasGCUsed() const
+{
+  return gc_used_;
 }
 
 };  // namespace assembly

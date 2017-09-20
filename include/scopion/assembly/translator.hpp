@@ -53,6 +53,7 @@ class translator : public boost::static_visitor<value*>
   llvm::IRBuilder<>& builder_;
   std::map<std::string, std::unique_ptr<llvm::Module>> loaded_map_;
   value* thisScope_;
+  bool gc_used_ = false;
 
   friend struct evaluator;
 
@@ -147,6 +148,10 @@ public:
                               const llvm::Twine& Name = "");
 
   llvm::Value* sizeofType(llvm::Type*);
+
+  void insertGCInit();
+
+  bool hasGCUsed() const { return gc_used_; }
 
 private:
   bool copyFull(value* src,

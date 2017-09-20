@@ -56,6 +56,11 @@ translator::translator(std::shared_ptr<llvm::Module>& module, llvm::IRBuilder<>&
                               llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
 }
 
+void translator::insertGCInit()
+{
+  builder_.CreateCall(module_->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
+}
+
 value* translator::import(std::string const& path)
 {
   std::ifstream ifs(path);

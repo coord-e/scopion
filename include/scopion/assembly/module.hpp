@@ -47,6 +47,7 @@ class module
 
   std::shared_ptr<llvm::Module> llvm_module_;
   value* value_;
+  bool gc_used_ = false;
 
 public:
   module(const module&) = delete;
@@ -57,6 +58,7 @@ public:
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
   value* getValue() const;
+  bool hasGCUsed() const;
 
 private:
   module(std::shared_ptr<llvm::Module>& module, value* val_);
