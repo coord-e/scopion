@@ -514,14 +514,18 @@ value* translator::apply_op(ast::binary_op<ast::odot> const& op, std::vector<val
 {
   if (!ast::attr(op).to_call)
     throw error("Objective dot operator without call operator", ast::attr(op).where);
-  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
+  return apply_op(ast::set_where(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}),
+                                 ast::attr(op).where),
+                  args);
 }
 
 value* translator::apply_op(ast::binary_op<ast::adot> const& op, std::vector<value*> const& args)
 {
   if (!ast::attr(op).to_call)
     throw error("Objective dot operator without call operator", ast::attr(op).where);
-  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
+  return apply_op(ast::set_where(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}),
+                                 ast::attr(op).where),
+                  args);
 }
 
 value* translator::apply_op(ast::single_op<ast::ret> const& op, std::vector<value*> const& args)
