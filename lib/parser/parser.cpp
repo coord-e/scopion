@@ -31,10 +31,6 @@
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/spirit/home/x3.hpp>
 
-#include <boost/spirit/home/x3/support/ast/variant.hpp>
-#include <boost/spirit/home/x3/support/context.hpp>
-#include <boost/spirit/home/x3/support/utility/lambda_visitor.hpp>
-
 #include <array>
 #include <map>
 #include <type_traits>
