@@ -52,15 +52,12 @@ class translator : public boost::static_visitor<value*>
   std::shared_ptr<llvm::Module> module_;
   llvm::IRBuilder<>& builder_;
   std::map<std::string, std::unique_ptr<llvm::Module>> loaded_map_;
-  boost::iterator_range<std::string::const_iterator> const code_range_;
   value* thisScope_;
 
   friend struct evaluator;
 
 public:
-  translator(std::shared_ptr<llvm::Module>& module,
-             llvm::IRBuilder<>& builder,
-             std::string const& code);
+  translator(std::shared_ptr<llvm::Module>& module, llvm::IRBuilder<>& builder);
 
   value* operator()(ast::value);
   value* operator()(ast::operators);

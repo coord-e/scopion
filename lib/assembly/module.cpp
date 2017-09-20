@@ -58,7 +58,7 @@ std::unique_ptr<module> translate(parser::parsed const& tree, std::string const&
       llvm::Function::Create(llvm::FunctionType::get(builder.getInt32Ty(), args_type, false),
                              llvm::Function::ExternalLinkage, "main", mod.get());
 
-  translator tr(mod, builder, tree.code);
+  translator tr(mod, builder);
 
   builder.SetInsertPoint(llvm::BasicBlock::Create(mod->getContext(), "main_entry", main_func));
 

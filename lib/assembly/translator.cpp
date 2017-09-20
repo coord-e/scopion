@@ -46,14 +46,8 @@ namespace scopion
 {
 namespace assembly
 {
-translator::translator(std::shared_ptr<llvm::Module>& module,
-                       llvm::IRBuilder<>& builder,
-                       std::string const& code)
-    : boost::static_visitor<value*>(),
-      module_(module),
-      builder_(builder),
-      code_range_(boost::make_iterator_range(code.begin(), code.end())),
-      thisScope_(new value())
+translator::translator(std::shared_ptr<llvm::Module>& module, llvm::IRBuilder<>& builder)
+    : boost::static_visitor<value*>(), module_(module), builder_(builder), thisScope_(new value())
 {
   module_->getOrInsertFunction("GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
   module_->getOrInsertFunction(
@@ -71,7 +65,7 @@ value* translator::import(std::string const& path)
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
   ifs.close();
   auto parsed = parser::parse(code);
-  translator tr(module_, builder_, parsed.code);
+  translator tr(module_, builder_);
   return boost::apply_visitor(tr, parsed.ast);
 }
 
