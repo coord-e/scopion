@@ -36,6 +36,22 @@ namespace scopion
 {
 using str_range_t = boost::iterator_range<std::string::const_iterator>;
 
+enum class errorType { Parse, Translate, Internal, Bug };
+
+static std::string getErrorTypeString(errorType et)
+{
+  switch (et) {
+    case errorType::Parse:
+      return "Parse Error";
+    case errorType::Translate:
+      return "Translate Error";
+    case errorType::Internal:
+      return "Internal Error";
+    case errorType::Bug:
+      return "Bug";
+  }
+}
+
 struct locationInfo {
   static str_range_t line_range(str_range_t const where, str_range_t const code)
   {
@@ -70,17 +86,18 @@ class error
 {
   std::string message_;
   locationInfo location_;
-  uint8_t level_;
+  errorType type_;
 
 public:
-  error(std::string const& message, locationInfo const& where, uint8_t level = 0)
-      : message_(message), location_(where), level_(level)
+  error(std::string const& message, locationInfo const& where, errorType type)
+      : message_(message), location_(where), type_(type)
   {
   }
 
   locationInfo& getLocInfo() { return location_; }
   locationInfo const& getLocInfo() const { return location_; }
-  uint8_t getLevel() const { return level_; }
+  errorType getErrorType() const { return type_; }
+  std::string getErrorString() const { return getErrorTypeString(type_); }
   std::string getMessage() const { return message_; }
 };
 
@@ -88,10 +105,19 @@ template <class Char, class Traits>
 std::basic_ostream<Char, Traits>& operator<<(std::basic_ostream<Char, Traits>& os, const error& e)
 {
   auto const loc = e.getLocInfo();
-  os << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]";
+  if (e.getErrorType() == errorType::Bug)
+    os << rang::style::reset << rang::bg::red << rang::fg::gray << "[BUG]" << rang::style::reset
+       << rang::fg::red
+       << " Please submit a bug report to https://github.com/coord-e/scopion/issues with messages "
+          "shown below."
+       << std::endl;
+  else
+    os << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]" << rang::style::reset
+       << " " << e.getErrorString() << ": ";
   if (!loc.isEmpty())
-    os << rang::style::reset << rang::fg::red << " @" << loc.getLineNumber();
-  os << rang::style::reset << ": " << e.getMessage() << std::endl;
+    os << rang::fg::magenta << "@" << loc.getLineNumber() << rang::style::reset << ": ";
+
+  os << rang::style::reset << e.getMessage() << std::endl;
   if (!loc.isEmpty())
     os << loc.getLineContent() << std::endl
        << rang::fg::green << std::setw(static_cast<int>(loc.getColumnNumber()) + 1) << "^"

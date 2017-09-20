@@ -451,7 +451,8 @@ struct expression {
     throw error(x.which() + " is expected but there is " +
                     (x.where() == last ? "nothing" : std::string{*x.where()}),
                 locationInfo(boost::make_iterator_range(x.where(), x.where()),
-                             boost::make_iterator_range(first, last)));
+                             boost::make_iterator_range(first, last)),
+                errorType::Parse);
     return x3::error_handler_result::fail;
   }
 };

@@ -112,7 +112,7 @@ public:
       auto f = target->symbols().find(Op::str);
       if (f == target->symbols().end())
         throw error(std::string("no operator ") + Op::str + " is defined in the structure",
-                    ast::attr(op).where);
+                    ast::attr(op).where, errorType::Translate);
       auto v         = evaluate(f->second, args, *this);
       auto ret_table = v->getRetTable();
       auto destv =

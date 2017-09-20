@@ -85,7 +85,7 @@ value* evaluator::operator()(ast::function const& fcv)
                     std::to_string(
                         v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams()) +
                     " but supplied " + std::to_string(arguments_.size()),
-                ast::attr(fcv).where);
+                ast::attr(fcv).where, errorType::Translate);
 
   std::vector<std::string> arg_names;
   std::vector<llvm::Type*> arg_types_from_attr;
@@ -100,7 +100,7 @@ value* evaluator::operator()(ast::function const& fcv)
                        llvm::raw_os_ostream stream(std::cerr);
                        err.print("", stream);
                        throw error("Failed to parse type name \"" + it->second + "\"",
-                                   ast::attr(fcv).where);
+                                   ast::attr(fcv).where, errorType::Translate);
                      }
                    }
                    arg_types_from_attr.push_back(t);
@@ -117,7 +117,7 @@ value* evaluator::operator()(ast::function const& fcv)
       if (expt != type)
         throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
                         getNameString(expt) + "\" but supplied \"" + getNameString(type) + "\"",
-                    ast::attr(fcv).where);
+                    ast::attr(fcv).where, errorType::Translate);
     if (!v.value()->isLazy())
       arg_types_for_func.push_back(type);
     arg_types.push_back(v.value()->isFundamental() ? type : type->getPointerElementType());
@@ -167,7 +167,8 @@ value* evaluator::operator()(ast::function const& fcv)
           if (ret_type == nullptr) {
             ret_type = (*itr).getOperand(0)->getType();
           } else {
-            throw error("All return values must have the same type", ast::attr(fcv).where);
+            throw error("All return values must have the same type", ast::attr(fcv).where,
+                        errorType::Translate);
           }
         }
       }
@@ -186,12 +187,13 @@ value* evaluator::operator()(ast::function const& fcv)
     if (!t) {
       llvm::raw_os_ostream stream(std::cerr);
       err.print("", stream);
-      throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where);
+      throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where,
+                  errorType::Translate);
     }
     if (t != ret_type) {
       throw error("Return type doesn't match: expected \"" + it->second + "\" but supplied \"" +
                       getNameString(ret_type) + "\"",
-                  ast::attr(fcv).where);
+                  ast::attr(fcv).where, errorType::Translate);
     }
   }
 
