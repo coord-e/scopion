@@ -47,9 +47,10 @@ struct locationInfo {
   uint32_t line_number_;
   uint32_t distance_;
   std::string line_;
+  bool is_empty_;
 
 public:
-  locationInfo(str_range_t where, str_range_t code)
+  locationInfo(str_range_t where, str_range_t code) : is_empty_(false)
   {
     line_number_ = static_cast<uint32_t>(std::count(code.begin(), where.begin(), '\n')) + 1;
     auto r       = line_range(where, code);
@@ -57,11 +58,12 @@ public:
     distance_    = static_cast<uint32_t>(std::distance(r.begin(), where.begin()));
   }
 
-  locationInfo() {}
+  locationInfo() : is_empty_(true) {}
 
   uint32_t getLineNumber() const { return line_number_; }
   std::string getLineContent() const { return line_; }
   uint32_t getColumnNumber() const { return distance_; }
+  bool isEmpty() const { return is_empty_; }
 };
 
 class error
@@ -85,13 +87,17 @@ public:
 template <class Char, class Traits>
 std::basic_ostream<Char, Traits>& operator<<(std::basic_ostream<Char, Traits>& os, const error& e)
 {
-  auto loc = e.getLocInfo();
-  return os << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-            << rang::style::reset << rang::fg::red << " @" << loc.getLineNumber()
-            << rang::style::reset << ": " << e.getMessage() << std::endl
-            << loc.getLineContent() << std::endl
-            << rang::fg::green << std::setw(static_cast<int>(loc.getColumnNumber()) + 1) << "^"
-            << rang::style::reset;
+  auto const loc = e.getLocInfo();
+  os << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]";
+  if (!loc.isEmpty())
+    os << rang::style::reset << rang::fg::red << " @" << loc.getLineNumber();
+  os << rang::style::reset << ": " << e.getMessage() << std::endl;
+  if (!loc.isEmpty())
+    os << loc.getLineContent() << std::endl
+       << rang::fg::green << std::setw(static_cast<int>(loc.getColumnNumber()) + 1) << "^"
+       << rang::style::reset;
+
+  return os;
 }
 };  // namespace scopion
 
