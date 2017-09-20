@@ -36,7 +36,7 @@
 
 static std::string getTmpFilePath()
 {
-  char* tmpname = strdup("/tmp/tmpfileXXXXXX");
+  char tmpname[] = "/tmp/tmpfileXXXXXX";
   mkstemp(tmpname);
   return std::string(tmpname);
 }
@@ -44,8 +44,8 @@ static std::string getTmpFilePath()
 int main(int argc, char* argv[])
 {
   cmdline::parser p;
-  p.add<std::string>("type", 't', "Specify the type of output (ir, ast, asm, obj)", false, "obj",
-                     cmdline::oneof<std::string>("ir", "ast", "asm", "obj"));
+  p.add<std::string>("type", 't', "Specify the type of output (ir, ast, asm, obj)", false, "exe",
+                     cmdline::oneof<std::string>("ir", "ast", "asm", "exe"));
   p.add<std::string>("output", 'o', "Specify the output path", false, "./a.out");
   p.add<std::string>("arch", 'a', "Specify the target triple", false, "native");
   p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1, cmdline::range(1, 3));
@@ -76,8 +76,9 @@ int main(int argc, char* argv[])
               << std::endl
               << rang::style::bold << rang::fg::green << "[scopc]" << rang::style::reset
               << ": scopion compiler" << std::endl
-              << "Version: " << SCOPION_VERSION << " Git: " << std::string(SCOPION_COMPILED_BRANCH)
-              << " " << SCOPION_COMPILED_COMMIT_HASH << std::endl
+              << "Version: " << SCOPION_VERSION << std::endl
+              << "Git: " << SCOPION_COMPILED_COMMIT_HASH << " on " << SCOPION_COMPILED_BRANCH
+              << std::endl
               << "Compiled on: " << SCOPION_COMPILED_SYSTEM << std::endl;
     return 0;
   }
@@ -89,8 +90,7 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  std::string outpath = p.exist("output") ? p.get<std::string>("output") : "a.out";
-  outpath             = outpath == "-" ? "/dev/stdout" : outpath;
+  auto outpath = p.get<std::string>("output") != "-" ? p.get<std::string>("output") : "/dev/stdout";
 
   std::ifstream ifs(p.rest()[0]);
   if (ifs.fail()) {
