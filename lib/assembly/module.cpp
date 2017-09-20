@@ -94,7 +94,8 @@ std::unique_ptr<module> translate(ast::expr const& tree, std::string const& name
 
   llvm::raw_os_ostream stream(std::cerr);
   if (llvm::verifyModule(*mod, &stream)) {
-    err = error("Invaild IR has generated", locationInfo{}, errorType::Bug);
+    err = error("Invaild IR has generated\nIR:\n" + destv->getPrintedIR(), locationInfo{},
+                errorType::Bug);
     return nullptr;
   }
   return destv;
