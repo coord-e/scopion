@@ -52,7 +52,7 @@ set(CCMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native")
 
 option(ENABLE_CLANG_TIDY
   "Enable clang-tidy's diagnosis. This sometimes makes building slow."
-  ON)
+OFF)
 if(ENABLE_CLANG_TIDY)
   message(STATUS "Enable Clang-Tidy")
 set(CMAKE_CXX_CLANG_TIDY
