@@ -85,7 +85,7 @@ value* evaluator::operator()(ast::function const& fcv)
                     std::to_string(
                         v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams()) +
                     " but supplied " + std::to_string(arguments_.size()),
-                ast::attr(fcv).where, translator_.code_range_);
+                ast::attr(fcv).where, errorType::Translate);
 
   std::vector<std::string> arg_names;
   std::vector<llvm::Type*> arg_types_from_attr;
@@ -193,7 +193,7 @@ value* evaluator::operator()(ast::function const& fcv)
             ret_type = (*itr).getOperand(0)->getType();
           } else {
             throw error("All return values must have the same type", ast::attr(fcv).where,
-                        translator_.code_range_);
+                        errorType::Translate);
           }
         }
       }

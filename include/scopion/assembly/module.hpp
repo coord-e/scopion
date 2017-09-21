@@ -37,17 +37,23 @@ namespace assembly
 {
 class module;
 
-std::unique_ptr<module> translate(parser::parsed const& tree, std::string const& name = "");
+std::unique_ptr<module> translate(
+    ast::expr const& tree,
+    error& err,
+    boost::optional<boost::filesystem::path> const& path = boost::none);
 
 class module
 {
-  friend std::unique_ptr<module> translate(parser::parsed const& tree, std::string const& name);
+  friend std::unique_ptr<module> translate(ast::expr const& tree,
+                                           error& err,
+                                           boost::optional<boost::filesystem::path> const& path);
 
   std::shared_ptr<llvm::Module> llvm_module_;
   value* value_;
+  bool gc_used_ = false;
 
 public:
-  module(module&) = delete;
+  module(const module&) = delete;
   module& operator=(const module&) = delete;
 
   void printIR(std::ostream& os) const;
@@ -55,6 +61,7 @@ public:
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
   value* getValue() const;
+  bool hasGCUsed() const;
 
 private:
   module(std::shared_ptr<llvm::Module>& module, value* val_);

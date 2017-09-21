@@ -24,17 +24,17 @@
 
 #include "scopion/ast/ast.hpp"
 
+#include <boost/filesystem/path.hpp>
+#include <boost/optional.hpp>
+
 namespace scopion
 {
 namespace parser
 {
-struct parsed {
-  ast::expr ast;
-  std::string const& code;
-  parsed(ast::expr const& ast_, std::string const& code_) : ast(ast_), code(code_) {}
-};
-
-parsed parse(std::string const& code);
+boost::optional<ast::expr> parse(
+    std::string const& code,
+    error& err,
+    boost::optional<boost::filesystem::path> const& path = boost::none);
 
 };  // namespace parser
 

@@ -26,6 +26,8 @@
 #include "scopion/ast/expr.hpp"
 #include "scopion/ast/value_wrapper.hpp"
 
+#include "scopion/error.hpp"
+
 #include <boost/variant.hpp>
 
 #include <string>
@@ -142,8 +144,8 @@ expr set_attr(T t, std::string const& key, std::string const& val)
   return visitors_::setter_visitor([key, val](attribute& attr) { attr.attributes[key] = val; })(t);
 }
 
-template <typename T, typename RangeT>
-T set_where(T val, RangeT range)
+template <typename T>
+T set_where(T val, locationInfo range)
 {
   attr(val).where = range;
   return val;

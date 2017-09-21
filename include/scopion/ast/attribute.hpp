@@ -22,6 +22,8 @@
 #ifndef SCOPION_AST_ATTRIBUTE_H_
 #define SCOPION_AST_ATTRIBUTE_H_
 
+#include "scopion/error.hpp"
+
 #include <boost/range/iterator_range.hpp>
 
 #include <string>
@@ -32,7 +34,7 @@ namespace scopion
 namespace ast
 {
 struct attribute {
-  boost::iterator_range<std::string::const_iterator> where;
+  locationInfo where;
   std::unordered_map<std::string, std::string> attributes;
   bool lval    = false;
   bool to_call = false;

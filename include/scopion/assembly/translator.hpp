@@ -52,15 +52,13 @@ class translator : public boost::static_visitor<value*>
   std::shared_ptr<llvm::Module> module_;
   llvm::IRBuilder<>& builder_;
   std::map<std::string, std::unique_ptr<llvm::Module>> loaded_map_;
-  boost::iterator_range<std::string::const_iterator> const code_range_;
   value* thisScope_;
+  bool gc_used_ = false;
 
   friend struct evaluator;
 
 public:
-  translator(std::shared_ptr<llvm::Module>& module,
-             llvm::IRBuilder<>& builder,
-             std::string const& code);
+  translator(std::shared_ptr<llvm::Module>& module, llvm::IRBuilder<>& builder);
 
   value* operator()(ast::value);
   value* operator()(ast::operators);
@@ -115,7 +113,7 @@ public:
       auto f = target->symbols().find(Op::str);
       if (f == target->symbols().end())
         throw error(std::string("no operator ") + Op::str + " is defined in the structure",
-                    ast::attr(op).where, code_range_);
+                    ast::attr(op).where, errorType::Translate);
       auto v         = evaluate(f->second, args, *this);
       auto ret_table = v->getRetTable();
       auto destv =
@@ -141,15 +139,19 @@ public:
   std::shared_ptr<llvm::Module> getModule() const { return module_; }
   llvm::IRBuilder<>& getBuilder() const { return builder_; }
 
-  value* import(std::string const& path);
-  value* importIR(std::string const& path, ast::expr const& astv);
-  value* importCHeader(std::string const& path, ast::expr const& astv);
+  value* import(std::string const& path, ast::pre_variable const& astv);
+  value* importIR(std::string const& path, ast::pre_variable const& astv);
+  value* importCHeader(std::string const& path, ast::pre_variable const& astv);
 
   llvm::Value* createGCMalloc(llvm::Type* Ty,
                               llvm::Value* ArraySize  = nullptr,
                               const llvm::Twine& Name = "");
 
   llvm::Value* sizeofType(llvm::Type*);
+
+  void insertGCInit();
+
+  bool hasGCUsed() const { return gc_used_; }
 
 private:
   bool copyFull(value* src,
