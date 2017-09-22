@@ -102,7 +102,7 @@ value* evaluator::operator()(ast::function const& fcv)
             llvm::raw_os_ostream stream(std::cerr);
             err.print("", stream);
             throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where,
-                        translator_.code_range_);
+                        errorType::Translate);
           }
         } else if (ito != ast::attr(x).attributes.end()) {
           auto var = translator_(ast::set_where(ast::variable(ito->second), ast::attr(x).where));
@@ -125,7 +125,7 @@ value* evaluator::operator()(ast::function const& fcv)
         llvm::raw_os_ostream stream(std::cerr);
         err.print("", stream);
         throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where,
-                    translator_.code_range_);
+                    errorType::Translate);
       }
     } else if (ito != ast::attr(fcv).attributes.end()) {
       auto var = translator_(ast::set_where(ast::variable(ito->second), ast::attr(fcv).where));
@@ -142,7 +142,7 @@ value* evaluator::operator()(ast::function const& fcv)
     if (expt && expt != type)
       throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
                       getNameString(expt) + "\" but supplied \"" + getNameString(type) + "\"",
-                  ast::attr(fcv).where, translator_.code_range_);
+                  ast::attr(fcv).where, errorType::Translate);
     if (!v.value()->isLazy())
       arg_types_for_func.push_back(type);
     arg_types.push_back(v.value()->isFundamental() ? type : type->getPointerElementType());
@@ -208,7 +208,7 @@ value* evaluator::operator()(ast::function const& fcv)
   if (retst && retst != ret_type) {
     throw error("Return type doesn't match: expected \"" + getNameString(retst) +
                     "\" but supplied \"" + getNameString(ret_type) + "\"",
-                ast::attr(fcv).where, translator_.code_range_);
+                ast::attr(fcv).where, errorType::Translate);
   }
 
   func->eraseFromParent();  // remove old one
