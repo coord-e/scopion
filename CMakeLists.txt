@@ -20,6 +20,8 @@
 cmake_minimum_required(VERSION 3.8)
 cmake_policy(SET CMP0048 NEW)
 
+set(CMAKE_CXX_COMPILER clang++)
+
 project(scopion VERSION 0.0.2 LANGUAGES CXX)
 
 set(SCOPION_ETC_DIR ${CMAKE_INSTALL_PREFIX}/etc/scopion)
@@ -42,8 +44,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-
-set(CMAKE_CXX_COMPILER "clang++")
 
 set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Werror -Weverything -Wno-float-equal -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-global-constructors -Wno-exit-time-destructors -DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50")
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
