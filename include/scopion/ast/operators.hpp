@@ -26,6 +26,8 @@
 #include "scopion/ast/expr.hpp"
 #include "scopion/ast/value_wrapper.hpp"
 
+#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#define BOOST_MPL_LIMIT_LIST_SIZE 50
 #include <boost/variant.hpp>
 
 namespace scopion

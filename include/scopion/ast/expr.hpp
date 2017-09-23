@@ -25,8 +25,6 @@
 #include "scopion/ast/operators.hpp"
 #include "scopion/ast/value.hpp"
 
-#include <boost/variant.hpp>
-
 #include <algorithm>
 #include <array>
 #include <initializer_list>

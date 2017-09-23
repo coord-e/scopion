@@ -28,8 +28,6 @@
 
 #include "scopion/error.hpp"
 
-#include <boost/variant.hpp>
-
 #include <string>
 
 namespace scopion
