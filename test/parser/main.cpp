@@ -160,11 +160,13 @@ TEST_F(parserTest, compareOp)
 
 TEST_F(parserTest, assignOp)
 {
-  EXPECT_EQ(
-      parseWithErrorHandling("(){a=1;}"),
-      ast::expr(ast::function({{},
-                               {ast::binary_op<ast::assign>(
-                                   {ast::set_lval(ast::variable("a"), true), ast::integer(1)})}})));
+  EXPECT_EQ(parseWithErrorHandling("(){a=b=c;}"),
+            ast::expr(ast::function(
+                {{},
+                 {ast::binary_op<ast::assign>(
+                     {ast::set_lval(ast::variable("a"), true),
+                      ast::binary_op<ast::assign>(
+                          {ast::set_lval(ast::variable("b"), true), ast::variable("c")})})}})));
 }
 
 TEST_F(parserTest, sinOp)
