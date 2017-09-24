@@ -219,6 +219,29 @@ TEST_F(parserTest, atOp)
                 {{}, {ast::binary_op<ast::at>({ast::variable("a"), ast::integer(1)})}})));
 }
 
+TEST_F(parserTest, dotOp)
+{
+  EXPECT_EQ(parseWithErrorHandling("(){a.b;}"),
+            ast::expr(ast::function(
+                {{}, {ast::binary_op<ast::dot>({ast::variable("a"), ast::struct_key("b")})}})));
+  EXPECT_EQ(
+      parseWithErrorHandling("(){a.:b();}"),
+      ast::expr(ast::function(
+          {{},
+           {ast::binary_op<ast::call>(
+               {ast::set_to_call(
+                    ast::binary_op<ast::odot>({ast::variable("a"), ast::struct_key("b")}), true),
+                ast::arglist()})}})));
+  EXPECT_EQ(
+      parseWithErrorHandling("(){a.=b();}"),
+      ast::expr(ast::function(
+          {{},
+           {ast::binary_op<ast::call>(
+               {ast::set_to_call(
+                    ast::binary_op<ast::adot>({ast::variable("a"), ast::struct_key("b")}), true),
+                ast::arglist()})}})));
+}
+
 TEST_F(parserTest, priority)
 {
   EXPECT_EQ(
