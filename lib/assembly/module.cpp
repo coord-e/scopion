@@ -74,16 +74,17 @@ std::unique_ptr<module> translate(ast::expr const& tree,
   translator tr(mod, builder);
 
   value* val;
-  llvm::Value* etlv;
+  value* etlv;
   try {
     val  = boost::apply_visitor(tr, tree);
-    etlv = evaluate(val, arg_values, tr)->getLLVM();
+    etlv = evaluate(val, arg_values, tr);
   } catch (error& e) {
     err = e;
     return nullptr;
   }
 
-  llvm::Value* ret = builder.CreateCall(etlv, llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
+  llvm::Value* ret =
+      builder.CreateCall(etlv->getLLVM(), llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
 
   builder.CreateRet(ret->getType()->isVoidTy() ? builder.getInt32(0) : ret);
 
@@ -92,7 +93,7 @@ std::unique_ptr<module> translate(ast::expr const& tree,
     tr.insertGCInit();
   }
 
-  auto destv      = std::unique_ptr<module>(new module(mod, val));
+  auto destv      = std::unique_ptr<module>(new module(mod, etlv));
   destv->gc_used_ = tr.hasGCUsed();
 
   llvm::raw_os_ostream stream(std::cerr);
