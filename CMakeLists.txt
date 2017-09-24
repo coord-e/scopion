@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.7)
 cmake_policy(SET CMP0048 NEW)
 
 set(CMAKE_CXX_COMPILER clang++)
@@ -67,7 +67,7 @@ include_directories(include)
 include_directories(SYSTEM extsrc/include)
 
 find_package(LLVM 5.0 REQUIRED CONFIG)
-find_package(Boost 1.64.0 REQUIRED COMPONENTS filesystem system)
+find_package(Boost 1.62.0 REQUIRED COMPONENTS filesystem system)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
