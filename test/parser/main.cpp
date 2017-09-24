@@ -175,14 +175,32 @@ TEST_F(parserTest, sinOp)
             ast::expr(ast::function({{}, {ast::single_op<ast::lnot>({ast::integer(1)})}})));
   EXPECT_EQ(parseWithErrorHandling("(){~1;}"),
             ast::expr(ast::function({{}, {ast::single_op<ast::inot>({ast::integer(1)})}})));
-  EXPECT_EQ(parseWithErrorHandling("(){++1;}"),
-            ast::expr(ast::function({{}, {ast::single_op<ast::inc>({ast::integer(1)})}})));
-  EXPECT_EQ(parseWithErrorHandling("(){--1;}"),
-            ast::expr(ast::function({{}, {ast::single_op<ast::dec>({ast::integer(1)})}})));
-  EXPECT_EQ(parseWithErrorHandling("(){1++;}"),
-            ast::expr(ast::function({{}, {ast::single_op<ast::inc>({ast::integer(1)})}})));
-  EXPECT_EQ(parseWithErrorHandling("(){1--;}"),
-            ast::expr(ast::function({{}, {ast::single_op<ast::dec>({ast::integer(1)})}})));
+
+  /*** parse-time AST replacement ***/
+  EXPECT_EQ(parseWithErrorHandling("(){++2;}"),
+            ast::expr(ast::function(
+                {{},
+                 {ast::binary_op<ast::assign>(
+                     {ast::set_lval(ast::integer(2), true),
+                      ast::binary_op<ast::add>({ast::integer(2), ast::integer(1)})})}})));
+  EXPECT_EQ(parseWithErrorHandling("(){--2;}"),
+            ast::expr(ast::function(
+                {{},
+                 {ast::binary_op<ast::assign>(
+                     {ast::set_lval(ast::integer(2), true),
+                      ast::binary_op<ast::sub>({ast::integer(2), ast::integer(1)})})}})));
+  EXPECT_EQ(parseWithErrorHandling("(){2++;}"),
+            ast::expr(ast::function(
+                {{},
+                 {ast::binary_op<ast::assign>(
+                     {ast::set_lval(ast::integer(2), true),
+                      ast::binary_op<ast::add>({ast::integer(2), ast::integer(1)})})}})));
+  EXPECT_EQ(parseWithErrorHandling("(){2--;}"),
+            ast::expr(ast::function(
+                {{},
+                 {ast::binary_op<ast::assign>(
+                     {ast::set_lval(ast::integer(2), true),
+                      ast::binary_op<ast::sub>({ast::integer(2), ast::integer(1)})})}})));
 }
 
 TEST_F(parserTest, callOp)
@@ -227,8 +245,13 @@ TEST_F(parserTest, priority)
                                                        {ast::integer(1),
                                                         ast::binary_op<ast::mul>(
                                                             {ast::integer(1),
-                                                             ast::single_op<ast::inc>({ast::integer(
-                                                                 1)})})})})})})})})})})})})}})));
+                                                             ast::binary_op<ast::assign>(
+                                                                 {ast::set_lval(ast::integer(1),
+                                                                                true),
+                                                                  ast::binary_op<ast::add>(
+                                                                      {ast::integer(1),
+                                                                       ast::integer(
+                                                                           1)})})})})})})})})})})})})})}})));
 }  // namespace
 
 }  // namespace
