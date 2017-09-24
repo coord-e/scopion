@@ -29,7 +29,7 @@ RUN git clone --depth 1 -b develop https://github.com/coord-e/scopion
 
 WORKDIR scopion/build
 
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DENABLE_CLANG_TIDY=OFF -DFORMAT_BEFORE_BUILD=OFF
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF -DWITHOUT_TEST=ON
 RUN make -j"$(nproc)" && make install
 
 WORKDIR /
