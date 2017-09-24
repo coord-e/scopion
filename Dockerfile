@@ -1,14 +1,12 @@
 From debian:stretch
 
-RUN apt-get update && apt-get install -y wget gnupg
+RUN apt-get update && apt-get -y upgrade && apt-get install -y wget gnupg
 
+RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak
 RUN echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main" >> /etc/apt/sources.list
 RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 
-RUN apt-get update && apt-get -y upgrade
-
-RUN apt-get -y install clang-5.0 llvm-5.0 libgc-dev exuberant-ctags build-essential libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime clang-format-5.0 clang-tidy-5.0
-RUN apt-get -y install git
+RUN apt-get update && apt-get -y install clang-5.0 llvm-5.0 libgc-dev exuberant-ctags build-essential git libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime clang-format-5.0 clang-tidy-5.0
 
 RUN update-alternatives --install /usr/local/bin/clang clang `which clang-5.0` 10
 RUN update-alternatives --install /usr/local/bin/clang++ clang++ `which clang++-5.0` 10
@@ -36,6 +34,6 @@ RUN make -j"$(nproc)" && make install
 
 WORKDIR /
 RUN ldconfig
-RUN rm -rf wd_
-
 RUN scopc -V
+
+RUN rm -rf wd_
