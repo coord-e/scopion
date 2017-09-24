@@ -37,3 +37,5 @@ RUN ldconfig
 RUN scopc -V
 
 RUN rm -rf wd_
+RUN mv /etc/apt/sources.list.bak /etc/apt/sources.list
+RUN apt-get update && apt-get -y remove wget gnupg build-essential git libclang-5.0-dev llvm-5.0-dev libedit-dev libz-dev clang-format-5.0 clang-tidy-5.0
