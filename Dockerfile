@@ -1,5 +1,7 @@
 From debian:stretch
 
+COPY . scopion/
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends wget ca-certificates gnupg \
     && cp /etc/apt/sources.list /etc/apt/sources.list.bak \
@@ -24,7 +26,6 @@ RUN apt-get update \
     && cp cmake-3.8.2-Linux-x86_64/bin/* /usr/local/bin/ \
     && cp -r cmake-3.8.2-Linux-x86_64/share/* /usr/local/share/ \
     && rm -rf cmake-3.8.2-Linux-x86_64/ cmake-3.8.2-Linux-x86_64.tar.gz \
-    && git clone --depth 1 -b develop https://github.com/coord-e/scopion \
     && mkdir -p scopion/build \
     && cd scopion/build \
     && cmake .. -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF -DWITHOUT_TEST=ON \
