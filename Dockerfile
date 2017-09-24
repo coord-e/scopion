@@ -18,7 +18,7 @@ WORKDIR wd_
 
 RUN wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
 RUN tar xf boost_1_64_0.tar.bz2
-RUN cp -r boost_1_64_0/boost /usr/local/include
+RUN cd boost_1_64_0/ && ./bootstrap.sh && ./b2 install --with-filesystem -j"$(nproc)"
 
 RUN wget https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.tar.gz
 RUN tar xf cmake-3.8.2-Linux-x86_64.tar.gz
