@@ -279,6 +279,13 @@ TEST_F(parserTest, priority)
                                                                       {ast::integer(1),
                                                                        ast::integer(
                                                                            1)})})})})})})})})})})})})})}})));
-}  // namespace
+}
 
-}  // namespace
+TEST_F(parserTest, escapeSequence)
+{
+  EXPECT_EQ(parseWithErrorHandling(R"((){"\n\t\b\f\r\v\a\\\s\"";})"),
+            ast::expr(ast::function({{}, {ast::string("\n\t\b\f\r\v\a\\s\"")}})));
+  EXPECT_EQ(parseWithErrorHandling(R"((){'\n\t\b\f\r\v\a\s\'';})"),
+            ast::expr(ast::function({{}, {ast::string("\\n\\t\\b\\f\\r\\v\\a\\s'")}})));
+}
+}
