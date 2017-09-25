@@ -36,8 +36,10 @@ ast::expr parseWithErrorHandling(std::string const& str)
   scopion::error err;
   if (auto res = parser::parse(str, err))
     return *res;
-  else
+  else {
+    std::cerr << err << std::endl;
     throw err;
+  }
 }
 
 TEST_F(parserTest, intVal)

@@ -44,7 +44,10 @@ TEST_F(assemblyTest, variable)
 
   scopion::error err;
   auto res = scopion::assembly::translate(tree, err);
-  ASSERT_TRUE(static_cast<bool>(res));
+  if (!res) {
+    std::cerr << err << std::endl;
+    throw err;
+  }
 
   auto str = R"(
 define i32 @0(i32, i8**) {
