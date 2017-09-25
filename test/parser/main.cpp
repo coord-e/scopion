@@ -47,6 +47,12 @@ TEST_F(parserTest, intVal)
   EXPECT_EQ(parseWithErrorHandling("(){1;}"), ast::expr(ast::function({{}, {ast::integer(1)}})));
 }
 
+TEST_F(parserTest, deciVal)
+{
+  EXPECT_EQ(parseWithErrorHandling("(){1.01;}"),
+            ast::expr(ast::function({{}, {ast::decimal(1.01)}})));
+}
+
 TEST_F(parserTest, strVal)
 {
   EXPECT_EQ(parseWithErrorHandling("(){\"test\";}"),
@@ -73,6 +79,22 @@ TEST_F(parserTest, structVal)
                                      std::vector<ast::expr>{ast::structure(
                                          {{ast::struct_key("a"), ast::integer(10)},
                                           {ast::struct_key("b"), ast::string("koko")}})}})));
+}
+
+TEST_F(parserTest, varVal)
+{
+  EXPECT_EQ(parseWithErrorHandling("(){test;}"),
+            ast::expr(ast::function({{}, {ast::variable("test")}})));
+  EXPECT_EQ(parseWithErrorHandling("(){@test;}"),
+            ast::expr(ast::function({{}, {ast::pre_variable("@test")}})));
+}
+
+TEST_F(parserTest, attrVal)
+{
+  EXPECT_EQ(parseWithErrorHandling("(){1#a:b;}"),
+            ast::expr(ast::function({{}, {ast::set_attr(ast::integer(1), "a", "b")}})));
+  EXPECT_EQ(parseWithErrorHandling("(){1#a;}"),
+            ast::expr(ast::function({{}, {ast::set_attr(ast::integer(1), "a", "")}})));
 }
 
 TEST_F(parserTest, arrayVal)
@@ -107,6 +129,13 @@ TEST_F(parserTest, remOp)
   EXPECT_EQ(parseWithErrorHandling("(){1%1;}"),
             ast::expr(ast::function(
                 {{}, {ast::binary_op<ast::rem>({ast::integer(1), ast::integer(1)})}})));
+}
+
+TEST_F(parserTest, powOp)
+{
+  EXPECT_EQ(parseWithErrorHandling("(){1**1;}"),
+            ast::expr(ast::function(
+                {{}, {ast::binary_op<ast::pow>({ast::integer(1), ast::integer(1)})}})));
 }
 
 TEST_F(parserTest, shiftOp)
