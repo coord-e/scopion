@@ -4,8 +4,7 @@ script:
     - clang++ --version
     - cmake --version
     - cmake . -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF
-    - make -j"$(nproc)"
-    - make test
+    - make -j"$(nproc)" && make test
 compiler:
     - clang
 install:
@@ -13,18 +12,21 @@ install:
     - echo "deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu trusty main" | sudo tee -a /etc/apt/sources.list
     - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
     - sudo apt-get -qq update
-    - sudo apt-get -y --allow-unauthenticated install clang-5.0 llvm-5.0 libgc-dev exuberant-ctags build-essential libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime
+    - sudo apt-get -y -qq remove clang
+    - sudo apt-get -y -qq --allow-unauthenticated install clang-5.0 llvm-5.0 libgc-dev exuberant-ctags build-essential libc++-dev libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime
     - sudo update-alternatives --install /usr/local/bin/clang clang `which clang-5.0` 10
     - sudo update-alternatives --install /usr/local/bin/clang++ clang++ `which clang++-5.0` 10
     - sudo update-alternatives --install /usr/local/bin/llc llc `which llc-5.0` 10
-    - wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.gz
+    - export PATH=/usr/local/bin:$PATH
+    - clang++ -E -x c++ - -v < /dev/null
+    - wget -q https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.gz
     - tar xf boost_1_64_0.tar.gz
     - cd boost_1_64_0/
     - ./bootstrap.sh
     - sudo ./b2 install --with-filesystem -j"$(nproc)"
     - cd ..
-    - rm -rf boost_1_64_0/ boost_1_64_0.tar.gz
-    - wget https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.tar.gz
+    - sudo rm -rf boost_1_64_0/ boost_1_64_0.tar.gz
+    - wget -q https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.tar.gz
     - tar xf cmake-3.8.2-Linux-x86_64.tar.gz
     - sudo cp cmake-3.8.2-Linux-x86_64/bin/* /usr/local/bin/
     - sudo cp -r cmake-3.8.2-Linux-x86_64/share/* /usr/local/share/
