@@ -8,7 +8,7 @@ RUN apt-get update \
     && echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main" >> /etc/apt/sources.list \
     && wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - \
     && apt-get update \
-    && apt-get -y install --no-install-recommends clang-5.0 llvm-5.0 libgc-dev exuberant-ctags build-essential git libboost-dev libboost-filesystem-dev cmake libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime clang-format-5.0 clang-tidy-5.0 \
+    && apt-get -y install --no-install-recommends clang-5.0 llvm-5.0 libgc-dev exuberant-ctags build-essential git libc++-dev libboost-dev libboost-filesystem-dev cmake libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime clang-format-5.0 clang-tidy-5.0 \
     && update-alternatives --install /usr/local/bin/clang clang `which clang-5.0` 10 \
     && update-alternatives --install /usr/local/bin/clang++ clang++ `which clang++-5.0` 10 \
     && update-alternatives --install /usr/local/bin/llc llc `which llc-5.0` 10 \
@@ -16,8 +16,9 @@ RUN apt-get update \
     && update-alternatives --install /usr/local/bin/clang-tidy clang-tidy `which clang-tidy-5.0` 10 \
     && mkdir -p scopion/build \
     && cd scopion/build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF -DWITHOUT_TEST=ON \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF \
     && make -j"$(nproc)" \
+    && make test \
     && make install \
     && cd ../.. \
     && rm -rf scopion/ \
