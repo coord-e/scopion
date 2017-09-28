@@ -42,6 +42,20 @@ info (){
 cleanup(){
   info "Cleaning up..."
 
+  filename="scopion_${VERSION_TO_INSTALL}-${TARGET_PLATFORM}_${TARGET_ARCH}"
+
+  if [ -f "${filename}.zip" ]; then
+    execmd "rm ${filename}.zip"
+  fi
+
+  if [ -d ${filename} ]; then
+    execmd "rm -r ${filename}"
+  fi
+}
+
+cleanup_error(){
+  cleanup
+
   case $TARGET_PLATFORM in
     Linux)
       if [ -f /etc/apt/sources.list.bak ]; then
@@ -55,7 +69,7 @@ cleanup(){
 
 exit_fail(){
   if [ $1 = -1 ];then
-    cleanup;
+    cleanup_error;
   fi
   \exit $1
 }
@@ -196,7 +210,7 @@ done
 
 shift $((OPTIND - 1))
 
-findscopc && error "It seems that scopion is already installed. Try \`scopc -v\`. Abort." && exit -1;
+findscopc && error "It seems that scopion is already installed. Try \`scopc -v\`. Abort." && exit_fail -1;
 info "scopc isn't installed"
 
 TARGET_ARCH=$(uname -m)
@@ -212,10 +226,10 @@ case ${TARGET_PLATFORM} in
         . /etc/os-release
         TARGET_OS=$NAME
         TARGET_VERSION=$VERSION_ID
-        if [ -v "$VERSION_CODENAME" ]; then
-          TARGET_VERSION_NAME=$(echo $VERSION_CODENAME | cut -d ' ' -f1 | tr -d '\n') #ubuntu?
-        else
+        if [ -z "$VERSION_CODENAME" ]; then
           TARGET_VERSION_NAME=$(echo $VERSION | sed -n 's/^[^(]*(\(.*\))$/\1/p') #debian? "8 (jessie)"
+        else
+          TARGET_VERSION_NAME=$(echo $VERSION_CODENAME | cut -d ' ' -f1 | tr -d '\n') #ubuntu?
         fi
         TARGET_VERSION_NAME=${TARGET_VERSION_NAME,,} #to lower
     else
@@ -286,3 +300,5 @@ findscopc || error "Couldn't find scopc installed." || exit_fail -1;
 execmd "scopc -V"
 
 info "Installed. Enjoy!"
+
+cleanup
