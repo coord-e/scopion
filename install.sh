@@ -157,7 +157,7 @@ install(){
   filename="scopion_${VERSION_TO_INSTALL}-${TARGET_PLATFORM}_${TARGET_ARCH}"
 
   info "Downloading a binary..."
-  execmd "wget https://github.com/coord-e/scopion/releases/download/v${VERSION_TO_INSTALL}/${filename}.zip"
+  execmd "wget -O ${filename}.zip https://github.com/coord-e/scopion/releases/download/v${VERSION_TO_INSTALL}/${filename}.zip"
 
   info "Installing..."
   execmd "unzip ${filename}.zip"
@@ -210,13 +210,13 @@ done
 
 shift $((OPTIND - 1))
 
-findscopc && error "It seems that scopion is already installed. Try \`scopc -v\`. Abort." && exit_fail -1;
+findscopc && error "It seems that scopion is already installed. Try \`scopc -v\`. Abort." && exit -1;
 info "scopc isn't installed"
 
 TARGET_ARCH=$(uname -m)
 if [ ! $TARGET_ARCH = "x86_64" ]; then
   error "Archtecture $(uname -m) isn't supported. Abort."
-  exit_fail -1;
+  exit -1;
 fi
 
 TARGET_PLATFORM=$(uname -s)
@@ -234,7 +234,7 @@ case ${TARGET_PLATFORM} in
         TARGET_VERSION_NAME=${TARGET_VERSION_NAME,,} #to lower
     else
       error "/etc/os-release not found. Abort."
-      exit_fail -1
+      exit -1
     fi
 
     case $TARGET_OS in
@@ -242,7 +242,7 @@ case ${TARGET_PLATFORM} in
         vercomp $TARGET_VERSION $UBUNTU_LEAST
         if [ $? = 2 ]; then
           error "Unsupported Version Ubuntu ${TARGET_VERSION}. Abort."
-          exit_fail -1
+          exit -1
         fi
 
         ;;
@@ -250,13 +250,13 @@ case ${TARGET_PLATFORM} in
         vercomp $TARGET_VERSION $DEBIAN_LEAST
         if [ $? = 2 ]; then
           error "Unsupported Version Debian ${TARGET_VERSION}. Abort."
-          exit_fail -1
+          exit -1
         fi
 
         ;;
       *)
         error "Unsupported OS ${TARGET_OS}. Abort."
-        exit_fail -1
+        exit -1
         ;;
       esac
     ;;
@@ -268,13 +268,13 @@ case ${TARGET_PLATFORM} in
     vercomp $TARGET_VERSION $MAC_LEAST
     if [ $? = 2 ]; then
       error "Unsupported Version $TARGET_VERSION. Abort."
-      exit_fail -1;
+      exit -1;
     fi
     ;;
 
   *)
     error "Unsupported platform ${TARGET_PLATFORM}. Abort."
-    exit_fail -1;;
+    exit -1;;
 esac
 
 echo -n "Install prefix [${PREFIX}] > "
@@ -288,7 +288,7 @@ info "OS: ${TARGET_OS}"
 info "Version: ${TARGET_VERSION_NAME} ${TARGET_VERSION}"
 info "Prefix: ${PREFIX}"
 
-confirm || exit_fail -1;
+confirm || exit -1;
 
 pre_install
 install_depends
