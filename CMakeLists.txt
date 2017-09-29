@@ -20,9 +20,10 @@
 cmake_minimum_required(VERSION 3.7)
 cmake_policy(SET CMP0048 NEW)
 
-set(CMAKE_CXX_COMPILER clang++)
+project(scopion VERSION 0.0.3 LANGUAGES CXX)
 
-project(scopion VERSION 0.0.2 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SCOPION_ETC_DIR ${CMAKE_INSTALL_PREFIX}/etc/scopion)
 set(SCOPION_CACHE_DIR .scopion)
@@ -45,7 +46,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -stdlib=libc++ -pedantic-errors -Wall -Werror -Weverything -Wno-float-equal -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-global-constructors -Wno-exit-time-destructors")
+set(CMAKE_CXX_FLAGS "-std=c++14 -pedantic-errors -Wall -Werror -Weverything -Wno-float-equal -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-global-constructors -Wno-exit-time-destructors")
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 set(CCMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native")

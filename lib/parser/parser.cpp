@@ -45,15 +45,15 @@ namespace grammar
 {
 namespace detail
 {
-static str_range_t _current_range;
+static strRange _current_range;
 static boost::optional<boost::filesystem::path> _current_path;
 
-static void set_current_range(str_range_t range)
+static void set_current_range(strRange range)
 {
   _current_range = range;
 }
 
-static str_range_t get_current_range()
+static strRange get_current_range()
 {
   return _current_range;
 }
@@ -69,7 +69,7 @@ static boost::optional<boost::filesystem::path> get_current_path()
 }
 
 template <typename T>
-T set_where_r(T val, str_range_t where)
+T set_where_r(T val, strRange where)
 {
   attr(val).where = locationInfo(where, get_current_range(), get_current_path());
   return val;
@@ -474,7 +474,7 @@ boost::optional<ast::expr> parse(std::string const& code,
 
   auto cr = grammar::detail::get_current_range();
   auto cf = grammar::detail::get_current_path();
-  grammar::detail::set_current_range(str_range_t(code.begin(), code.end()));
+  grammar::detail::set_current_range(strRange(code.begin(), code.end()));
   grammar::detail::set_current_path(path);
 
   auto const space_comment =

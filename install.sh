@@ -98,9 +98,13 @@ error (){
   echo -e "\033[0;31m[ERROR] \033[0m\033[0;01m $1\033[0;0m"
 }
 
+warn (){
+  echo -e "\033[0;33m[ERROR] \033[0m\033[0;01m $1\033[0;0m"
+}
+
 confirm (){
   if [ $# = 0 ]; then
-    MSG="Ready to install. Continue?"
+    MSG="Ready to install. Are you sure to continue?"
   else
     MSG=$1
   fi
@@ -143,12 +147,12 @@ install_depends() {
   case $TARGET_PLATFORM in
     Linux)
       execmdsu "apt-get update"
-      execmdsu "apt-get -y --allow-unauthenticated install clang-${LLVM_VERSION} llvm-${LLVM_VERSION} libgc-dev exuberant-ctags"
+      execmdsu "apt-get -y --allow-unauthenticated install clang-${LLVM_VERSION} llvm-${LLVM_VERSION} libgc-dev exuberant-ctags libboost-filesystem-dev"
       execmdsu "update-alternatives --install /usr/local/bin/clang clang `which clang-${LLVM_VERSION}` 10"
       execmdsu "update-alternatives --install /usr/local/bin/llc llc `which llc-${LLVM_VERSION}` 10"
       ;;
     Darwin)
-      execmd "brew install llvm bdw-gc ctags"
+      execmd "brew install llvm bdw-gc ctags boost"
       ;;
     esac
 }
@@ -184,17 +188,17 @@ usage() {
         echo -e "\t-d: Dry run"
 }
 
-VERSION_TO_INSTALL="0.0.2"
+VERSION_TO_INSTALL="0.0.3"
 PREFIX="/usr/local"
 
 TARGET_VERSION="Unknown"
 TARGET_VERSION_NAME="Unknown"
 TARGET_OS="Unknown"
 
-LLVM_VERSION="4.0"
+LLVM_VERSION="5.0"
 
-UBUNTU_LEAST="16.04"
-DEBIAN_LEAST="8"
+UBUNTU_LEAST="17.04"
+DEBIAN_LEAST="9"
 MAC_LEAST="10.12"
 
 while getopts dp:h OPT
@@ -210,13 +214,16 @@ done
 
 shift $((OPTIND - 1))
 
-findscopc && error "It seems that scopion is already installed. Try \`scopc -v\`. Abort." && exit -1;
-info "scopc isn't installed"
+findscopc
+if [ $? = 0 ]; then
+  warn "It seems that scopion is already installed. Try \`scopc -v\`."
+  confirm "Are you sure to continue?" || exit -1
+fi
 
 TARGET_ARCH=$(uname -m)
 if [ ! $TARGET_ARCH = "x86_64" ]; then
-  error "Archtecture $(uname -m) isn't supported. Abort."
-  exit -1;
+  warn "Archtecture $(uname -m) isn't supported."
+  confirm "Are you sure to continue?" || exit -1
 fi
 
 TARGET_PLATFORM=$(uname -s)
@@ -241,16 +248,16 @@ case ${TARGET_PLATFORM} in
       *Ubuntu*)
         vercomp $TARGET_VERSION $UBUNTU_LEAST
         if [ $? = 2 ]; then
-          error "Unsupported Version Ubuntu ${TARGET_VERSION}. Abort."
-          exit -1
+          warn "Ubuntu ${TARGET_VERSION} isn't supported."
+          confirm "Are you sure to continue?" || exit -1
         fi
 
         ;;
       *Debian*)
         vercomp $TARGET_VERSION $DEBIAN_LEAST
         if [ $? = 2 ]; then
-          error "Unsupported Version Debian ${TARGET_VERSION}. Abort."
-          exit -1
+          error "Debian ${TARGET_VERSION} isn't supported."
+          confirm "Are you sure to continue?" || exit -1
         fi
 
         ;;
@@ -267,8 +274,8 @@ case ${TARGET_PLATFORM} in
     TARGET_VERSION_NAME=$(curl -s http://support-sp.apple.com/sp/product?edid=$TARGET_VERSION | sed -n 's/.*<configCode>\(.*\)<\/configCode>.*/\1/p')
     vercomp $TARGET_VERSION $MAC_LEAST
     if [ $? = 2 ]; then
-      error "Unsupported Version $TARGET_VERSION. Abort."
-      exit -1;
+      warn "Version $TARGET_VERSION isn't supported."
+      confirm "Are you sure to continue?" || exit -1
     fi
     ;;
 

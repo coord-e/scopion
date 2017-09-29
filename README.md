@@ -1,8 +1,10 @@
 <div style="text-align:center"><img src ="https://raw.githubusercontent.com/wiki/coord-e/scopion/scopion.png" /></div>
 
-
+[![Travis](https://img.shields.io/travis/coord-e/scopion.svg)]() [![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg)]() [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg)]()
+[![license](https://img.shields.io/github/license/coord-e/scopion.svg)]() [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg)]()
 # scopion
-scopion is a new programming language with simple syntax.
+a statically-typed functional programming language with powerful objective syntax
+Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
 
 ###### Example:
 ```
@@ -37,35 +39,51 @@ v1.real => 11
 **This project is heavily under development.**
 
 # Features
-- no global
-- referentially transparent (without c functions)
-- objective syntax
+- no such thing like 'global'
+- almost all functions has a referentially transparency
+- support powerful objective syntax
 - no reserved words
 - statically typed
 - types are suggested in almost scene
 - Embedded garbage collection
+- Optimization and native code generation by LLVM
 
 # Getting started
 ## Prerequirements
 - llvm, clang (v5.0.0~)
+- Boost.Filesystem (v1.62~)
 - libgc
 - ctags
+## Supported Platforms
+- macOS (Sierra~)
+- GNU/Linux
+
+Only x86_64 is currently supported.
+
 ## Installation
 
+If you are in Ubuntu 17.04~, Debian stretch~, or macOS Sierra~, just paste this at a terminal prompt:
+```shell
+curl -fsSL https://scopion.coord-e.com/get | bash
+```
+
 ### Binary downloads
-- [Debian/Ubuntu](https://github.com/coord-e/scopion/releases/download/v0.0.2/scopion_0.0.2-Linux_x86_64.deb)
-- [Other GNU/Linux](https://github.com/coord-e/scopion/releases/download/v0.0.2/scopion_0.0.2-Linux_x86_64.tar.bz2)
-- [Darwin (macOS)](https://github.com/coord-e/scopion/releases/download/v0.0.2/scopion_0.0.2-Darwin_x86_64.zip)
+- [Debian/Ubuntu](https://github.com/coord-e/scopion/releases/download/v0.0.3/scopion_0.0.3-Linux_x86_64.deb)
+- [Other GNU/Linux](https://github.com/coord-e/scopion/releases/download/v0.0.3/scopion_0.0.3-Linux_x86_64.tar.bz2)
+- [Darwin (macOS)](https://github.com/coord-e/scopion/releases/download/v0.0.3/scopion_0.0.3-Darwin_x86_64.zip)
 
-Or you can [build from source](#build-from-source)
-
+### Docker Image
+```shell
+docker pull coorde/scopion
+docker run -it coorde/scopion /bin/bash
+```
 
 ## Enjoy
-You can compile your program with
+Now you can compile your scopion source
 ```shell
 scopc prog.scc -o prog
 ```
-Usage:
+### Usage
 ```shell
 usage: scopc [options] ... filename ...
 options:
@@ -80,16 +98,17 @@ options:
 ## Build from source
 if there is no suitable prebuilt binary for your environment, you can build scopion from source.
 ### Prerequirements
-- Boost (v1.64~)
+- (Installation prerequirements)
+- Boost (v1.62~)
+- cmake (v3.7~)
+
 ```shell
-# clone this repo
 git clone https://github.com/coord-e/scopion
-# make build directory and run cmake
 cd scopion
 mkdir build && cd $_
-cmake .. -DCMAKE_CXX_COMPILER=clang++ # clang++ >=4.0 is required 
-#build and install (this may takes time)
-make -j 4 && make install
+cmake .. -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF
+make -j 4 # build (this may takes time)
+sudo make install # install
 ```
 
 # TODO
@@ -104,7 +123,7 @@ make -j 4 && make install
 - [ ] Tuple (array with different types)
 
 # Syntax
-**This document is being written.**
+**This document is written in progress.**
 See [Parser.cpp](lib/parser/parser.cpp) for full syntax definition.
 
 ## Identifier
@@ -133,8 +152,9 @@ raw_string ::= (''' ("\'" | char - '\'')* ''');
 ```
 
 A string (with "") has escape sequences. To use " in raw string, use \".
+
 | Sequence | Character       | Code |
-|----------|-----------------|------|
+|:---------|:----------------|:-----|
 | \n       | NEWLINE         | 0x0a |
 | \r       | CARRIAGE RETURN | 0x0d |
 | \t       | HORIZONTAL TAB  | 0x09 |
