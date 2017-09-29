@@ -8,7 +8,7 @@ matrix:
       addons: &clang50
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-          packages: ['clang-5.0']
+          packages: ['clang-5.0', 'gcc-7']
       env: COMPILER='clang++-5.0' BUILD_TYPE='Release'
 
     - os: linux
@@ -30,7 +30,7 @@ install:
 - |
   if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
     sudo apt-get -qq update
-    sudo apt-get -y -qq --allow-unauthenticated install llvm-5.0 libgc-dev exuberant-ctags build-essential libc++-dev libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime
+    sudo apt-get -y -qq --allow-unauthenticated install llvm-5.0 libgc-dev exuberant-ctags build-essential libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime
     wget -q https://sourceforge.net/projects/boost/files/boost/1.62.0/boost_1_62_0.tar.gz
     tar xf boost_1_62_0.tar.gz
     cd boost_1_62_0/
