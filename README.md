@@ -1,6 +1,6 @@
 <div style="text-align:center"><img src ="https://raw.githubusercontent.com/wiki/coord-e/scopion/scopion.png" /></div>
 
-[![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg)]() [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg)]() [![license](https://img.shields.io/github/license/coord-e/scopion.svg)]() [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg)]()
+[![Travis](https://img.shields.io/travis/coord-e/scopion.svg)]() [![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg)]() [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg)]() [![license](https://img.shields.io/github/license/coord-e/scopion.svg)]() [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg)]()
 # scopion
 a statically-typed functional programming language with powerful objective syntax
 Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
