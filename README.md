@@ -1,6 +1,7 @@
 <div style="text-align:center"><img src ="https://raw.githubusercontent.com/wiki/coord-e/scopion/scopion.png" /></div>
 
-[![Travis](https://img.shields.io/travis/coord-e/scopion.svg)]() [![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg)]() [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg)]() [![license](https://img.shields.io/github/license/coord-e/scopion.svg)]() [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg)]()
+[![Travis](https://img.shields.io/travis/coord-e/scopion.svg)]() [![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg)]() [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg)]()
+[![license](https://img.shields.io/github/license/coord-e/scopion.svg)]() [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg)]()
 # scopion
 a statically-typed functional programming language with powerful objective syntax
 Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
@@ -50,6 +51,7 @@ v1.real => 11
 # Getting started
 ## Prerequirements
 - llvm, clang (v5.0.0~)
+- Boost.Filesystem (v1.62~)
 - libgc
 - ctags
 ## Supported Platforms
@@ -60,7 +62,7 @@ Only x86_64 is currently supported.
 
 ## Installation
 
-If you are in Ubuntu 16.04~, Debian stretch~, or macOS Sierra~, just paste this at a terminal prompt:
+If you are in Ubuntu 17.04~, Debian stretch~, or macOS Sierra~, just paste this at a terminal prompt:
 ```shell
 curl -fsSL https://scopion.coord-e.com/get | bash
 ```
@@ -152,7 +154,7 @@ raw_string ::= (''' ("\'" | char - '\'')* ''');
 A string (with "") has escape sequences. To use " in raw string, use \".
 
 | Sequence | Character       | Code |
-|----------|-----------------|------|
+|:---------|:----------------|:-----|
 | \n       | NEWLINE         | 0x0a |
 | \r       | CARRIAGE RETURN | 0x0d |
 | \t       | HORIZONTAL TAB  | 0x09 |
