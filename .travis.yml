@@ -8,7 +8,7 @@ matrix:
       addons: &clang50
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-          packages: ['clang-5.0', 'gcc-7']
+          packages: ['clang-5.0', 'libstdc++6', 'libstdc++-6-dev']
       env: COMPILER='clang++-5.0' BUILD_TYPE='Release'
 
     - os: linux
@@ -50,7 +50,6 @@ install:
     brew list bdw-gc || brew install bdw-gc
   fi
 before_script:
-  - sudo ldconfig
   - cd ${TRAVIS_BUILD_DIR}
   - cmake . -DFORMAT_BEFORE_BUILD=OFF -DCMAKE_CXX_COMPILER=${COMPILER} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
 script:
