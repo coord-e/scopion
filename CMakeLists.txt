@@ -22,7 +22,7 @@ cmake_policy(SET CMP0048 NEW)
 
 set(CMAKE_CXX_COMPILER clang++)
 
-project(scopion VERSION 0.0.2 LANGUAGES CXX)
+project(scopion VERSION 0.0.3 LANGUAGES CXX)
 
 set(SCOPION_ETC_DIR ${CMAKE_INSTALL_PREFIX}/etc/scopion)
 set(SCOPION_CACHE_DIR .scopion)
