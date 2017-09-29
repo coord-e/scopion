@@ -49,3 +49,4 @@ build
 build_debug
 
 include/scopion/config.hpp
+utils/scopion/h2ir/scopion-h2ir

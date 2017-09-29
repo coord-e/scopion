@@ -1,0 +1,7 @@
+(argc, argv){
+  pow = (a#type:i32, n#type:i32){
+    n != 0 ? { |> @self(a, n-1)*a; } : { |> 1; };
+  }#rettype:i32;
+  io = @import#c:stdio.h;
+  io.printf("res: %d\n", pow(2, 10)); //1024
+}

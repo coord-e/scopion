@@ -37,27 +37,35 @@ class assemblyTest : public ::testing::Test
 TEST_F(assemblyTest, variable)
 {
   auto tree = ast::function(
-      {{},
+      {{ast::identifier("argc"), ast::identifier("argv")},
        {ast::binary_op<ast::assign>({ast::set_lval(ast::variable("test"), true), ast::integer(1)}),
         ast::single_op<ast::ret>(
             {ast::binary_op<ast::add>({ast::variable("test"), ast::integer(1)})})}});
 
-  assembly::context ctx;
-  auto res = scopion::assembly::module::create(parser::parsed(tree, ""), ctx, "testing")->irgen();
+  scopion::error err;
+  auto res = scopion::assembly::translate(tree, err);
+  if (!res) {
+    std::cerr << err << std::endl;
+    throw err;
+  }
+
   auto str = R"(
-define i32 @1() {
+define i32 @0(i32, i8**) {
 entry:
-  %self = alloca i32 ()*
-  store i32 ()* @1, i32 ()** %self
+  %__self = alloca i32 (i32, i8**)*
+  store i32 (i32, i8**)* @0, i32 (i32, i8**)** %__self
+  %argc = alloca i32
+  store i32 %0, i32* %argc
+  %argv = alloca i8**
+  store i8** %1, i8*** %argv
   %test = alloca i32
   store i32 1, i32* %test
-  %0 = load i32, i32* %test
-  %1 = load i32, i32* %test
-  %2 = add i32 %1, 1
-  ret i32 %2
+  %2 = load i32, i32* %test
+  %3 = add i32 %2, 1
+  ret i32 %3
 }
 )";
-  EXPECT_EQ(str, res);
+  EXPECT_EQ(str, scopion::assembly::getNameString(res->getValue()->getLLVM()));
 }
 
 }  // namespace

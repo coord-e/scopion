@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.7)
 
 configure_file(config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/scopion/config.hpp)
 

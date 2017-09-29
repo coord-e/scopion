@@ -24,6 +24,8 @@
 
 #include "scopion/ast/value_wrapper.hpp"
 
+#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#define BOOST_MPL_LIMIT_LIST_SIZE 50
 #include <boost/variant.hpp>
 
 #include <map>
@@ -37,6 +39,7 @@ namespace ast
 struct expr;
 
 using integer = value_wrapper<int>;
+using decimal = value_wrapper<double>;
 using boolean = value_wrapper<bool>;
 using string  = value_wrapper<std::string>;
 struct variable : string {
@@ -66,6 +69,7 @@ struct scope : array {
 };
 
 using value = boost::variant<integer,
+                             decimal,
                              boolean,
                              boost::recursive_wrapper<string>,
                              boost::recursive_wrapper<variable>,

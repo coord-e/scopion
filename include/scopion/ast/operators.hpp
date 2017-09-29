@@ -26,6 +26,8 @@
 #include "scopion/ast/expr.hpp"
 #include "scopion/ast/value_wrapper.hpp"
 
+#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#define BOOST_MPL_LIMIT_LIST_SIZE 50
 #include <boost/variant.hpp>
 
 namespace scopion
@@ -38,6 +40,10 @@ struct add {
 };
 struct sub {
   static constexpr auto str             = "-";
+  static constexpr bool is_customizable = true;
+};
+struct pow {
+  static constexpr auto str             = "**";
   static constexpr bool is_customizable = true;
 };
 struct mul {
@@ -168,6 +174,7 @@ using ternary_op = op<Op, 3>;
 
 using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<binary_op<sub>>,
+                                 boost::recursive_wrapper<binary_op<pow>>,
                                  boost::recursive_wrapper<binary_op<mul>>,
                                  boost::recursive_wrapper<binary_op<div>>,
                                  boost::recursive_wrapper<binary_op<rem>>,

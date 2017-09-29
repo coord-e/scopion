@@ -85,27 +85,53 @@ value* evaluator::operator()(ast::function const& fcv)
                     std::to_string(
                         v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams()) +
                     " but supplied " + std::to_string(arguments_.size()),
-                ast::attr(fcv).where, translator_.code_range_);
+                ast::attr(fcv).where, errorType::Translate);
 
   std::vector<std::string> arg_names;
   std::vector<llvm::Type*> arg_types_from_attr;
-  std::transform(ast::val(fcv).first.begin(), ast::val(fcv).first.end(),
-                 std::back_inserter(arg_names), [&arg_types_from_attr, &fcv, this](auto& x) {
-                   auto it       = ast::attr(x).attributes.find("type");
-                   llvm::Type* t = nullptr;
-                   if (it != ast::attr(x).attributes.end()) {
-                     llvm::SMDiagnostic err;
-                     t = llvm::parseType(it->second, err, *translator_.module_);
-                     if (!t) {
-                       llvm::raw_os_ostream stream(std::cerr);
-                       err.print("", stream);
-                       throw error("Failed to parse type name \"" + it->second + "\"",
-                                   ast::attr(fcv).where, translator_.code_range_);
-                     }
-                   }
-                   arg_types_from_attr.push_back(t);
-                   return ast::val(x);  // x(ast::identifier)
-                 });
+  std::transform(
+      ast::val(fcv).first.begin(), ast::val(fcv).first.end(), std::back_inserter(arg_names),
+      [&arg_types_from_attr, &fcv, this](auto& x) {
+        auto it       = ast::attr(x).attributes.find("type");
+        auto ito      = ast::attr(x).attributes.find("typeof");
+        llvm::Type* t = nullptr;
+        if (it != ast::attr(x).attributes.end()) {
+          llvm::SMDiagnostic err;
+          t = llvm::parseType(it->second, err, *translator_.module_);
+          if (!t) {
+            llvm::raw_os_ostream stream(std::cerr);
+            err.print("", stream);
+            throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where,
+                        errorType::Translate);
+          }
+        } else if (ito != ast::attr(x).attributes.end()) {
+          auto var = translator_(ast::set_where(ast::variable(ito->second), ast::attr(x).where));
+          t        = var->getLLVM()->getType();
+          assert(t && "Type got from #typeof was nullptr!");
+        }
+        arg_types_from_attr.push_back(t);
+        return ast::val(x);  // x(ast::identifier)
+      });
+
+  llvm::Type* retst = nullptr;
+
+  {
+    auto it  = ast::attr(fcv).attributes.find("rettype");
+    auto ito = ast::attr(fcv).attributes.find("rettypeof");
+    if (it != ast::attr(fcv).attributes.end()) {
+      llvm::SMDiagnostic err;
+      retst = llvm::parseType(it->second, err, *translator_.module_);
+      if (!retst) {
+        llvm::raw_os_ostream stream(std::cerr);
+        err.print("", stream);
+        throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where,
+                    errorType::Translate);
+      }
+    } else if (ito != ast::attr(fcv).attributes.end()) {
+      auto var = translator_(ast::set_where(ast::variable(ito->second), ast::attr(fcv).where));
+      retst    = var->getLLVM()->getType();
+    }
+  };
 
   std::vector<llvm::Type*> arg_types;
   std::vector<llvm::Type*> arg_types_for_func;
@@ -113,11 +139,10 @@ value* evaluator::operator()(ast::function const& fcv)
   for (auto const v : arguments_ | boost::adaptors::indexed()) {
     auto type = v.value()->getLLVM()->getType();
     auto expt = arg_types_from_attr[static_cast<unsigned long>(v.index())];
-    if (expt)
-      if (expt != type)
-        throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
-                        getNameString(expt) + "\" but supplied \"" + getNameString(type) + "\"",
-                    ast::attr(fcv).where, translator_.code_range_);
+    if (expt && expt != type)
+      throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
+                      getNameString(expt) + "\" but supplied \"" + getNameString(type) + "\"",
+                  ast::attr(fcv).where, errorType::Translate);
     if (!v.value()->isLazy())
       arg_types_for_func.push_back(type);
     arg_types.push_back(v.value()->isFundamental() ? type : type->getPointerElementType());
@@ -137,15 +162,15 @@ value* evaluator::operator()(ast::function const& fcv)
   builder_.SetInsertPoint(entry);
 
   translator_.getScope()->symbols()["__self"] =
-      new value(translator_.createGCMalloc(func->getType(), nullptr, "__self"), fcv);
+      new value(builder_.CreateAlloca(func->getType(), nullptr, "__self"), fcv);
 
   for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
     auto ulindex = static_cast<unsigned long>(arg_name.index());
     auto vp      = arguments_[ulindex];
     if (!vp->isLazy()) {
-      translator_.getScope()->symbols()[arg_name.value()] = vp->copyWithNewLLVMValue(
-          translator_.createGCMalloc(arg_types[ulindex], nullptr,
-                                     arg_name.value()));  // declare arguments
+      translator_.getScope()->symbols()[arg_name.value()] =
+          vp->copyWithNewLLVMValue(builder_.CreateAlloca(arg_types[ulindex], nullptr,
+                                                         arg_name.value()));  // declare arguments
     } else {
       translator_.getScope()->symbols()[arg_name.value()] = vp;
     }
@@ -168,7 +193,7 @@ value* evaluator::operator()(ast::function const& fcv)
             ret_type = (*itr).getOperand(0)->getType();
           } else {
             throw error("All return values must have the same type", ast::attr(fcv).where,
-                        translator_.code_range_);
+                        errorType::Translate);
           }
         }
       }
@@ -180,21 +205,10 @@ value* evaluator::operator()(ast::function const& fcv)
     ret_type = builder_.getVoidTy();
   }
 
-  auto it = ast::attr(fcv).attributes.find("rettype");
-  if (it != ast::attr(fcv).attributes.end()) {
-    llvm::SMDiagnostic err;
-    auto t = llvm::parseType(it->second, err, *translator_.module_);
-    if (!t) {
-      llvm::raw_os_ostream stream(std::cerr);
-      err.print("", stream);
-      throw error("Failed to parse type name \"" + it->second + "\"", ast::attr(fcv).where,
-                  translator_.code_range_);
-    }
-    if (t != ret_type) {
-      throw error("Return type doesn't match: expected \"" + it->second + "\" but supplied \"" +
-                      getNameString(ret_type) + "\"",
-                  ast::attr(fcv).where, translator_.code_range_);
-    }
+  if (retst && retst != ret_type) {
+    throw error("Return type doesn't match: expected \"" + getNameString(retst) +
+                    "\" but supplied \"" + getNameString(ret_type) + "\"",
+                ast::attr(fcv).where, errorType::Translate);
   }
 
   func->eraseFromParent();  // remove old one
@@ -215,17 +229,17 @@ value* evaluator::operator()(ast::function const& fcv)
     translator_.setScope(new value(newentry, fcv));
     builder_.SetInsertPoint(newentry);
 
-    auto selfptr = translator_.createGCMalloc(newfunc->getType(), nullptr, "__self");
+    auto selfptr = builder_.CreateAlloca(newfunc->getType(), nullptr, "__self");
     translator_.getScope()->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(newfunc, selfptr);
 
-    auto ait = newfunc->getArgumentList().begin();
+    auto ait = newfunc->arg_begin();
     for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
       auto ulindex = static_cast<unsigned long>(arg_name.index());
       auto argv    = arguments_[ulindex];
       if (!argv->isLazy()) {
-        auto aptr = translator_.createGCMalloc(arg_types[ulindex], nullptr,
-                                               arg_name.value());  // declare arguments
+        auto aptr = builder_.CreateAlloca(arg_types[ulindex], nullptr,
+                                          arg_name.value());  // declare arguments
         translator_.getScope()->symbols()[arg_name.value()] = argv->copyWithNewLLVMValue(aptr);
         builder_.CreateStore(argv->isFundamental() ? static_cast<llvm::Value*>(&(*ait))
                                                    : builder_.CreateLoad(&(*ait)),

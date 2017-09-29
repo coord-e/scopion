@@ -39,6 +39,7 @@ llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
                                         llvm::Value* ArraySize,
                                         const llvm::Twine& Name)
 {
+  gc_used_ = true;
   assert(!ArraySize &&
          "Parameter ArraySize is for compatibility with IRBuilder<>::CreateAlloca. Don't pass any "
          "value.");
@@ -76,8 +77,6 @@ bool translator::copyFull(value* src,
           list.push_back(builder_.getInt8Ty()->getPointerTo());
           list.push_back(builder_.getInt8Ty()->getPointerTo());
           list.push_back(builder_.getInt64Ty());
-          list.push_back(builder_.getInt32Ty());
-          list.push_back(builder_.getInt1Ty());
           llvm::Function* fmemcpy =
               llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
 
@@ -117,27 +116,69 @@ llvm::Value* translator::sizeofType(llvm::Type* ptrT)
 
 value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::sub> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
+}
+
+value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<value*> const& args)
+{
+  std::vector<llvm::Type*> list;
+  llvm::Value* lv;
+  if (args[0]->getLLVM()->getType()->isDoubleTy())
+    lv = args[0]->getLLVM();
+  else
+    lv = builder_.CreateSIToFP(args[0]->getLLVM(), builder_.getDoubleTy());
+
+  list.push_back(lv->getType());
+  list.push_back(args[1]->getLLVM()->getType());
+  llvm::Function* fpow = llvm::Intrinsic::getDeclaration(
+      module_.get(),
+      args[1]->getLLVM()->getType()->isIntegerTy() ? llvm::Intrinsic::powi : llvm::Intrinsic::pow,
+      list);
+
+  std::vector<llvm::Value*> arg_values;
+  arg_values.push_back(lv);
+  arg_values.push_back(args[1]->getLLVM());
+  return new value(builder_.CreateCall(fpow, llvm::ArrayRef<llvm::Value*>(arg_values)), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::mul> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::div> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateSDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateSDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::rem> const& op, std::vector<value*> const& args)
 {
-  return new value(builder_.CreateSRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  if (std::none_of(args.begin(), args.end(),
+                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+    return new value(builder_.CreateSRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
+  else
+    return new value(builder_.CreateFRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::shl> const& op, std::vector<value*> const& args)
@@ -224,7 +265,7 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
   auto const n = args[0]->getName();
 
   if (rval->getType()->isVoidTy())
-    throw error("Cannot assign the value of void type", ast::attr(op).where, code_range_);
+    throw error("Cannot assign the value of void type", ast::attr(op).where, errorType::Translate);
 
   if (!lval) {  // first appear in the block (variable declaration)
     if (parent) {
@@ -232,21 +273,25 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
         // [feature/var-struct-array] Add a member to the structure, store it to
         // lval, and add args[1] to fields
         throw error("Variadic structure: This feature is not supported yet", ast::attr(op).where,
-                    code_range_);
+                    errorType::Translate);
       } else if (parent->getLLVM()->getType()->isArrayTy()) {  // array
         // [feature/var-struct-array] Add an element to the array, store it to
         // lval, and add args[1] to fields
         throw error("Variadic array: This feature is not supported yet", ast::attr(op).where,
-                    code_range_);
+                    errorType::Translate);
       } else {
         assert(false);  // unreachable
       }
     } else {  // not a member of array or structure
-      assert(ast::val(op)[0].type() == typeid(ast::value) &&
-             "Assigning to operator expression with no parent");
-      lval = createGCMalloc(
-          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType(),
-          nullptr, n);
+      assert(ast::isa<ast::variable>(ast::val(op)[0]) &&
+             "Assigning to non-variable expression with no parent");
+      auto va = ast::unpack<ast::variable>(ast::val(op)[0]);
+      auto thety =
+          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType();
+      if (ast::attr(va).attributes.count("heap"))
+        lval = createGCMalloc(thety, nullptr, n);
+      else
+        lval = builder_.CreateAlloca(thety, nullptr, n);
     }
   }
 
@@ -254,7 +299,7 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
     throw error(
         "Cannot assign to the value of incompatible type (lval: " + getNameString(lval->getType()) +
             ", rval: " + getNameString(rval->getType()) + ")",
-        ast::attr(op).where, code_range_);
+        ast::attr(op).where, errorType::Translate);
   }
   return args[1];
 }
@@ -274,9 +319,10 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
   if (args[0]->getLLVM()->getType()->isLabelTy()) {
     if (isodot) {
       throw error("Calling scope with odot operator is not allowed", ast::attr(op).where,
-                  code_range_);
+                  errorType::Translate);
     } else if (!ast::val(ast::unpack<ast::arglist>(ast::val(op)[1])).empty()) {
-      throw error("Calling scope with arguments is not allowed", ast::attr(op).where, code_range_);
+      throw error("Calling scope with arguments is not allowed", ast::attr(op).where,
+                  errorType::Translate);
     } else {
       return evaluate(args[0], std::vector<value*>{}, *this);
     }
@@ -292,11 +338,11 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
       if (!tocall->getType()->isPointerTy()) {
         throw error(
             "Cannot call a non-pointer value (type: " + getNameString(tocall->getType()) + ")",
-            ast::attr(op).where, code_range_);
+            ast::attr(op).where, errorType::Translate);
       } else if (!tocall->getType()->getPointerElementType()->isFunctionTy()) {
         throw error("Cannot call a value which is not a function pointer  (type: " +
                         getNameString(tocall->getType()) + ")",
-                    ast::attr(op).where, code_range_);
+                    ast::attr(op).where, errorType::Translate);
       } else {
         auto functy = tocall->getType()->getPointerElementType();
         if (functy->getFunctionNumParams() != ast::val(arglist).size() &&
@@ -304,13 +350,13 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
           throw error("The number of arguments doesn't match: required " +
                           std::to_string(functy->getFunctionNumParams()) + " but supplied " +
                           std::to_string(ast::val(arglist).size()),
-                      ast::attr(op).where, code_range_);
+                      ast::attr(op).where, errorType::Translate);
         }
         for (auto const arg : ast::val(arglist) | boost::adaptors::indexed()) {
           auto rv = boost::apply_visitor(*this, arg.value());
           if (rv->isLazy()) {
             throw error("Cannot pass a lazy value to c-style functions", ast::attr(op).where,
-                        code_range_);
+                        errorType::Translate);
           } else if (functy->getFunctionParamType(static_cast<unsigned>(arg.index())) !=
                          rv->getLLVM()->getType() &&
                      !functy->isFunctionVarArg()) {
@@ -319,7 +365,7 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
                             getNameString(
                                 functy->getFunctionParamType(static_cast<unsigned>(arg.index()))) +
                             "\" but supplied \"" + getNameString(rv->getLLVM()->getType()) + "\"",
-                        ast::attr(op).where, code_range_);
+                        ast::attr(op).where, errorType::Translate);
           } else {
             arg_values.push_back(rv->getLLVM());
           }
@@ -372,11 +418,11 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
 
   if (!rval->getType()->isIntegerTy()) {
     throw error("Array's index must be integer, not " + getNameString(rval->getType()),
-                ast::attr(op).where, code_range_);
+                ast::attr(op).where, errorType::Translate);
   }
   if (!lval->getType()->isPointerTy()) {
     throw error("Cannot get element from non-pointer type " + getNameString(lval->getType()),
-                ast::attr(op).where, code_range_);
+                ast::attr(op).where, errorType::Translate);
   }
 
   if (llvm::isa<llvm::ConstantInt>(args[1]->getLLVM()) &&
@@ -389,7 +435,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     auto it          = args[0]->symbols().find(istr);
     if (it == args[0]->symbols().end()) {
       throw error("Index " + std::to_string(aindex) + " is out of range.", ast::attr(op).where,
-                  code_range_);
+                  errorType::Translate);
     }
     auto ep = it->second;
 
@@ -413,7 +459,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
         throw error(
             "Getting value from an array which contains lazy value with an index "
             "of non-constant value",
-            ast::attr(op).where, code_range_);
+            ast::attr(op).where, errorType::Translate);
       }
 
       std::vector<llvm::Value*> idxList = {builder_.getInt32(0), rval};
@@ -422,7 +468,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     } else {
       if (!llvm::GetElementPtrInst::getIndexedType(lval->getType()->getPointerElementType(), rval))
         throw error("Cannot get element from incompatible type " + getNameString(lval->getType()),
-                    ast::attr(op).where, code_range_);
+                    ast::attr(op).where, errorType::Translate);
       ep = builder_.CreateGEP(lval->getType()->getPointerElementType(), lval, rval);
     }
 
@@ -443,20 +489,20 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
 
   if (!lval->getType()->isPointerTy())
     throw error("Cannot get \"" + id + "\" from non-pointer type " + getNameString(lval->getType()),
-                ast::attr(op).where, code_range_);
+                ast::attr(op).where, errorType::Translate);
 
   lval = lval->getType()->getPointerElementType()->isPointerTy() ? builder_.CreateLoad(lval) : lval;
 
   if (!lval->getType()->getPointerElementType()->isStructTy())
     throw error(
         "Cannot get \"" + id + "\" from non-structure type " + getNameString(lval->getType()),
-        ast::attr(op).where, code_range_);
+        ast::attr(op).where, errorType::Translate);
 
   auto elm = args[0]->symbols().find(id);
 
   if (elm == args[0]->symbols().end()) {
     throw error("No member named \"" + id + "\" in the structure", ast::attr(op).where,
-                code_range_);
+                errorType::Translate);
   }
 
   if (!elm->second->isLazy()) {
@@ -475,15 +521,21 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
 value* translator::apply_op(ast::binary_op<ast::odot> const& op, std::vector<value*> const& args)
 {
   if (!ast::attr(op).to_call)
-    throw error("Objective dot operator without call operator", ast::attr(op).where, code_range_);
-  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
+    throw error("Objective dot operator without call operator", ast::attr(op).where,
+                errorType::Translate);
+  return apply_op(ast::set_where(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}),
+                                 ast::attr(op).where),
+                  args);
 }
 
 value* translator::apply_op(ast::binary_op<ast::adot> const& op, std::vector<value*> const& args)
 {
   if (!ast::attr(op).to_call)
-    throw error("Objective dot operator without call operator", ast::attr(op).where, code_range_);
-  return apply_op(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}), args);
+    throw error("Objective dot operator without call operator", ast::attr(op).where,
+                errorType::Translate);
+  return apply_op(ast::set_where(ast::binary_op<ast::dot>({ast::val(op)[0], ast::val(op)[1]}),
+                                 ast::attr(op).where),
+                  args);
 }
 
 value* translator::apply_op(ast::single_op<ast::ret> const& op, std::vector<value*> const& args)
@@ -522,13 +574,13 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
 {
   if (args[0]->isLazy())
     throw error("Conditional operator with lazy value is not supported", ast::attr(op).where,
-                code_range_);
+                errorType::Translate);
 
   if (args[1]->getLLVM()->getType() != args[2]->getLLVM()->getType())
     throw error("Conditional operator with incompatible value types (lhs: " +
                     getNameString(args[1]->getLLVM()->getType()) +
                     ", rhs: " + getNameString(args[2]->getLLVM()->getType()) + ")",
-                ast::attr(op).where, code_range_);
+                ast::attr(op).where, errorType::Translate);
 
   if (args[1]->getLLVM()->getType()->isLabelTy()) {
     llvm::BasicBlock* thenbb =
@@ -581,18 +633,20 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
   } else {
     if (args[1]->isLazy() || args[2]->isLazy())
       throw error("Conditional operator with lazy value is currently not supported",
-                  ast::attr(op).where, code_range_);
+                  ast::attr(op).where, errorType::Translate);
 
     if (!std::equal(args[1]->fields().begin(), args[1]->fields().end(), args[2]->fields().begin(),
                     args[2]->fields().end(), [](auto& s, auto& t) { return s.first == t.first; })) {
-      throw error("Conditional operator with different fields", ast::attr(op).where, code_range_);
+      throw error("Conditional operator with different fields", ast::attr(op).where,
+                  errorType::Translate);
     }
 
     auto pb = builder_.GetInsertBlock();
     auto pp = builder_.GetInsertPoint();
 
-    auto destlv = createGCMalloc(ast::attr(op).lval ? args[1]->getLLVM()->getType()->getPointerTo()
-                                                    : args[1]->getLLVM()->getType());
+    auto destlv =
+        builder_.CreateAlloca(ast::attr(op).lval ? args[1]->getLLVM()->getType()->getPointerTo()
+                                                 : args[1]->getLLVM()->getType());
 
     llvm::BasicBlock* thenbb =
         llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());

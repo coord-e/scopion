@@ -25,6 +25,6 @@ add_subdirectory(parser)
 
 add_library(scopion SHARED)
 
-target_link_libraries(scopion assembly ast parser ${CLANG_LIBS} ${Boost_LIBRARIES} ${LLVM_LIBRARIES})
+target_link_libraries(scopion assembly ast parser ${Boost_LIBRARIES} ${LLVM_LIBRARIES})
 
 INSTALL(TARGETS scopion LIBRARY DESTINATION lib)

@@ -42,18 +42,15 @@
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/range/iterator_range.hpp>
 
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+
 namespace scopion
 {
 namespace assembly
 {
-translator::translator(std::shared_ptr<llvm::Module>& module,
-                       llvm::IRBuilder<>& builder,
-                       std::string const& code)
-    : boost::static_visitor<value*>(),
-      module_(module),
-      builder_(builder),
-      code_range_(boost::make_iterator_range(code.begin(), code.end())),
-      thisScope_(new value())
+translator::translator(std::shared_ptr<llvm::Module>& module, llvm::IRBuilder<>& builder)
+    : boost::static_visitor<value*>(), module_(module), builder_(builder), thisScope_(new value())
 {
   module_->getOrInsertFunction("GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
   module_->getOrInsertFunction(
@@ -62,20 +59,31 @@ translator::translator(std::shared_ptr<llvm::Module>& module,
                               llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
 }
 
-value* translator::import(std::string const& path)
+void translator::insertGCInit()
 {
-  std::ifstream ifs(path);
+  builder_.CreateCall(module_->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
+}
+
+value* translator::import(std::string const& path, ast::pre_variable const& astv)
+{
+  auto thisp   = ast::attr(astv).where.getPath();
+  auto abspath = boost::filesystem::absolute(
+      path, thisp ? thisp->parent_path() : boost::filesystem::current_path());
+  std::ifstream ifs(abspath.string());
   if (ifs.fail()) {
     return nullptr;
   }
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
   ifs.close();
-  auto parsed = parser::parse(code);
-  translator tr(module_, builder_, parsed.code);
-  return boost::apply_visitor(tr, parsed.ast);
+  error err;
+  auto parsed = parser::parse(code, err, abspath);
+  if (!parsed)
+    throw err;
+  translator tr(module_, builder_);
+  return boost::apply_visitor(tr, *parsed);
 }
 
-value* translator::importIR(std::string const& path, ast::expr const& astv)
+value* translator::importIR(std::string const& path, ast::pre_variable const& astv)
 {
   std::unique_ptr<llvm::Module> module;
   if (loaded_map_.count(path) != 0) {
@@ -95,8 +103,7 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
   uint32_t cnt = 0;
   for (auto i = module->getFunctionList().begin(); i != module->getFunctionList().end(); ++i) {
     // FIXME: find better way to avoid link error (zopen causes link error)
-    if (!i->getName().startswith("_") && !i->getName().startswith("llvm.") &&
-        !i->getName().equals("zopen")) {
+    if (!i->getName().startswith("llvm.")) {
       llvm::Function* func;
       if (!(func = module_->getFunction(i->getName())))
         func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
@@ -127,10 +134,11 @@ value* translator::importIR(std::string const& path, ast::expr const& astv)
   return destv;
 }
 
-value* translator::importCHeader(std::string const& path, ast::expr const& astv)
+value* translator::importCHeader(std::string const& path, ast::pre_variable const& astv)
 {
-  system((std::string("scopion-h2ir ") + path).c_str());
-  return importIR(std::string(SCOPION_CACHE_DIR) + "/h2ir/" + path, astv);
+  auto h2irpath = std::string(std::getenv("HOME")) + "/" SCOPION_CACHE_DIR "/h2ir/";
+  system((std::string("bash " SCOPION_ETC_DIR "/h2ir/scopion-h2ir ") + path).c_str());
+  return importIR(h2irpath + path, astv);
 }
 
 value* translator::operator()(ast::value astv)
@@ -146,21 +154,38 @@ value* translator::operator()(ast::operators astv)
 value* translator::operator()(ast::integer astv)
 {
   if (ast::attr(astv).lval)
-    throw error("An integer constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("An integer constant is not to be assigned", ast::attr(astv).where,
+                errorType::Translate);
 
   if (ast::attr(astv).to_call)
-    throw error("An integer constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("An integer constant is not to be called", ast::attr(astv).where,
+                errorType::Translate);
 
   return new value(llvm::ConstantInt::getSigned(builder_.getInt32Ty(), ast::val(astv)), astv);
+}
+
+value* translator::operator()(ast::decimal astv)
+{
+  if (ast::attr(astv).lval)
+    throw error("An integer constant is not to be assigned", ast::attr(astv).where,
+                errorType::Translate);
+
+  if (ast::attr(astv).to_call)
+    throw error("An integer constant is not to be called", ast::attr(astv).where,
+                errorType::Translate);
+
+  return new value(llvm::ConstantFP::get(builder_.getDoubleTy(), ast::val(astv)), astv);
 }
 
 value* translator::operator()(ast::boolean astv)
 {
   if (ast::attr(astv).lval)
-    throw error("A boolean constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("A boolean constant is not to be assigned", ast::attr(astv).where,
+                errorType::Translate);
 
   if (ast::attr(astv).to_call)
-    throw error("A boolean constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("A boolean constant is not to be called", ast::attr(astv).where,
+                errorType::Translate);
 
   return new value(llvm::ConstantInt::get(builder_.getInt1Ty(), ast::val(astv)), astv);
 }
@@ -168,10 +193,12 @@ value* translator::operator()(ast::boolean astv)
 value* translator::operator()(ast::string const& astv)
 {
   if (ast::attr(astv).lval)
-    throw error("A string constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("A string constant is not to be assigned", ast::attr(astv).where,
+                errorType::Translate);
 
   if (ast::attr(astv).to_call)
-    throw error("A string constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("A string constant is not to be called", ast::attr(astv).where,
+                errorType::Translate);
 
   return new value(builder_.CreateGlobalStringPtr(ast::val(astv)), astv);
 }
@@ -179,7 +206,8 @@ value* translator::operator()(ast::string const& astv)
 value* translator::operator()(ast::pre_variable const& astv)
 {
   if (ast::attr(astv).lval)
-    throw error("Pre-defined variables cannnot be assigned", ast::attr(astv).where, code_range_);
+    throw error("Pre-defined variables cannnot be assigned", ast::attr(astv).where,
+                errorType::Translate);
 
   auto const name = llvm::StringRef(ast::val(astv)).ltrim('@');
   if (auto fp = module_->getFunction(name))
@@ -190,35 +218,36 @@ value* translator::operator()(ast::pre_variable const& astv)
       auto iti = ast::attr(astv).attributes.find("ir");
       auto its = ast::attr(astv).attributes.find("c");
       if (itm != ast::attr(astv).attributes.end()) {  // found path to module
-        if (auto v = import(itm->second))
+        if (auto v = import(itm->second, astv))
           return v;
         else
-          throw error("Failed to open " + itm->second, ast::attr(astv).where, code_range_);
+          throw error("Failed to open " + itm->second, ast::attr(astv).where, errorType::Translate);
       } else if (iti != ast::attr(astv).attributes.end()) {  // found path to ir
         if (auto v = importIR(iti->second, astv))
           return v;
         else
           throw error("Error happened during import of llvm ir", ast::attr(astv).where,
-                      code_range_);
+                      errorType::Translate);
       } else if (its != ast::attr(astv).attributes.end()) {  // found path to c header
         if (auto v = importCHeader(its->second, astv))
           return v;
         else
           throw error("Error happened during import of a c header", ast::attr(astv).where,
-                      code_range_);
+                      errorType::Translate);
       } else {
-        throw error("Import path isn't specified", ast::attr(astv).where, code_range_);
+        throw error("Import path isn't specified", ast::attr(astv).where, errorType::Translate);
       }
     } else if (name.equals("self")) {
       if (ast::attr(astv).lval)
-        throw error("Assigning to @self is not allowed", ast::attr(astv).where, code_range_);
+        throw error("Assigning to @self is not allowed", ast::attr(astv).where,
+                    errorType::Translate);
 
       auto v       = ast::variable("__self");
       ast::attr(v) = ast::attr(astv);
       return operator()(v);
     } else {
       throw error("Pre-defined variable \"" + name.str() + "\" is not defined",
-                  ast::attr(astv).where, code_range_);
+                  ast::attr(astv).where, errorType::Translate);
     }
   }
 }
@@ -234,7 +263,7 @@ value* translator::operator()(ast::variable const& astv)
       return vp;
     } else {
       throw error("\"" + ast::val(astv) + "\" has not declared in this scope",
-                  ast::attr(astv).where, code_range_);
+                  ast::attr(astv).where, errorType::Translate);
     }
   } else {
     auto vp = it->second;
@@ -259,16 +288,18 @@ value* translator::operator()(ast::struct_key const& astv)
 value* translator::operator()(ast::array const& astv)
 {
   if (ast::attr(astv).lval)
-    throw error("An array constant is not to be assigned", ast::attr(astv).where, code_range_);
+    throw error("An array constant is not to be assigned", ast::attr(astv).where,
+                errorType::Translate);
 
   if (ast::attr(astv).to_call)
-    throw error("An array constant is not to be called", ast::attr(astv).where, code_range_);
+    throw error("An array constant is not to be called", ast::attr(astv).where,
+                errorType::Translate);
 
   auto firstelem = boost::apply_visitor(*this, ast::val(astv)[0]);
   auto t         = ast::val(astv).empty() ? builder_.getVoidTy() : firstelem->getLLVM()->getType();
   t              = firstelem->isFundamental() ? t : t->getPointerElementType();
   auto aryType   = llvm::ArrayType::get(t, ast::val(astv).size());
-  auto aryPtr    = createGCMalloc(aryType);  // Allocate necessary memory
+  auto aryPtr    = builder_.CreateAlloca(aryType);  // Allocate necessary memory
   auto destv     = new value(aryPtr, astv);
 
   std::vector<value*> values;
@@ -276,7 +307,7 @@ value* translator::operator()(ast::array const& astv)
     auto v = x.index() == 0 ? firstelem : boost::apply_visitor(*this, x.value());
     if (v->getLLVM()->getType() != t) {
       throw error("all elements of array must have the same type", ast::attr(astv).where,
-                  code_range_);
+                  errorType::Translate);
     }
     v->setParent(destv);
     destv->symbols()[std::to_string(x.index())] = v;
@@ -322,7 +353,7 @@ value* translator::operator()(ast::structure const& astv)
   llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
   structTy->setBody(fields);
 
-  auto ptr = createGCMalloc(structTy);
+  auto ptr = builder_.CreateAlloca(structTy);
   destv->setLLVM(ptr);
 
   uint32_t i = 0;
@@ -343,7 +374,8 @@ value* translator::operator()(ast::structure const& astv)
 value* translator::operator()(ast::function const& fcv)
 {
   if (ast::attr(fcv).lval)
-    throw error("A function constant is not to be assigned", ast::attr(fcv).where, code_range_);
+    throw error("A function constant is not to be assigned", ast::attr(fcv).where,
+                errorType::Translate);
 
   auto& args = ast::val(fcv).first;
   if (std::all_of(args.begin(), args.end(),
@@ -362,7 +394,7 @@ value* translator::operator()(ast::function const& fcv)
         llvm::raw_os_ostream stream(std::cerr);
         err.print("", stream);
         throw error("Failed to parse type name \"" + type_name + "\"", ast::attr(x).where,
-                    code_range_);
+                    errorType::Translate);
       }
       return t;
     };
@@ -385,15 +417,16 @@ value* translator::operator()(ast::function const& fcv)
     thisScope_ = new value(newentry, fcv);
     builder_.SetInsertPoint(newentry);
 
-    auto selfptr                    = createGCMalloc(func->getType(), nullptr, "__self");
+    auto selfptr                    = builder_.CreateAlloca(func->getType(), nullptr, "__self");
     thisScope_->symbols()["__self"] = new value(selfptr, fcv);
     builder_.CreateStore(func, selfptr);
 
-    auto it = func->getArgumentList().begin();
+    auto it = func->arg_begin();
     for (auto const arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
       auto name = ast::val(arg_name.value());
-      auto aptr = createGCMalloc(arg_types[static_cast<unsigned long>(arg_name.index())], nullptr,
-                                 name);  // declare arguments
+      auto aptr =
+          builder_.CreateAlloca(arg_types[static_cast<unsigned long>(arg_name.index())], nullptr,
+                                name);  // declare arguments
       thisScope_->symbols()[name] = new value(aptr, arg_name.value());
       auto tmpval                 = new value(&(*it), arg_name.value());
       builder_.CreateStore(
@@ -429,7 +462,8 @@ value* translator::operator()(ast::function const& fcv)
 value* translator::operator()(ast::scope const& scv)
 {
   if (ast::attr(scv).lval)
-    throw error("A scope constant is not to be assigned", ast::attr(scv).where, code_range_);
+    throw error("A scope constant is not to be assigned", ast::attr(scv).where,
+                errorType::Translate);
 
   auto bb = llvm::BasicBlock::Create(module_->getContext());  // empty
 

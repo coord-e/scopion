@@ -25,8 +25,6 @@
 #include "scopion/ast/operators.hpp"
 #include "scopion/ast/value.hpp"
 
-#include <boost/variant.hpp>
-
 #include <algorithm>
 #include <array>
 #include <initializer_list>
@@ -102,8 +100,6 @@ public:
 };
 template <class Op, size_t N>
 bool operator==(op_base<Op, N> const& lhs, op_base<Op, N> const& rhs);
-
-std::ostream& operator<<(std::ostream& os, expr const& tree);
 
 };  // namespace ast
 };  // namespace scopion
