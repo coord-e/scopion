@@ -37,7 +37,7 @@
 
 namespace scopion
 {
-using str_range_t = boost::iterator_range<std::string::const_iterator>;
+using strRange = boost::iterator_range<std::string::const_iterator>;
 
 enum class errorType { Parse, Translate, Internal, Bug, None };
 
@@ -58,7 +58,7 @@ static std::string getErrorTypeString(errorType et)
 }
 
 struct locationInfo {
-  static str_range_t line_range(str_range_t const where, str_range_t const code)
+  static strRange line_range(strRange const where, strRange const code)
   {
     auto range = boost::make_iterator_range(code.begin(), where.begin());
     auto sol   = boost::find(range | boost::adaptors::reversed, '\n').base();
@@ -72,9 +72,7 @@ struct locationInfo {
   bool is_empty_;
 
 public:
-  locationInfo(str_range_t where,
-               str_range_t code,
-               boost::optional<boost::filesystem::path> const& path)
+  locationInfo(strRange where, strRange code, boost::optional<boost::filesystem::path> const& path)
       : path_(path), is_empty_(false)
   {
     line_number_ = static_cast<uint32_t>(std::count(code.begin(), where.begin(), '\n')) + 1;
