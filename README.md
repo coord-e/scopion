@@ -150,6 +150,7 @@ raw_string ::= (''' ("\'" | char - '\'')* ''');
 ```
 
 A string (with "") has escape sequences. To use " in raw string, use \".
+
 | Sequence | Character       | Code |
 |----------|-----------------|------|
 | \n       | NEWLINE         | 0x0a |
