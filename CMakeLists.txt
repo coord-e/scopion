@@ -20,9 +20,10 @@
 cmake_minimum_required(VERSION 3.7)
 cmake_policy(SET CMP0048 NEW)
 
-set(CMAKE_CXX_COMPILER clang++)
-
 project(scopion VERSION 0.0.3 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SCOPION_ETC_DIR ${CMAKE_INSTALL_PREFIX}/etc/scopion)
 set(SCOPION_CACHE_DIR .scopion)

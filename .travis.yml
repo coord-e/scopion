@@ -50,9 +50,9 @@ install:
     brew list bdw-gc || brew install bdw-gc
   fi
 before_script:
-  - export CXX=${COMPILER}
+  - sudo ldconfig
   - cd ${TRAVIS_BUILD_DIR}
-  - cmake . -DFORMAT_BEFORE_BUILD=OFF -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+  - cmake . -DFORMAT_BEFORE_BUILD=OFF -DCMAKE_CXX_COMPILER=${COMPILER} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
 script:
     - make -j"$(nproc)"
     - make test
