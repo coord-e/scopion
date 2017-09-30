@@ -38,7 +38,7 @@ else(EXISTS /etc/debian_version)
 set(CPACK_GENERATOR "TBZ2;TGZ;ZIP")
 endif(EXISTS /etc/debian_version)
 
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "clang-5.0, llvm-5.0, libgc-dev, exuberant-ctags")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "clang-5.0, llvm-5.0, libgc-dev, exuberant-ctags, libboost-filesystem-dev (>=1.62)")
 set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
 set(CPACK_DEBIAN_PACKAGE_VERSION ${CPACK_PACKAGE_VERSION})
 
