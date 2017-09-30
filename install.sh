@@ -281,6 +281,12 @@ case ${TARGET_PLATFORM} in
       warn "Version $TARGET_VERSION isn't supported."
       confirm "Are you sure to continue?" || exit -1
     fi
+
+    \type brew &> /dev/null
+    if [ ! $? = 0 ];then
+      error "Homebrew isn't installed. Please install it to continue installation: https://brew.sh/"
+      exit -1
+    fi
     ;;
 
   *)
