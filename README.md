@@ -106,7 +106,7 @@ if there is no suitable prebuilt binary for your environment, you can build scop
 git clone https://github.com/coord-e/scopion
 cd scopion
 mkdir build && cd $_
-cmake .. -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF
+cmake .. -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF
 make -j 4 # build (this may takes time)
 sudo make install # install
 ```
