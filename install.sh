@@ -99,7 +99,7 @@ error (){
 }
 
 warn (){
-  echo -e "\033[0;33m[ERROR] \033[0m\033[0;01m $1\033[0;0m"
+  echo -e "\033[0;33m[WARN] \033[0m\033[0;01m $1\033[0;0m"
 }
 
 confirm (){
@@ -152,7 +152,11 @@ install_depends() {
       execmdsu "update-alternatives --install /usr/local/bin/llc llc `which llc-${LLVM_VERSION}` 10"
       ;;
     Darwin)
-      execmd "brew install llvm bdw-gc ctags boost"
+      execmd "brew list cmake || brew install cmake"
+      execmd "brew list ctags || brew install ctags"
+      execmd "brew list boost || brew install boost"
+      execmd "brew list llvm || brew install llvm"
+      execmd "brew list bdw-gc || brew install bdw-gc"
       ;;
     esac
 }
@@ -188,7 +192,7 @@ usage() {
         echo -e "\t-d: Dry run"
 }
 
-VERSION_TO_INSTALL="0.0.3"
+VERSION_TO_INSTALL="0.0.3.1"
 PREFIX="/usr/local"
 
 TARGET_VERSION="Unknown"
@@ -277,6 +281,12 @@ case ${TARGET_PLATFORM} in
       warn "Version $TARGET_VERSION isn't supported."
       confirm "Are you sure to continue?" || exit -1
     fi
+
+    \type brew &> /dev/null
+    if [ ! $? = 0 ];then
+      error "Homebrew isn't installed. Please install it to continue installation: https://brew.sh/"
+      exit -1
+    fi
     ;;
 
   *)
@@ -290,10 +300,17 @@ if [ ! -z "$PREFIX_R" ]; then
   PREFIX=$PREFIX_R
 fi
 
+echo -n "scopion verison to install [${VERSION_TO_INSTALL}] > "
+read VERSION_TO_INSTALL_R
+if [ ! -z "$VERSION_TO_INSTALL_R" ]; then
+  VERSION_TO_INSTALL=$VERSION_TO_INSTALL_R
+fi
+
 info "Platform: ${TARGET_PLATFORM}"
 info "OS: ${TARGET_OS}"
 info "Version: ${TARGET_VERSION_NAME} ${TARGET_VERSION}"
 info "Prefix: ${PREFIX}"
+info "scopion version to install: ${VERSION_TO_INSTALL}"
 
 confirm || exit -1;
 
