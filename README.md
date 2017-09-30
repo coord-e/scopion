@@ -55,7 +55,7 @@ v1.real => 11
 - libgc
 - ctags
 ## Supported Platforms
-- macOS (Sierra~)
+- macOS
 - GNU/Linux
 
 Only x86_64 is currently supported.
@@ -107,7 +107,7 @@ git clone https://github.com/coord-e/scopion
 cd scopion
 mkdir build && cd $_
 cmake .. -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF
-make -j 4 # build (this may takes time)
+make -j"$(nproc)" # build
 sudo make install # install
 ```
 
