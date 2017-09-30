@@ -152,7 +152,11 @@ install_depends() {
       execmdsu "update-alternatives --install /usr/local/bin/llc llc `which llc-${LLVM_VERSION}` 10"
       ;;
     Darwin)
-      execmd "brew install llvm bdw-gc ctags boost"
+      execmd "brew list cmake || brew install cmake"
+      execmd "brew list ctags || brew install ctags"
+      execmd "brew list boost || brew install boost"
+      execmd "brew list llvm || brew install llvm"
+      execmd "brew list bdw-gc || brew install bdw-gc"
       ;;
     esac
 }
