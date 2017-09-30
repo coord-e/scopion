@@ -68,9 +68,9 @@ curl -fsSL https://scopion.coord-e.com/get | bash
 ```
 
 ### Binary downloads
-- [Debian/Ubuntu](https://github.com/coord-e/scopion/releases/download/v0.0.3/scopion_0.0.3-Linux_x86_64.deb)
-- [Other GNU/Linux](https://github.com/coord-e/scopion/releases/download/v0.0.3/scopion_0.0.3-Linux_x86_64.tar.bz2)
-- [Darwin (macOS)](https://github.com/coord-e/scopion/releases/download/v0.0.3/scopion_0.0.3-Darwin_x86_64.zip)
+- [Debian/Ubuntu](https://github.com/coord-e/scopion/releases/download/v0.0.3.1/scopion_0.0.3.1-Linux_x86_64.deb)
+- [Other GNU/Linux](https://github.com/coord-e/scopion/releases/download/v0.0.3.1/scopion_0.0.3.1-Linux_x86_64.tar.bz2)
+- [Darwin (macOS)](https://github.com/coord-e/scopion/releases/download/v0.0.3.1/scopion_0.0.3.1-Darwin_x86_64.zip)
 
 ### Docker Image
 ```shell

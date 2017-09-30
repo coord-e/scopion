@@ -188,7 +188,7 @@ usage() {
         echo -e "\t-d: Dry run"
 }
 
-VERSION_TO_INSTALL="0.0.3"
+VERSION_TO_INSTALL="0.0.3.1"
 PREFIX="/usr/local"
 
 TARGET_VERSION="Unknown"
