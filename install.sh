@@ -294,10 +294,17 @@ if [ ! -z "$PREFIX_R" ]; then
   PREFIX=$PREFIX_R
 fi
 
+echo -n "scopion verison to install [${VERSION_TO_INSTALL}] > "
+read VERSION_TO_INSTALL_R
+if [ ! -z "$VERSION_TO_INSTALL_R" ]; then
+  VERSION_TO_INSTALL=$VERSION_TO_INSTALL_R
+fi
+
 info "Platform: ${TARGET_PLATFORM}"
 info "OS: ${TARGET_OS}"
 info "Version: ${TARGET_VERSION_NAME} ${TARGET_VERSION}"
 info "Prefix: ${PREFIX}"
+info "scopion version to install: ${VERSION_TO_INSTALL}"
 
 confirm || exit -1;
 
