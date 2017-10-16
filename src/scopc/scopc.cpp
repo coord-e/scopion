@@ -144,7 +144,8 @@ int main(int argc, char* argv[])
                                                               : llvm::sys::getDefaultTargetTriple();
   llvm::Triple triple(archstr);
 
-  system(("llc -mtriple=" + triple.getTriple() + " -filetype asm " + irpath + " -o=" + asmpath)
+  system(("llc -relocation-model=pic -mtriple=" + triple.getTriple() + " -filetype asm " + irpath +
+          " -o=" + asmpath)
              .c_str());
   if (outtype == "asm")
     return 0;
