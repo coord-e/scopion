@@ -162,11 +162,11 @@ install_depends() {
         esac
       ;;
     Darwin)
-      execmd "brew list cmake || brew install cmake"
-      execmd "brew list ctags || brew install ctags"
-      execmd "brew list boost || brew install boost"
-      execmd "brew list llvm || brew install llvm"
-      execmd "brew list bdw-gc || brew install bdw-gc"
+      execmd "brew list cmake &> /dev/null || brew install cmake"
+      execmd "brew list ctags &> /dev/null || brew install ctags"
+      execmd "brew list boost &> /dev/null || brew install boost"
+      execmd "brew list llvm &> /dev/null || brew install llvm"
+      execmd "brew list bdw-gc &> /dev/null || brew install bdw-gc"
       ;;
     esac
 }
