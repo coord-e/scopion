@@ -228,6 +228,11 @@ done
 
 shift $((OPTIND - 1))
 
+if [ -f ./CMakeLists.txt ]; then
+  warn "You seem to be in the source directory. To build from source, see the instruction: \nhttps://github.com/coord-e/scopion#build-from-source"
+  confirm "Are you sure to continue?" || exit -1
+fi
+
 findscopc
 if [ $? = 0 ]; then
   warn "It seems that scopion is already installed. Try \`scopc -v\`."
