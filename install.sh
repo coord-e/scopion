@@ -130,13 +130,20 @@ pre_install(){
 
   case $TARGET_PLATFORM in
     Linux)
-      execmdsu "apt-get update"
-      execmdsu "apt-get install -y wget ca-certificates gnupg unzip"
-      execmdsu "cp /etc/apt/sources.list /etc/apt/sources.list.bak"
-      execmdsu "echo \"deb http://apt.llvm.org/${TARGET_VERSION_NAME}/ llvm-toolchain-${TARGET_VERSION_NAME}-${LLVM_VERSION} main\" >> /etc/apt/sources.list"
-      execmdsu "wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -"
+      case $TARGET_OS in
+        *Ubuntu*|*Debian*)
+          execmdsu "apt-get update"
+          execmdsu "apt-get install -y wget ca-certificates gnupg unzip"
+          execmdsu "cp /etc/apt/sources.list /etc/apt/sources.list.bak"
+          execmdsu "echo \"deb http://apt.llvm.org/${TARGET_VERSION_NAME}/ llvm-toolchain-${TARGET_VERSION_NAME}-${LLVM_VERSION} main\" >> /etc/apt/sources.list"
+          execmdsu "wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -"
+          ;;
+      esac
       ;;
     Darwin)
+      execmd "brew update"
+      execmd "type wget &> /dev/null || brew install wget"
+      execmd "type unzip &> /dev/null || brew install unzip"
       ;;
   esac
 }
@@ -146,10 +153,13 @@ install_depends() {
 
   case $TARGET_PLATFORM in
     Linux)
-      execmdsu "apt-get update"
-      execmdsu "apt-get -y --allow-unauthenticated install clang-${LLVM_VERSION} llvm-${LLVM_VERSION} libgc-dev exuberant-ctags libboost-filesystem-dev"
-      execmdsu "update-alternatives --install /usr/local/bin/clang clang `which clang-${LLVM_VERSION}` 10"
-      execmdsu "update-alternatives --install /usr/local/bin/llc llc `which llc-${LLVM_VERSION}` 10"
+      case $TARGET_OS in
+        *Ubuntu*|*Debian*)
+          execmdsu "apt-get -y --allow-unauthenticated install clang-${LLVM_VERSION} llvm-${LLVM_VERSION} libgc-dev exuberant-ctags libboost-filesystem-dev"
+          execmdsu "update-alternatives --install /usr/local/bin/clang clang `which clang-${LLVM_VERSION}` 10"
+          execmdsu "update-alternatives --install /usr/local/bin/llc llc `which llc-${LLVM_VERSION}` 10"
+          ;;
+        esac
       ;;
     Darwin)
       execmd "brew list cmake || brew install cmake"
