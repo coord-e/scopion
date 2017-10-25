@@ -320,9 +320,8 @@ auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assi
 
 auto const struct_key_def =
     x3::raw[x3::lexeme[identifier_p | x3::repeat(2)[x3::char_("<>&|")] | (x3::char_("!=<>") > '=') |
-                       x3::char_("+\\-*/%<>&|^~!") |
-                       "[]" |
-                       "()"]][detail::assign_str_as<ast::struct_key>];
+                       x3::char_("+\\-*/%<>&|^~!") | "[]" | "()"]]
+           [detail::assign_str_as<ast::struct_key>];
 
 auto const structure_def =
     ("[" >> *(struct_key >> ":" >> expression >> -x3::lit(",")) >> "]")[detail::assign_struct];

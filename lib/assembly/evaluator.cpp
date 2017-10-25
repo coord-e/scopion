@@ -150,7 +150,7 @@ value* evaluator::operator()(ast::function const& fcv)
 
   llvm::FunctionType* func_type =
       llvm::FunctionType::get(builder_.getVoidTy(), arg_types_for_func, false);
-  llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
+  llvm::Function* func    = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
                                                 v_->getLLVM()->getName(), module_.get());
   llvm::BasicBlock* entry = llvm::BasicBlock::Create(module_->getContext(), "entry_survey", func);
   auto prevScope          = translator_.getScope();
