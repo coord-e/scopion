@@ -45,33 +45,40 @@ namespace grammar
 {
 namespace detail
 {
-static strRange _current_range;
-static boost::optional<boost::filesystem::path> _current_path;
-
-static void set_current_range(strRange range)
+class rangePathHolder
 {
-  _current_range = range;
-}
+private:
+  rangePathHolder()  = default;
+  ~rangePathHolder() = default;
+  strRange _current_range;
+  boost::optional<boost::filesystem::path> _current_path;
 
-static strRange get_current_range()
-{
-  return _current_range;
-}
+public:
+  rangePathHolder(rangePathHolder const&) = delete;
+  rangePathHolder& operator=(rangePathHolder const&) = delete;
+  rangePathHolder(rangePathHolder&&)                 = delete;
+  rangePathHolder& operator=(rangePathHolder&&) = delete;
 
-static void set_current_path(boost::optional<boost::filesystem::path> const& path)
-{
-  _current_path = path;
-}
+  static rangePathHolder& getInstance()
+  {
+    static rangePathHolder instance;
+    return instance;
+  }
 
-static boost::optional<boost::filesystem::path> get_current_path()
-{
-  return _current_path;
-}
+  void setRange(strRange range) { _current_range = range; }
+
+  strRange getRange() { return _current_range; }
+
+  void setPath(boost::optional<boost::filesystem::path> const& path) { _current_path = path; }
+
+  boost::optional<boost::filesystem::path> getPath() { return _current_path; }
+};
 
 template <typename T>
 T set_where_r(T val, strRange where)
 {
-  attr(val).where = locationInfo(where, get_current_range(), get_current_path());
+  auto& holder    = rangePathHolder::getInstance();
+  attr(val).where = locationInfo(where, holder.getRange(), holder.getPath());
   return val;
 }
 
@@ -457,7 +464,8 @@ struct expression {
     throw error(x.which() + " is expected but there is " +
                     (x.where() == last ? "nothing" : std::string{*x.where()}),
                 locationInfo(boost::make_iterator_range(x.where(), x.where()),
-                             boost::make_iterator_range(first, last), detail::get_current_path()),
+                             boost::make_iterator_range(first, last),
+                             detail::rangePathHolder::getInstance().getPath()),
                 errorType::Parse);
     return x3::error_handler_result::fail;
   }
@@ -471,10 +479,12 @@ boost::optional<ast::expr> parse(std::string const& code,
 {
   ast::expr tree;
 
-  auto cr = grammar::detail::get_current_range();
-  auto cf = grammar::detail::get_current_path();
-  grammar::detail::set_current_range(strRange(code.begin(), code.end()));
-  grammar::detail::set_current_path(path);
+  auto& holder = grammar::detail::rangePathHolder::getInstance();
+
+  auto cr = holder.getRange();
+  auto cf = holder.getPath();
+  holder.setRange(strRange(code.begin(), code.end()));
+  holder.setPath(path);
 
   auto const space_comment =
       "//" > *(x3::char_ - '\n') > '\n' | "/*" > *(x3::char_ - "*/") > "*/" | x3::space;
@@ -484,12 +494,12 @@ boost::optional<ast::expr> parse(std::string const& code,
       throw error("Unknown error has detected", locationInfo{}, errorType::Parse);
   } catch (error& e) {
     err = e;
-    grammar::detail::set_current_range(cr);
-    grammar::detail::set_current_path(cf);
+    holder.setRange(cr);
+    holder.setPath(cf);
     return boost::none;
   }
-  grammar::detail::set_current_range(cr);
-  grammar::detail::set_current_path(cf);
+  holder.setRange(cr);
+  holder.setPath(cf);
 
   return tree;
 }
