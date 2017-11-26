@@ -68,10 +68,11 @@ include_directories(include)
 include_directories(SYSTEM extsrc/include)
 
 find_package(LLVM 5.0 REQUIRED CONFIG)
-find_package(Boost 1.62.0 REQUIRED COMPONENTS filesystem system)
-
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost 1.62.0 REQUIRED COMPONENTS filesystem system)
 
 link_directories($ENV{LLVM_DIR}/lib)
 
