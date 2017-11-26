@@ -320,7 +320,7 @@ auto const array_def = ("[" > *(expression >> -x3::lit(",")) > "]")[detail::assi
 
 auto const struct_key_def =
     x3::raw[x3::lexeme[identifier_p | x3::repeat(2)[x3::char_("<>&|")] | (x3::char_("!=<>") > '=') |
-                       x3::char_("+\\-*/%<>&|^~!") | "[]" | "()"]]
+                       x3::char_("-+*/%<>&|^~!") | "[]" | "()"]]
            [detail::assign_str_as<ast::struct_key>];
 
 auto const structure_def =
@@ -331,7 +331,7 @@ auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> ")" >> "{"
 
 auto const scope_def = ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
 
-auto const attribute_val_def = x3::raw[x3::lexeme[*(x3::alnum | x3::char_("_\\-./*[]{}"))]]
+auto const attribute_val_def = x3::raw[x3::lexeme[*(x3::alnum | x3::char_("-_./*[]{}"))]]
                                       [detail::assign_str_as<ast::attribute_val>];
 
 auto const primary_def =
