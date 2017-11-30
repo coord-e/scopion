@@ -1,4 +1,4 @@
-# Syntax
+# Literals
 **This document is written in progress.**
 See [Parser.cpp](lib/parser/parser.cpp) for full syntax definition.
 
