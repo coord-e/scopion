@@ -3,6 +3,28 @@
 **This document is written in progress.**
 See [Parser.cpp](lib/parser/parser.cpp) for full syntax definition.
 
+| Precedence | Operator Group                                             | Symbol                      | Associativity | Custormizability |
+| ----------:| ---------------------------------------------------------- | --------------------------- | ------------- | ---------------- |
+|         18 | Grouping                                                   | `()`                        | N/A           | No               |
+|         17 | [Dot](#dot-operator)                                       | `.` `.:` `.=`               | left-to-right | No               |
+|         16 | [Attribute](#attribute-expression)                         | `#`                         | left-to-right | No               |
+|         15 | [Call](#call-operator) / [Index](#index-operator)          | `()` `[]`                   | left-to-right | Yes              |
+|         14 | [Post single operator](#single-operators)                  | `++` `--`                   | N/A           | Yes              |
+|         13 | [Pre single operator](#single-operators)                   | `!` `~` `++` `--`           | left-to-right | Yes              |
+|         12 | [Exponentiation](#arithmetic-operators)                    | `**`                        | left-to-right | Yes              |
+|         11 | [Multiplication / Division](#arithmetic-operators)         | `*` `/`                     | left-to-right | Yes              |
+|         10 | [Addition / Subtraction / Reminder](#arithmetic-operators) | `+` `-` `%`                 | left-to-right | Yes              |
+|          9 | [Shift](#arithmetic-operators)                             | `>>` `<<`                   | left-to-right | Yes              |
+|          8 | [Comparison](#arithmetic-operators)                        | `>` `<` `>=` `<=` `==` `!=` | left-to-right | Yes              |
+|          7 | [And](#arithmetic-operators)                               | `&`                         | left-to-right | Yes              |
+|          6 | [Xor](#arithmetic-operators)                               | `^`                         | left-to-right | Yes              |
+|          5 | [Or](#arithmetic-operators)                                | <code>&#124;</code>         | left-to-right | Yes              |
+|          4 | [Logical And](#arithmetic-operators)                       | `&&`                        | left-to-right | Yes              |
+|          3 | [Logical Or](#arithmetic-operators)                        | <code>&#124;&#124;</code>   | left-to-right | Yes              |
+|          2 | [Conditional](#conditional-operator)                       | `?:`                        | right-to-left | No               |
+|          1 | [Assignment](#assignment-operator)                         | `=`                         | right-to-left | No               |
+|          0 | [Return](#return-operator)                                 | <code>&#124;></code>        | left-to-right | No               |
+
 ## Dot operator
 ```EBNF
 dot_expr ::= primary (".:" struct_key |
