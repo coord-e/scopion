@@ -111,16 +111,5 @@ make -j"$(nproc)" # build
 sudo make install # install
 ```
 
-# TODO
-- [ ] Add package management system
-- [ ] Varadic array and structure
-- [ ] Associative array
-- [ ] Logging
-- [ ] Conpile-time execution of functions
-- [ ] Cast operator
-- [ ] Coroutine
-- [ ] Add more features to stdlib
-- [ ] Tuple (array with different types)
-
 # License
 This program is licensed by GPL v3. See `COPYING`.
