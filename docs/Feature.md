@@ -5,8 +5,7 @@ scopion has many powerful, modern, and cool features:tada:
 - [ ] Not implemented yet
 
 ## Language features
-- [x] No such thing like 'global'
-- [x] Almost all functions has a referentially transparency
+- [x] Referentially transparent function
 - [x] Powerful objective syntax
 - [x] No reserved words
 - [x] Statically typed
@@ -17,7 +16,6 @@ scopion has many powerful, modern, and cool features:tada:
 - [ ] Shell-like external command execution
 - [ ] Range and pipe operator
 - [ ] Curring & partial application
-- [ ] Const
 
 ## Standard libraries
 - [ ] Array
