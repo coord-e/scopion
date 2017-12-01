@@ -1,7 +1,7 @@
 <div style="text-align:center"><img src ="https://raw.githubusercontent.com/wiki/coord-e/scopion/scopion.png" /></div>
 
-[![Travis](https://img.shields.io/travis/coord-e/scopion.svg)](https://travis-ci.org/coord-e/scopion) [![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg)](https://hub.docker.com/r/coorde/scopion/) [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg)](https://hub.docker.com/r/coorde/scopion/)
-[![license](https://img.shields.io/github/license/coord-e/scopion.svg)](COPYING) [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg)](https://github.com/coord-e/scopion/releases)
+[![Travis](https://img.shields.io/travis/coord-e/scopion.svg?style=flat-square)](https://travis-ci.org/coord-e/scopion) [![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg?style=flat-square)](https://hub.docker.com/r/coorde/scopion/) [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg?style=flat-square)](https://hub.docker.com/r/coorde/scopion/)
+[![license](https://img.shields.io/github/license/coord-e/scopion.svg?style=flat-square)](COPYING) [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg?style=flat-square)](https://github.com/coord-e/scopion/releases)
 # scopion
 a statically-typed functional programming language with powerful objective syntax
 Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
