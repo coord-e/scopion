@@ -16,6 +16,7 @@ scopion has many powerful, modern, and cool features:tada:
 - [ ] Shell-like external command execution
 - [ ] Range and pipe operator
 - [ ] Curring & partial application
+- [ ] Pattern matching
 
 ## Standard libraries
 - [ ] Array
