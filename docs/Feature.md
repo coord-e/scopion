@@ -2,9 +2,9 @@
 
 scopion has many powerful, modern, and cool features:tada:
 - [x] Implemented
-- [ ] Not implemented yet
+- [ ] Not implemented yet (coming soon)
 
-## Language features
+## Language feature
 - [x] Referentially transparent function
 - [x] Powerful objective syntax
 - [x] No reserved words
@@ -18,7 +18,7 @@ scopion has many powerful, modern, and cool features:tada:
 - [ ] Curring & partial application
 - [ ] Pattern matching
 
-## Standard libraries
+## Standard library
 - [ ] Array
 - [ ] String
 - [ ] Number
@@ -28,11 +28,11 @@ scopion has many powerful, modern, and cool features:tada:
 
 ## Code generation
 - [x] Optimization and native code generation by LLVM
-- [ ] Optimization of recursive call 
+- [ ] Optimization of recursive call
 
-## Library features
+## Library feature
 - [ ] Embedding support
 
-## Others
+## Packaging system
 - [ ] Package management ecosystem
 - [ ] Powerful package manager
