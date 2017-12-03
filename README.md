@@ -38,15 +38,24 @@ v1.real => 11
 
 **This project is heavily under development.**
 
-# Features
-- no such thing like 'global'
-- almost all functions has a referentially transparency
-- support powerful objective syntax
-- no reserved words
-- statically typed
-- types are suggested in almost scene
-- Embedded garbage collection
-- Optimization and native code generation by LLVM
+**scopion has a serious problem around typesystem and currently impractical very much. This will be fixed in v0.0.4**
+
+# Why scopion?
+- **Intuitive**
+  - Removal of 'global'
+  - Just right fusion of Functional and Object-oriented programming
+  - Referentially transparent function
+  - Powerful objective syntax
+- **Concise**
+  - No reserved words
+  - Powerful type suggestion
+- **Fast**
+  - Statically typed compiler
+  - Optimization and native code generation by LLVM
+- **C-friendly**
+  - Directly use of C function
+
+All features are listed in [docs/Feature.md](docs/Feature.md)
 
 # Getting started
 ## Prerequirements
