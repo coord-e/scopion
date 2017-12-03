@@ -9,7 +9,7 @@ Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
 ###### Example:
 ```
 (argc, argv){
-  io = @import#c:stdio.h;
+  io = @import#c:stdio.h; // Import C header directly!
 
   v1 = v2 = [
     real: 10,
@@ -18,15 +18,15 @@ Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
       newv.real = self.real + val;
       |> newv;
     },
-    +: (rhs, self){
+    +: (rhs, self){ // Operator overload
       |> self.:add(rhs.real);
     },
   ];
 
-  v1.=add(1);
-  io.printf("v1.real => %d\n", v1.real); // 11
+  v1.=add(1); // Object-oriented call
+  io.printf("v1.real => %d\n", v1.real);
 
-  io.printf("(v1+v2).real => %d\n", (v1+v2).real); // 21
+  io.printf("(v1+v2).real => %d\n", (v1+v2).real);
 }
 ```
 
