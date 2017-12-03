@@ -3,7 +3,7 @@
 **This document is written in progress.**
 See [Parser.cpp](lib/parser/parser.cpp) for full syntax definition.
 
-| Precedence | Operator Group                                             | Symbol                      | Associativity | Custormizability |
+| Precedence | Operator Group                                             | Symbol                      | Associativity | Customizability |
 | ----------:| ---------------------------------------------------------- | --------------------------- | ------------- | ---------------- |
 |         18 | Grouping                                                   | `()`                        | N/A           | No               |
 |         17 | [Dot](#dot-operator)                                       | `.` `.:` `.=`               | left-to-right | No               |
