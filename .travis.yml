@@ -3,29 +3,36 @@ sudo: true
 dist: trusty
 matrix:
   include:
-    - os: linux
-      compiler: clang
-      addons: &clang50
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-          packages: ['clang-5.0', 'libstdc++6', 'libstdc++-6-dev']
-      env: COMPILER='clang++-5.0' BUILD_TYPE='Release'
-
-    - os: linux
-      compiler: clang
-      addons: *clang50
-      env: COMPILER='clang++-5.0' BUILD_TYPE='Debug'
-
-    - os: osx
-      osx_image: xcode8.3
-      compiler: clang
-      env: COMPILER='clang++' BUILD_TYPE='Release'
-
-    - os: osx
-      osx_image: xcode8.3
-      compiler: clang
-      env: COMPILER='clang++' BUILD_TYPE='Debug'
-
+  - os: linux
+    compiler: clang
+    addons:
+      apt:
+        sources:
+        - ubuntu-toolchain-r-test
+        - llvm-toolchain-trusty-5.0
+        packages:
+        - clang-5.0
+        - libstdc++6
+        - libstdc++-6-dev
+    env: COMPILER='clang++-5.0' BUILD_TYPE='Release'
+  - os: linux
+    compiler: clang
+    addons:
+      apt:
+        sources:
+        - ubuntu-toolchain-r-test
+        - llvm-toolchain-trusty-5.0
+        packages:
+        - clang-5.0
+        - libstdc++6
+        - libstdc++-6-dev
+    env: COMPILER='clang++-5.0' BUILD_TYPE='Debug'
+  - os: osx
+    compiler: clang
+    env: COMPILER='clang++' BUILD_TYPE='Release'
+  - os: osx
+    compiler: clang
+    env: COMPILER='clang++' BUILD_TYPE='Debug'
 install:
 - |
   if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
