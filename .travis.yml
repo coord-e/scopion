@@ -11,9 +11,19 @@ matrix:
         - ubuntu-toolchain-r-test
         - llvm-toolchain-trusty-5.0
         packages:
+        - build-essential
         - clang-5.0
+        - libclang-5.0-dev
+        - libclang1-5.0
         - libstdc++6
         - libstdc++-6-dev
+        - llvm-5.0
+        - libllvm5.0
+        - llvm-5.0-dev
+        - libgc-dev
+        - exuberant-ctags
+        - libedit-dev
+        - libz-dev
     env: COMPILER='clang++-5.0' BUILD_TYPE='Release'
   - os: linux
     compiler: clang
@@ -23,9 +33,19 @@ matrix:
         - ubuntu-toolchain-r-test
         - llvm-toolchain-trusty-5.0
         packages:
+        - build-essential
         - clang-5.0
+        - libclang-5.0-dev
+        - libclang1-5.0
         - libstdc++6
         - libstdc++-6-dev
+        - llvm-5.0
+        - libllvm5.0
+        - llvm-5.0-dev
+        - libgc-dev
+        - exuberant-ctags
+        - libedit-dev
+        - libz-dev
     env: COMPILER='clang++-5.0' BUILD_TYPE='Debug'
   - os: osx
     compiler: clang
@@ -36,8 +56,6 @@ matrix:
 install:
 - |
   if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-    sudo apt-get -qq update
-    sudo apt-get -y -qq --allow-unauthenticated install llvm-5.0 libgc-dev exuberant-ctags build-essential libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime
     wget -q https://sourceforge.net/projects/boost/files/boost/1.62.0/boost_1_62_0.tar.gz
     tar xf boost_1_62_0.tar.gz
     cd boost_1_62_0/
