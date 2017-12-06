@@ -1,57 +1,35 @@
 language: cpp
 sudo: true
 dist: trusty
+compiler: clang
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-trusty-5.0
+    packages:
+    - build-essential
+    - clang-5.0
+    - libclang-5.0-dev
+    - libclang1-5.0
+    - libstdc++6
+    - libstdc++-6-dev
+    - llvm-5.0
+    - libllvm5.0
+    - llvm-5.0-dev
+    - libgc-dev
+    - exuberant-ctags
+    - libedit-dev
+    - libz-dev
 matrix:
   include:
   - os: linux
-    compiler: clang
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-trusty-5.0
-        packages:
-        - build-essential
-        - clang-5.0
-        - libclang-5.0-dev
-        - libclang1-5.0
-        - libstdc++6
-        - libstdc++-6-dev
-        - llvm-5.0
-        - libllvm5.0
-        - llvm-5.0-dev
-        - libgc-dev
-        - exuberant-ctags
-        - libedit-dev
-        - libz-dev
     env: COMPILER='clang++-5.0' BUILD_TYPE='Release'
   - os: linux
-    compiler: clang
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-trusty-5.0
-        packages:
-        - build-essential
-        - clang-5.0
-        - libclang-5.0-dev
-        - libclang1-5.0
-        - libstdc++6
-        - libstdc++-6-dev
-        - llvm-5.0
-        - libllvm5.0
-        - llvm-5.0-dev
-        - libgc-dev
-        - exuberant-ctags
-        - libedit-dev
-        - libz-dev
     env: COMPILER='clang++-5.0' BUILD_TYPE='Debug'
   - os: osx
-    compiler: clang
     env: COMPILER='clang++' BUILD_TYPE='Release'
   - os: osx
-    compiler: clang
     env: COMPILER='clang++' BUILD_TYPE='Debug'
 install:
 - |
