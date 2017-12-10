@@ -377,6 +377,11 @@ value* translator::operator()(ast::function const& fcv)
     throw error("A function constant is not to be assigned", ast::attr(fcv).where,
                 errorType::Translate);
 
+  std::string func_name =
+      ast::attr(fcv).attributes.find("export") != ast::attr(fcv).attributes.end()
+          ? ast::attr(fcv).attributes.at("export")
+          : "";
+
   auto& args = ast::val(fcv).first;
   if (std::all_of(args.begin(), args.end(),
                   [](auto& x) {
@@ -404,8 +409,8 @@ value* translator::operator()(ast::function const& fcv)
 
     llvm::FunctionType* func_type =
         llvm::FunctionType::get(ret_type, std::vector<llvm::Type*>(arg_types), false);
-    llvm::Function* func =
-        llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, "", module_.get());
+    llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
+                                                  func_name, module_.get());
 
     llvm::BasicBlock* newentry = llvm::BasicBlock::Create(module_->getContext(), "entry", func);
 
@@ -451,7 +456,8 @@ value* translator::operator()(ast::function const& fcv)
   } else {  // lazy evaluation route
     llvm::FunctionType* func_type = llvm::FunctionType::get(
         builder_.getVoidTy(), std::vector<llvm::Type*>(args.size(), builder_.getInt32Ty()), false);
-    llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage);
+    llvm::Function* func =
+        llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, func_name, nullptr);
 
     auto destv = new value(func, fcv, true);  // is_lazy = true
 
