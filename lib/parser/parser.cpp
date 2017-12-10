@@ -185,31 +185,31 @@ static auto const assign_op = [](auto&& ctx) {
 };
 
 template <typename Op>
-static auto const assign_op<Op, 2> = [](auto&& ctx) {
+auto const assign_op<Op, 2> = [](auto&& ctx) {
   x3::_val(ctx) = set_where_r(ast::binary_op<Op>({x3::_val(ctx), x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <typename Op>
-static auto const assign_op<Op, 1> = [](auto&& ctx) {
+auto const assign_op<Op, 1> = [](auto&& ctx) {
   x3::_val(ctx) = set_where_r(ast::single_op<Op>({x3::_attr(ctx)}), x3::_where(ctx));
 };
 
 template <>
-static auto const assign_op<ast::assign, 2> = [](auto&& ctx) {
+auto const assign_op<ast::assign, 2> = [](auto&& ctx) {
   x3::_val(ctx) =
       set_where_r(ast::binary_op<ast::assign>({ast::set_lval(x3::_val(ctx), true), x3::_attr(ctx)}),
                   x3::_where(ctx));
 };
 
 template <>
-static auto const assign_op<ast::call, 2> = [](auto&& ctx) {
+auto const assign_op<ast::call, 2> = [](auto&& ctx) {
   x3::_val(ctx) = set_where_r(ast::binary_op<ast::call>({ast::set_to_call(x3::_val(ctx), true),
                                                          ast::arglist(x3::_attr(ctx))}),
                               x3::_where(ctx));
 };
 
 template <>
-static auto const assign_op<ast::inc, 1> = [](auto&& ctx) {
+auto const assign_op<ast::inc, 1> = [](auto&& ctx) {
   x3::_val(ctx) = set_where_r(
       ast::binary_op<ast::assign>({ast::set_lval(x3::_attr(ctx), true),
                                    ast::binary_op<ast::add>({x3::_attr(ctx), ast::integer(1)})}),
@@ -217,7 +217,7 @@ static auto const assign_op<ast::inc, 1> = [](auto&& ctx) {
 };
 
 template <>
-static auto const assign_op<ast::dec, 1> = [](auto&& ctx) {
+auto const assign_op<ast::dec, 1> = [](auto&& ctx) {
   x3::_val(ctx) = set_where_r(
       ast::binary_op<ast::assign>({ast::set_lval(x3::_attr(ctx), true),
                                    ast::binary_op<ast::sub>({x3::_attr(ctx), ast::integer(1)})}),
