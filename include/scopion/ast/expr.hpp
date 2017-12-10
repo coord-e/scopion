@@ -96,7 +96,8 @@ public:
 
   const_reverse_iterator crend() const noexcept { return exprs_.crend(); }
 
-  friend bool operator==(op_base<Op, N> const& lhs, op_base<Op, N> const& rhs);
+  template <class Op2, size_t N2>
+  friend bool operator==(op_base<Op2, N2> const& lhs, op_base<Op2, N2> const& rhs);
 };
 template <class Op, size_t N>
 bool operator==(op_base<Op, N> const& lhs, op_base<Op, N> const& rhs);
