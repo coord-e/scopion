@@ -352,6 +352,14 @@ value* translator::operator()(ast::structure const& astv)
 
   llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
   structTy->setBody(fields);
+  structTy->setName("user_type");
+
+  for (auto t : module_->getIdentifiedStructTypes()) {
+    if (structTy->isLayoutIdentical(t)) {
+      structTy = t;
+      break;
+    }
+  }
 
   auto ptr = builder_.CreateAlloca(structTy);
   destv->setLLVM(ptr);
