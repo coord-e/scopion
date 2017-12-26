@@ -63,7 +63,7 @@ after_success:
 before_deploy:
 - cd dist
 deploy:
-  provider: s3
+- provider: s3
   bucket: scopion-latest
   access_key_id: $AWS_ACCESS_KEY_ID
   secret_access_key: $AWS_SECRET_ACCESS_KEY
@@ -72,3 +72,11 @@ deploy:
   on:
     condition: "$BUILD_TYPE = Release"
     all_branches: true
+- provider: releases
+  api_key: $GITHUB_OAUTH_TOKEN
+  skip_cleanup: true
+  file_glob: true
+  file: '*'
+  on:
+    condition: "$BUILD_TYPE = Release"
+    tags: true
