@@ -70,4 +70,5 @@ deploy:
   skip_cleanup: true
   upload-dir: $TRAVIS_BRANCH
   on:
+    condition: "$BUILD_TYPE = Release"
     all_branches: true
