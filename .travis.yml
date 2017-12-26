@@ -46,11 +46,11 @@ install:
     test -f ${CMAKE_FILE}/bin/cmake
     export PATH=${TRAVIS_BUILD_DIR}/cmake/${CMAKE_FILE}/bin:${PATH}
   elif [[ "${TRAVIS_OS_NAME}" == "osx" ]]; then
-    brew list cmake || brew install cmake
-    brew list ctags || brew install ctags
-    brew list boost || brew install boost
-    brew list llvm || brew install llvm
-    brew list bdw-gc || brew install bdw-gc
+    brew list cmake &> /dev/null || brew install cmake
+    brew list ctags &> /dev/null || brew install ctags
+    brew list boost &> /dev/null || brew install boost
+    brew list llvm &> /dev/null || brew install llvm
+    brew list bdw-gc &> /dev/null || brew install bdw-gc
   fi
 before_script:
 - cd ${TRAVIS_BUILD_DIR}
