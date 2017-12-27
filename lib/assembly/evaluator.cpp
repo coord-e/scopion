@@ -63,7 +63,7 @@ std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr)
 }
 
 evaluator::evaluator(value* v, std::vector<value*> const& args, translator& tr)
-    : v_(v), arguments_(args), translator_(tr), builder_(tr.builder_), module_(tr.module_)
+    : v_(v), arguments_(args), translator_(tr), builder_(tr.builder_)
 {
 }
 
@@ -97,7 +97,7 @@ value* evaluator::operator()(ast::function const& fcv)
         llvm::Type* t = nullptr;
         if (it != ast::attr(x).attributes.end()) {
           llvm::SMDiagnostic err;
-          t = llvm::parseType(it->second, err, *translator_.module_);
+          t = llvm::parseType(it->second, err, *(translator_.module_->getLLVMModule()));
           if (!t) {
             llvm::raw_os_ostream stream(std::cerr);
             err.print("", stream);
@@ -120,7 +120,7 @@ value* evaluator::operator()(ast::function const& fcv)
     auto ito = ast::attr(fcv).attributes.find("rettypeof");
     if (it != ast::attr(fcv).attributes.end()) {
       llvm::SMDiagnostic err;
-      retst = llvm::parseType(it->second, err, *translator_.module_);
+      retst = llvm::parseType(it->second, err, *(translator_.module_->getLLVMModule()));
       if (!retst) {
         llvm::raw_os_ostream stream(std::cerr);
         err.print("", stream);
@@ -150,10 +150,12 @@ value* evaluator::operator()(ast::function const& fcv)
 
   llvm::FunctionType* func_type =
       llvm::FunctionType::get(builder_.getVoidTy(), arg_types_for_func, false);
-  llvm::Function* func    = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
-                                                v_->getLLVM()->getName(), module_.get());
-  llvm::BasicBlock* entry = llvm::BasicBlock::Create(module_->getContext(), "entry_survey", func);
-  auto prevScope          = translator_.getScope();
+  llvm::Function* func =
+      llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, v_->getLLVM()->getName(),
+                             translator_.module_->getLLVMModule());
+  llvm::BasicBlock* entry =
+      llvm::BasicBlock::Create(translator_.module_->getContext(), "entry_survey", func);
+  auto prevScope = translator_.getScope();
   translator_.setScope(new value(entry, fcv));
 
   auto pb = builder_.GetInsertBlock();
@@ -222,9 +224,10 @@ value* evaluator::operator()(ast::function const& fcv)
 
     newfunc = llvm::Function::Create(llvm::FunctionType::get(ret_type, arg_types_for_func, false),
                                      llvm::Function::ExternalLinkage, v_->getLLVM()->getName(),
-                                     module_.get());
+                                     translator_.module_->getLLVMModule());
 
-    llvm::BasicBlock* newentry = llvm::BasicBlock::Create(module_->getContext(), "entry", newfunc);
+    llvm::BasicBlock* newentry =
+        llvm::BasicBlock::Create(translator_.module_->getContext(), "entry", newfunc);
 
     translator_.setScope(new value(newentry, fcv));
     builder_.SetInsertPoint(newentry);
@@ -275,11 +278,11 @@ value* evaluator::operator()(ast::scope const& sc)
   auto pb = builder_.GetInsertBlock();
   auto pp = builder_.GetInsertPoint();
 
-  auto nb =
-      llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+  auto nb = llvm::BasicBlock::Create(translator_.module_->getContext(), "",
+                                     builder_.GetInsertBlock()->getParent());
 
-  auto theblock =
-      llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
+  auto theblock = llvm::BasicBlock::Create(translator_.module_->getContext(), "",
+                                           builder_.GetInsertBlock()->getParent());
   builder_.SetInsertPoint(theblock);
   auto prevScope = translator_.getScope();
 

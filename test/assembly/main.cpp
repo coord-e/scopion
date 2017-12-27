@@ -43,8 +43,15 @@ TEST_F(assemblyTest, variable)
             {ast::binary_op<ast::add>({ast::variable("test"), ast::integer(1)})})}});
 
   scopion::error err;
-  auto res = scopion::assembly::translate(tree, err);
+  scopion::assembly::translator tr{};
+  tr.createMain();
+  auto* res = tr.translateAST(tree, err);
   if (!res) {
+    std::cerr << err << std::endl;
+    throw err;
+  }
+  auto* lres = tr.createMainRet(res, err);
+  if (!lres) {
     std::cerr << err << std::endl;
     throw err;
   }
@@ -65,7 +72,7 @@ entry:
   ret i32 %3
 }
 )";
-  EXPECT_EQ(str, scopion::assembly::getNameString(res->getValue()->getLLVM()));
+  EXPECT_EQ(str, scopion::assembly::getNameString(lres));
 }
 
 }  // namespace

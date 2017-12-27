@@ -22,7 +22,6 @@
 #ifndef SCOPION_ASSEMBLY_MODULE_H_
 #define SCOPION_ASSEMBLY_MODULE_H_
 
-#include "scopion/assembly/translator.hpp"
 #include "scopion/assembly/value.hpp"
 
 #include "scopion/parser/parser.hpp"
@@ -35,24 +34,18 @@ namespace scopion
 {
 namespace assembly
 {
-class module;
-
-std::unique_ptr<module> translate(
-    ast::expr const& tree,
-    error& err,
-    boost::optional<boost::filesystem::path> const& path = boost::none);
-
 class module
 {
-  friend std::unique_ptr<module> translate(ast::expr const& tree,
-                                           error& err,
-                                           boost::optional<boost::filesystem::path> const& path);
+  friend class translator;
 
-  std::shared_ptr<llvm::Module> llvm_module_;
-  value* value_;
+  llvm::LLVMContext* context_;
+  llvm::Module* llvm_module_;
   bool gc_used_ = false;
 
 public:
+  module(std::string const& name = "");
+  ~module();
+
   module(const module&) = delete;
   module& operator=(const module&) = delete;
 
@@ -60,11 +53,10 @@ public:
   std::string getPrintedIR() const;
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
-  value* getValue() const;
+  bool verify(error& err) const;
+  llvm::LLVMContext& getContext() const;
+  llvm::Module* getLLVMModule() const;
   bool hasGCUsed() const;
-
-private:
-  module(std::shared_ptr<llvm::Module>& module, value* val_);
 };
 
 };  // namespace assembly

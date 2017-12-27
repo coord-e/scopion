@@ -49,19 +49,85 @@ namespace scopion
 {
 namespace assembly
 {
-translator::translator(std::shared_ptr<llvm::Module>& module, llvm::IRBuilder<>& builder)
-    : boost::static_visitor<value*>(), module_(module), builder_(builder), thisScope_(new value())
+translator::translator()
+    : boost::static_visitor<value*>(),
+      module_(std::make_unique<module>("notafile")),
+      builder_(module_->getContext()),
+      thisScope_(new value())
 {
-  module_->getOrInsertFunction("GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
-  module_->getOrInsertFunction(
-      "GC_malloc",
-      llvm::FunctionType::get(builder_.getInt8Ty()->getPointerTo(),
-                              llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
 }
 
-void translator::insertGCInit()
+translator::translator(boost::filesystem::path const& name)
+    : boost::static_visitor<value*>(),
+      module_(std::make_unique<module>(name.filename().string())),
+      builder_(module_->getContext()),
+      thisScope_(new value())
 {
-  builder_.CreateCall(module_->getFunction("GC_init"), llvm::ArrayRef<llvm::Value*>{});
+}
+
+translator::translator(std::unique_ptr<module>&& module, llvm::IRBuilder<>& builder)
+    : boost::static_visitor<value*>(),
+      module_(std::move(module)),
+      builder_(builder),
+      thisScope_(new value())
+{
+}
+
+void translator::createMain()
+{
+  std::vector<llvm::Type*> args_type = {builder_.getInt32Ty(),
+                                        builder_.getInt8PtrTy()->getPointerTo()};
+  auto mainf =
+      llvm::Function::Create(llvm::FunctionType::get(builder_.getInt32Ty(), args_type, false),
+                             llvm::Function::ExternalLinkage, "main", module_->getLLVMModule());
+  auto mainbb = llvm::BasicBlock::Create(module_->getContext(), "main_entry", mainf);
+  builder_.SetInsertPoint(mainbb);
+}
+
+value* translator::translateAST(ast::expr const& ast, error& err)
+{
+  try {
+    return boost::apply_visitor(*this, ast);
+  } catch (error& e) {
+    err = e;
+    return nullptr;
+  }
+}
+
+llvm::Value* translator::createMainRet(value* val, error& err)
+{
+  auto* mainf = module_->getLLVMModule()->getFunction("main");
+  assert(mainf && "main cannot be found in the module");
+  std::vector<llvm::Value*> arg_llvm_values;
+  std::vector<value*> arg_values;
+  for (auto it = mainf->arg_begin(); it != mainf->arg_end(); it++) {
+    arg_llvm_values.push_back(it);
+    arg_values.push_back(new value(it, ast::expr{}));
+  }
+
+  value* llval;
+  try {
+    llval = evaluate(val, arg_values, *this);
+  } catch (error& e) {
+    err = e;
+    return nullptr;
+  }
+
+  llvm::Value* ret =
+      builder_.CreateCall(llval->getLLVM(), llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
+
+  builder_.CreateRet(ret->getType()->isVoidTy() ? builder_.getInt32(0) : ret);
+  return llval->getLLVM();
+}
+
+void translator::insertGCInitInMain()
+{
+  auto ib = builder_.GetInsertBlock();
+  auto ip = builder_.GetInsertPoint();
+  builder_.SetInsertPoint(&(module_->getLLVMModule()->getFunction("main")->getEntryBlock()));
+  builder_.CreateCall(module_->getLLVMModule()->getFunction("GC_init"),
+                      llvm::ArrayRef<llvm::Value*>{});
+  builder_.SetInsertPoint(ib, ip);
 }
 
 value* translator::import(std::string const& path, ast::pre_variable const& astv)
@@ -79,8 +145,10 @@ value* translator::import(std::string const& path, ast::pre_variable const& astv
   auto parsed = parser::parse(code, err, abspath);
   if (!parsed)
     throw err;
-  translator tr(module_, builder_);
-  return boost::apply_visitor(tr, *parsed);
+  translator tr(std::move(module_), builder_);
+  auto val = boost::apply_visitor(tr, *parsed);
+  module_  = tr.takeModule();
+  return val;
 }
 
 value* translator::importIR(std::string const& path, ast::pre_variable const& astv)
@@ -105,9 +173,9 @@ value* translator::importIR(std::string const& path, ast::pre_variable const& as
     // FIXME: find better way to avoid link error (zopen causes link error)
     if (!i->getName().startswith("llvm.")) {
       llvm::Function* func;
-      if (!(func = module_->getFunction(i->getName())))
+      if (!(func = module_->getLLVMModule()->getFunction(i->getName())))
         func = llvm::Function::Create(i->getFunctionType(), llvm::Function::ExternalLinkage,
-                                      i->getName(), module_.get());
+                                      i->getName(), module_->getLLVMModule());
       auto vp                              = new value(func, astv);
       destv->symbols()[i->getName().str()] = vp;
       destv->fields()[i->getName().str()]  = cnt;
@@ -210,7 +278,7 @@ value* translator::operator()(ast::pre_variable const& astv)
                 errorType::Translate);
 
   auto const name = llvm::StringRef(ast::val(astv)).ltrim('@');
-  if (auto fp = module_->getFunction(name))
+  if (auto fp = module_->getLLVMModule()->getFunction(name))
     return new value(fp, astv);
   else {
     if (name.equals("import")) {
@@ -354,7 +422,7 @@ value* translator::operator()(ast::structure const& astv)
   structTy->setBody(fields);
   structTy->setName("user_type");
 
-  for (auto t : module_->getIdentifiedStructTypes()) {
+  for (auto t : module_->getLLVMModule()->getIdentifiedStructTypes()) {
     if (structTy->isLayoutIdentical(t)) {
       structTy = t;
       break;
@@ -402,7 +470,7 @@ value* translator::operator()(ast::function const& fcv)
     auto parse = [this](auto& x, std::string const& key = "type") {
       llvm::SMDiagnostic err;
       auto type_name = ast::attr(x).attributes.at(key);
-      auto t         = llvm::parseType(type_name, err, *module_);
+      auto t         = llvm::parseType(type_name, err, *(module_->getLLVMModule()));
       if (!t) {
         llvm::raw_os_ostream stream(std::cerr);
         err.print("", stream);
@@ -418,7 +486,7 @@ value* translator::operator()(ast::function const& fcv)
     llvm::FunctionType* func_type =
         llvm::FunctionType::get(ret_type, std::vector<llvm::Type*>(arg_types), false);
     llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
-                                                  func_name, module_.get());
+                                                  func_name, module_->getLLVMModule());
 
     llvm::BasicBlock* newentry = llvm::BasicBlock::Create(module_->getContext(), "entry", func);
 

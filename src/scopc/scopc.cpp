@@ -120,8 +120,23 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  auto mod = scopion::assembly::translate(*ast, err, inpath);
-  if (!mod) {
+  scopion::assembly::translator tr(inpath);
+  tr.createMain();
+
+  auto* tlv = tr.translateAST(*ast, err);
+  if (!tlv) {
+    std::cerr << err << std::endl;
+    return -1;
+  }
+
+  if (!tr.createMainRet(tlv, err)) {
+    std::cerr << err << std::endl;
+    return -1;
+  }
+
+  auto mod = tr.takeModule();
+
+  if (!mod->verify(err)) {
     std::cerr << err << std::endl;
     return -1;
   }

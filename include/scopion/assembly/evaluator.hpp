@@ -45,7 +45,6 @@ struct evaluator : boost::static_visitor<value*> {
   std::vector<value*> const& arguments_;
   translator& translator_;
   llvm::IRBuilder<>& builder_;
-  std::shared_ptr<llvm::Module>& module_;
 
   evaluator(value* v, std::vector<value*> const& args, translator& tr);
 

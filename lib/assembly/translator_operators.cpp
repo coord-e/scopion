@@ -39,7 +39,16 @@ llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
                                         llvm::Value* ArraySize,
                                         const llvm::Twine& Name)
 {
-  gc_used_ = true;
+  if (!module_->gc_used_) {
+    insertGCInitInMain();
+    module_->gc_used_ = true;
+    module_->getLLVMModule()->getOrInsertFunction(
+        "GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
+    module_->getLLVMModule()->getOrInsertFunction(
+        "GC_malloc",
+        llvm::FunctionType::get(builder_.getInt8Ty()->getPointerTo(),
+                                llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
+  }
   assert(!ArraySize &&
          "Parameter ArraySize is for compatibility with IRBuilder<>::CreateAlloca. Don't pass any "
          "value.");
@@ -51,9 +60,10 @@ llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
       builder_.getInt64Ty());  // ptrtoint %A* getelementptr (%A, %A* null, i32 1) to i64
 
   std::vector<llvm::Value*> arg_values = {sizelp};
-  return builder_.CreatePointerCast(builder_.CreateCall(module_->getFunction("GC_malloc"),
-                                                        llvm::ArrayRef<llvm::Value*>(arg_values)),
-                                    Ty->getPointerTo(), Name);
+  return builder_.CreatePointerCast(
+      builder_.CreateCall(module_->getLLVMModule()->getFunction("GC_malloc"),
+                          llvm::ArrayRef<llvm::Value*>(arg_values)),
+      Ty->getPointerTo(), Name);
 }
 
 bool translator::copyFull(value* src,
@@ -77,8 +87,8 @@ bool translator::copyFull(value* src,
           list.push_back(builder_.getInt8Ty()->getPointerTo());
           list.push_back(builder_.getInt8Ty()->getPointerTo());
           list.push_back(builder_.getInt64Ty());
-          llvm::Function* fmemcpy =
-              llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::memcpy, list);
+          llvm::Function* fmemcpy = llvm::Intrinsic::getDeclaration(module_->getLLVMModule(),
+                                                                    llvm::Intrinsic::memcpy, list);
 
           std::vector<llvm::Value*> arg_values;
           arg_values.push_back(builder_.CreatePointerCast(lval, builder_.getInt8PtrTy()));
@@ -143,7 +153,7 @@ value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<valu
 
   list.push_back(lv->getType());
   llvm::Function* fpow = llvm::Intrinsic::getDeclaration(
-      module_.get(),
+      module_->getLLVMModule(),
       args[1]->getLLVM()->getType()->isIntegerTy() ? llvm::Intrinsic::powi : llvm::Intrinsic::pow,
       list);
 

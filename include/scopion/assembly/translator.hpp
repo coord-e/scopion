@@ -23,6 +23,7 @@
 #define SCOPION_ASSEMBLY_TRANSLATOR_H_
 
 #include "scopion/assembly/evaluator.hpp"
+#include "scopion/assembly/module.hpp"
 #include "scopion/assembly/value.hpp"
 #include "scopion/ast/ast.hpp"
 
@@ -49,16 +50,17 @@ std::string getNameString(T* v)
 
 class translator : public boost::static_visitor<value*>
 {
-  std::shared_ptr<llvm::Module> module_;
-  llvm::IRBuilder<>& builder_;
+  std::unique_ptr<module> module_;
+  llvm::IRBuilder<> builder_;
   std::map<std::string, std::unique_ptr<llvm::Module>> loaded_map_;
   value* thisScope_;
-  bool gc_used_ = false;
 
   friend struct evaluator;
 
 public:
-  translator(std::shared_ptr<llvm::Module>& module, llvm::IRBuilder<>& builder);
+  translator();
+  translator(boost::filesystem::path const&);
+  translator(std::unique_ptr<module>&& module, llvm::IRBuilder<>& builder);
 
   value* operator()(ast::value);
   value* operator()(ast::operators);
@@ -136,8 +138,9 @@ public:
   void setScope(value* v) { thisScope_ = v; }
   value* getScope() const { return thisScope_; }
 
-  std::shared_ptr<llvm::Module> getModule() const { return module_; }
-  llvm::IRBuilder<>& getBuilder() const { return builder_; }
+  llvm::IRBuilder<>& getBuilder() { return builder_; }
+  llvm::IRBuilder<> const& getBuilder() const { return builder_; }
+  std::unique_ptr<module>&& takeModule() { return std::move(module_); }
 
   value* import(std::string const& path, ast::pre_variable const& astv);
   value* importIR(std::string const& path, ast::pre_variable const& astv);
@@ -149,9 +152,10 @@ public:
 
   llvm::Value* sizeofType(llvm::Type*);
 
-  void insertGCInit();
-
-  bool hasGCUsed() const { return gc_used_; }
+  void createMain();
+  value* translateAST(ast::expr const&, error&);
+  llvm::Value* createMainRet(value*, error&);
+  void insertGCInitInMain();
 
 private:
   bool copyFull(value* src,
