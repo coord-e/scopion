@@ -1,1 +1,1 @@
-te?mpnam(_r)?|zopen|alloca|^_.*|revoke|setlogin|getwd
+te?mpnam(_r)?|zopen|alloca|^_.*|revoke|setlogin|getwd|mktemp
