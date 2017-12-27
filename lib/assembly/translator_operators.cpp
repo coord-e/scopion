@@ -142,7 +142,6 @@ value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<valu
     lv = builder_.CreateSIToFP(args[0]->getLLVM(), builder_.getDoubleTy());
 
   list.push_back(lv->getType());
-  list.push_back(args[1]->getLLVM()->getType());
   llvm::Function* fpow = llvm::Intrinsic::getDeclaration(
       module_.get(),
       args[1]->getLLVM()->getType()->isIntegerTy() ? llvm::Intrinsic::powi : llvm::Intrinsic::pow,
