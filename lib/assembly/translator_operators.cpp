@@ -145,6 +145,7 @@ value* translator::apply_op(ast::binary_op<ast::sub> const& op, std::vector<valu
 
 value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<value*> const& args)
 {
+  module_->link_libraries_.push_back("m");
   std::vector<llvm::Type*> list;
   llvm::Value* lv;
   if (args[0]->getLLVM()->getType()->isDoubleTy())
@@ -161,7 +162,11 @@ value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<valu
   std::vector<llvm::Value*> arg_values;
   arg_values.push_back(lv);
   arg_values.push_back(args[1]->getLLVM());
-  return new value(builder_.CreateCall(fpow, llvm::ArrayRef<llvm::Value*>(arg_values)), op);
+  auto* res = builder_.CreateCall(fpow, llvm::ArrayRef<llvm::Value*>(arg_values));
+  return new value(args[1]->getLLVM()->getType()->isIntegerTy()
+                       ? builder_.CreateFPToSI(res, args[1]->getLLVM()->getType())
+                       : res,
+                   op);
 }
 
 value* translator::apply_op(ast::binary_op<ast::mul> const& op, std::vector<value*> const& args)
