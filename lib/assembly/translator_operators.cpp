@@ -39,15 +39,16 @@ llvm::Value* translator::createGCMalloc(llvm::Type* Ty,
                                         llvm::Value* ArraySize,
                                         const llvm::Twine& Name)
 {
-  if (!module_->gc_used_) {
-    insertGCInitInMain();
-    module_->gc_used_ = true;
+  if (std::find(module_->link_libraries_.begin(), module_->link_libraries_.end(), "gc") ==
+      module_->link_libraries_.end()) {
     module_->getLLVMModule()->getOrInsertFunction(
         "GC_init", llvm::FunctionType::get(builder_.getVoidTy(), false));
     module_->getLLVMModule()->getOrInsertFunction(
         "GC_malloc",
         llvm::FunctionType::get(builder_.getInt8Ty()->getPointerTo(),
                                 llvm::ArrayRef<llvm::Type*>({builder_.getInt64Ty()}), false));
+    insertGCInitInMain();
+    module_->link_libraries_.push_back("gc");
   }
   assert(!ArraySize &&
          "Parameter ArraySize is for compatibility with IRBuilder<>::CreateAlloca. Don't pass any "

@@ -30,6 +30,9 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 
+#include <string>
+#include <vector>
+
 namespace scopion
 {
 namespace assembly
@@ -40,7 +43,7 @@ class module
 
   llvm::LLVMContext* context_;
   llvm::Module* llvm_module_;
-  bool gc_used_ = false;
+  std::vector<std::string> link_libraries_;
 
 public:
   module(std::string const& name = "");
@@ -56,7 +59,7 @@ public:
   bool verify(error& err) const;
   llvm::LLVMContext& getContext() const;
   llvm::Module* getLLVMModule() const;
-  bool hasGCUsed() const;
+  std::string makeLinkerFlags();
 };
 
 };  // namespace assembly

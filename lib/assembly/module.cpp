@@ -42,6 +42,10 @@
 #include <llvm/Transforms/IPO/Inliner.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
+#include <algorithm>
+#include <numeric>
+#include <string>
+
 namespace scopion
 {
 namespace assembly
@@ -117,9 +121,14 @@ llvm::Module* module::getLLVMModule() const
   return llvm_module_;
 }
 
-bool module::hasGCUsed() const
+std::string module::makeLinkerFlags()
 {
-  return gc_used_;
+  std::sort(link_libraries_.begin(), link_libraries_.end());
+  auto result = std::unique(link_libraries_.begin(), link_libraries_.end());
+  return std::accumulate(
+      link_libraries_.begin(), result, std::string{},
+      [](auto const& str1, auto const& str2) { return str1 + "-l" + str2 + " "; });
+  ;
 }
 
 };  // namespace assembly
