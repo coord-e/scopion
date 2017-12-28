@@ -9,22 +9,22 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
           packages: ['clang-5.0', 'libstdc++6', 'libstdc++-6-dev']
-      env: COMPILER='clang++-5.0' BUILD_TYPE='Release'
+      env: COMPILER='clang++-5.0' BUILD_TYPE='RELEASE'
 
     - os: linux
       compiler: clang
       addons: *clang50
-      env: COMPILER='clang++-5.0' BUILD_TYPE='Debug'
+      env: COMPILER='clang++-5.0' BUILD_TYPE='DEBUG'
 
     - os: osx
       osx_image: xcode8.3
       compiler: clang
-      env: COMPILER='clang++' BUILD_TYPE='Release'
+      env: COMPILER='clang++' BUILD_TYPE='RELEASE'
 
     - os: osx
       osx_image: xcode8.3
       compiler: clang
-      env: COMPILER='clang++' BUILD_TYPE='Debug'
+      env: COMPILER='clang++' BUILD_TYPE='DEBUG'
 
 install:
 - |
@@ -51,7 +51,7 @@ install:
   fi
 before_script:
   - cd ${TRAVIS_BUILD_DIR}
-  - cmake . -DFORMAT_BEFORE_BUILD=OFF -DCMAKE_CXX_COMPILER=${COMPILER} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+  - cmake . -DFORMAT_BEFORE_BUILD=OFF -DCMAKE_CXX_COMPILER=${COMPILER} -DCONFIG=${BUILD_TYPE}
 script:
     - make -j"$(nproc)"
     - make test
