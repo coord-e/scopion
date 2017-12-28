@@ -1,36 +1,39 @@
 language: cpp
 sudo: true
 dist: trusty
+compiler: clang
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-trusty-5.0
+    packages:
+    - build-essential
+    - clang-5.0
+    - libclang-5.0-dev
+    - libclang1-5.0
+    - libstdc++6
+    - libstdc++-6-dev
+    - llvm-5.0
+    - libllvm5.0
+    - llvm-5.0-dev
+    - libgc-dev
+    - exuberant-ctags
+    - libedit-dev
+    - libz-dev
 matrix:
   include:
-    - os: linux
-      compiler: clang
-      addons: &clang50
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-          packages: ['clang-5.0', 'libstdc++6', 'libstdc++-6-dev']
-      env: COMPILER='clang++-5.0' BUILD_TYPE='RELEASE'
-
-    - os: linux
-      compiler: clang
-      addons: *clang50
-      env: COMPILER='clang++-5.0' BUILD_TYPE='DEBUG'
-
-    - os: osx
-      osx_image: xcode8.3
-      compiler: clang
-      env: COMPILER='clang++' BUILD_TYPE='RELEASE'
-
-    - os: osx
-      osx_image: xcode8.3
-      compiler: clang
-      env: COMPILER='clang++' BUILD_TYPE='DEBUG'
-
+  - os: linux
+    env: COMPILER='clang++-5.0' BUILD_TYPE='RELEASE'
+  - os: linux
+    env: COMPILER='clang++-5.0' BUILD_TYPE='DEBUG'
+  - os: osx
+    env: COMPILER='clang++' BUILD_TYPE='RELEASE'
+  - os: osx
+    env: COMPILER='clang++' BUILD_TYPE='DEBUG'
 install:
 - |
   if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-    sudo apt-get -qq update
-    sudo apt-get -y -qq --allow-unauthenticated install llvm-5.0 libgc-dev exuberant-ctags build-essential libclang-5.0-dev libclang1-5.0 libllvm5.0 llvm-5.0-dev libedit-dev libz-dev llvm-5.0-runtime
     wget -q https://sourceforge.net/projects/boost/files/boost/1.62.0/boost_1_62_0.tar.gz
     tar xf boost_1_62_0.tar.gz
     cd boost_1_62_0/
@@ -43,15 +46,37 @@ install:
     test -f ${CMAKE_FILE}/bin/cmake
     export PATH=${TRAVIS_BUILD_DIR}/cmake/${CMAKE_FILE}/bin:${PATH}
   elif [[ "${TRAVIS_OS_NAME}" == "osx" ]]; then
-    brew list cmake || brew install cmake
-    brew list ctags || brew install ctags
-    brew list boost || brew install boost
-    brew list llvm || brew install llvm
-    brew list bdw-gc || brew install bdw-gc
+    brew list cmake &> /dev/null || brew install cmake
+    brew list ctags &> /dev/null || brew install ctags
+    brew list boost &> /dev/null || brew install boost
+    brew list llvm &> /dev/null || brew install llvm
+    brew list bdw-gc &> /dev/null || brew install bdw-gc
   fi
 before_script:
   - cd ${TRAVIS_BUILD_DIR}
   - cmake . -DFORMAT_BEFORE_BUILD=OFF -DCMAKE_CXX_COMPILER=${COMPILER} -DCONFIG=${BUILD_TYPE}
 script:
-    - make -j"$(nproc)"
-    - make test
+- make -j"$(nproc)"
+- make test
+after_success:
+- make package
+before_deploy:
+- cd dist
+deploy:
+- provider: s3
+  bucket: scopion-latest
+  access_key_id: $AWS_ACCESS_KEY_ID
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
+  skip_cleanup: true
+  upload-dir: $TRAVIS_BRANCH
+  on:
+    condition: "$BUILD_TYPE = RELEASE"
+    all_branches: true
+- provider: releases
+  api_key: $GITHUB_OAUTH_TOKEN
+  skip_cleanup: true
+  file_glob: true
+  file: '*'
+  on:
+    condition: "$BUILD_TYPE = RELEASE"
+    tags: true
