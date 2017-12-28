@@ -121,7 +121,7 @@ llvm::Module* module::getLLVMModule() const
   return llvm_module_;
 }
 
-std::string module::makeLinkerFlags()
+std::string module::generateLinkerFlags()
 {
   std::sort(link_libraries_.begin(), link_libraries_.end());
   auto result = std::unique(link_libraries_.begin(), link_libraries_.end());

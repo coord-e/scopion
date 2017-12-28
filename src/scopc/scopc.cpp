@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
   if (outtype == "asm")
     return 0;
 
-  return system(("clang " + asmpath + " " + mod->makeLinkerFlags() +
+  return system(("clang " + asmpath + " " + mod->generateLinkerFlags() +
                  " --target=" + triple.getTriple() + " -o " + outpath)
                     .c_str());
 }

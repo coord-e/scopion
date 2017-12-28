@@ -59,7 +59,7 @@ public:
   bool verify(error& err) const;
   llvm::LLVMContext& getContext() const;
   llvm::Module* getLLVMModule() const;
-  std::string makeLinkerFlags();
+  std::string generateLinkerFlags();
 };
 
 };  // namespace assembly
