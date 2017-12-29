@@ -285,18 +285,23 @@ value* translator::operator()(ast::pre_variable const& astv)
       auto itm = ast::attr(astv).attributes.find("m");
       auto iti = ast::attr(astv).attributes.find("ir");
       auto its = ast::attr(astv).attributes.find("c");
+      auto itl = ast::attr(astv).attributes.find("link");
       if (itm != ast::attr(astv).attributes.end()) {  // found path to module
         if (auto v = import(itm->second, astv))
           return v;
         else
           throw error("Failed to open " + itm->second, ast::attr(astv).where, errorType::Translate);
       } else if (iti != ast::attr(astv).attributes.end()) {  // found path to ir
+        if (itl != ast::attr(astv).attributes.end())
+          module_->link_libraries_.push_back(itl->second);
         if (auto v = importIR(iti->second, astv))
           return v;
         else
           throw error("Error happened during import of llvm ir", ast::attr(astv).where,
                       errorType::Translate);
       } else if (its != ast::attr(astv).attributes.end()) {  // found path to c header
+        if (itl != ast::attr(astv).attributes.end())
+          module_->link_libraries_.push_back(itl->second);
         if (auto v = importCHeader(its->second, astv))
           return v;
         else
