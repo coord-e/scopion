@@ -116,6 +116,23 @@ public:
   expr operator()(operators val) const { return boost::apply_visitor(*this, val); }
 };
 
+template <typename F, typename Result>
+class applier_visitor : boost::static_visitor<Result>
+{
+  F f_;
+
+public:
+  applier_visitor(F const& f) : f_(f) {}
+
+  Result operator()(value const& val) const { return boost::apply_visitor(*this, val); }
+  Result operator()(operators const& val) const { return boost::apply_visitor(*this, val); }
+  template <typename T>
+  Result operator()(T const& val) const
+  {
+    return f_(val);
+  }
+};
+
 };  // namespace visitors_
 
 template <typename T>
@@ -170,6 +187,12 @@ bool isa(expr t)
     return boost::get<operators>(t).type() == typeid(Dest);
   else
     return false;
+}
+
+template <typename Dest, typename F>
+decltype(auto) apply(F f, expr t)
+{
+  return boost::apply_visitor(visitors_::applier_visitor<decltype(f), Dest>(f), t);
 }
 
 };  // namespace ast
