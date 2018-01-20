@@ -69,7 +69,9 @@ set(CMAKE_CXX_CLANG_TIDY
 endif()
 
 include_directories(include)
-include_directories(SYSTEM extsrc/include)
+include_directories(SYSTEM extsrc/args)
+include_directories(SYSTEM extsrc/rang/include)
+
 
 find_package(LLVM 5.0 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

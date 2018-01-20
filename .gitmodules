@@ -1,0 +1,6 @@
+[submodule "extsrc/args"]
+	path = extsrc/args
+	url = https://github.com/Taywee/args.git
+[submodule "extsrc/rang"]
+	path = extsrc/rang
+	url = https://github.com/agauniyal/rang.git

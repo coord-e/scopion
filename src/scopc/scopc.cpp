@@ -32,10 +32,12 @@
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Host.h>
 
-#include "cmdline.h"
+#include "args.hxx"
 #include "rang.hpp"
 
 #include "scopion/scopion.hpp"
+
+enum class OutputType { IR, AST, Assembly, Object };
 
 static std::string getTmpFilePath()
 {
@@ -46,27 +48,44 @@ static std::string getTmpFilePath()
 
 int main(int argc, char* argv[])
 {
-  cmdline::parser p;
-  p.add<std::string>("type", 't', "Specify the type of output (ir, ast, asm, obj)", false, "exe",
-                     cmdline::oneof<std::string>("ir", "ast", "asm", "exe"));
-  p.add<std::string>("output", 'o', "Specify the output path", false, "./a.out");
-  p.add<std::string>("arch", 'a', "Specify the target triple", false, "native");
-  p.add<int>("optimize", 'O', "Enable optimization (1-3)", false, 1, cmdline::range(1, 3));
-  p.add("help", 'h', "Print this help");
-  p.add("version", 'V', "Print version");
-  p.footer("filename ...");
+  args::ArgumentParser parser("scopc: scopion compiler", "");
+  args::HelpFlag help(parser, "help", "Print this help", {'h', "help"});
+  args::MapFlag<std::string, OutputType> type(parser, "type", "Specify the type of output",
+                                              {'t', "type"},
+                                              {{"ir", OutputType::IR},
+                                               {"ast", OutputType::AST},
+                                               {"asm", OutputType::Assembly},
+                                               {"obj", OutputType::Object}},
+                                              OutputType::Object);
+  args::ValueFlag<std::string> output_path(parser, "path", "Specify the output path",
+                                           {'o', "output"}, "./a.out");
+  args::ValueFlag<std::string> arch(parser, "triple", "Specify the target triple", {'a', "arch"},
+                                    "native");
+  args::ValueFlag<int> optimize(parser, "level", "Enable optimization (1-3)", {'O', "optimize"}, 1);
+  args::Flag version(parser, "version", "Print version", {'V', "version"});
+  args::Positional<std::string> input_path(parser, "path", "File to compile");
 
-  if (!p.parse(argc, argv)) {
+  parser.helpParams.addDefault = true;
+  parser.helpParams.addChoices = true;
+
+  try {
+    parser.ParseCLI(argc, argv);
+  } catch (args::Help) {
+    std::cout << parser;
+    return 0;
+  } catch (args::ParseError e) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
-              << rang::style::reset << ": " << p.error_full() << p.usage();
-    return 0;
-  }
-  if (p.exist("help")) {
-    std::cout << p.usage();
-    return 0;
+              << rang::style::reset << ": " << e.what() << std::endl;
+    std::cerr << parser;
+    return 1;
+  } catch (args::ValidationError e) {
+    std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
+              << rang::style::reset << ": " << e.what() << std::endl;
+    std::cerr << parser;
+    return 1;
   }
 
-  if (p.exist("version")) {
+  if (version) {
     std::cerr << rang::style::reset << rang::fg::green <<
         R"(
      _______.  ______   ______   .______    __    ______   .__   __.
@@ -86,15 +105,16 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  if (p.rest().empty()) {
+  if (!input_path) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
               << rang::style::reset << ": no input file specified." << std::endl
-              << p.usage();
-    return 0;
+              << parser;
+    return 1;
   }
 
-  auto outpath = p.get<std::string>("output") != "-" ? p.get<std::string>("output") : "/dev/stdout";
-  boost::filesystem::path inpath = boost::filesystem::absolute(p.rest()[0]);
+  auto outpath                   = args::get(output_path);
+  outpath                        = outpath != "-" ? outpath : "/dev/stdout";
+  boost::filesystem::path inpath = boost::filesystem::absolute(args::get(input_path));
   std::ifstream ifs(inpath.string());
   if (ifs.fail()) {
     std::cerr << rang::style::reset << rang::bg::red << rang::fg::gray << "[ERROR]"
@@ -102,7 +122,7 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  auto& outtype = p.get<std::string>("type");
+  auto outtype = args::get(type);
 
   std::string code((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
@@ -113,7 +133,7 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  if (outtype == "ast") {
+  if (outtype == OutputType::AST) {
     std::ofstream f(outpath);
     f << *ast << std::endl;
     f.close();
@@ -141,28 +161,28 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  if (p.exist("optimize")) {
-    auto opt = static_cast<uint8_t>(p.get<int>("optimize"));
+  if (optimize) {
+    auto opt = static_cast<uint8_t>(args::get(optimize));
     mod->optimize(opt, opt);
   }
 
-  auto irpath = outtype == "ir" ? outpath : getTmpFilePath() + ".ll";
+  auto irpath = outtype == OutputType::IR ? outpath : getTmpFilePath() + ".ll";
   std::ofstream f(irpath);
   mod->printIR(f);
   f.close();
-  if (outtype == "ir")
+  if (outtype == OutputType::IR)
     return 0;
 
-  auto asmpath = outtype == "asm" ? outpath : getTmpFilePath() + ".s";
+  auto asmpath = outtype == OutputType::Assembly ? outpath : getTmpFilePath() + ".s";
 
-  auto const archstr = p.get<std::string>("arch") != "native" ? p.get<std::string>("arch")
-                                                              : llvm::sys::getDefaultTargetTriple();
+  auto archstr = args::get(arch);
+  archstr      = archstr != "native" ? archstr : llvm::sys::getDefaultTargetTriple();
   llvm::Triple triple(archstr);
 
   system(("llc -relocation-model=pic -mtriple=" + triple.getTriple() + " -filetype asm " + irpath +
           " -o=" + asmpath)
              .c_str());
-  if (outtype == "asm")
+  if (outtype == OutputType::Assembly)
     return 0;
 
   return system(("clang " + asmpath + " " + mod->generateLinkerFlags() +
