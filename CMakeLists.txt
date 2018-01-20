@@ -72,8 +72,11 @@ include_directories(include)
 include_directories(SYSTEM extsrc/args)
 include_directories(SYSTEM extsrc/rang/include)
 
+find_package(LLVM REQUIRED CONFIG)
+if(${LLVM_PACKAGE_VERSION} VERSION_LESS "5.0")
+  message(FATAL_ERROR "Found LLVM ${LLVM_PACKAGE_VERSION}, but 5.0 or newer is required")
+endif()
 
-find_package(LLVM 5.0 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
