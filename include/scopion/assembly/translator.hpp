@@ -88,30 +88,30 @@ public:
   {
     auto it       = ast::val(op).begin();
     value* target = boost::apply_visitor(*this, *(it++));
-    if (!target->isStruct())  // no its own opr method
+    if (!target->getType()->isStruct())  // no its own opr method
       it--;
     std::vector<value*> args;
     std::vector<llvm::Value*> args_llvm;
     for (; it != ast::val(op).end(); it++) {
-      if (ast::isa<ast::arglist>(*it) && target->isStruct()) {  // unpack arglist
+      if (ast::isa<ast::arglist>(*it) && target->getType()->isStruct()) {  // unpack arglist
         std::vector<ast::expr> al = ast::val(ast::unpack<ast::arglist>(*it));
         for (auto const& x : al) {
           auto thev = boost::apply_visitor(*this, x);
 
           args.push_back(thev);
-          if (!thev->isLazy())
+          if (!thev->getType()->isLazy())
             args_llvm.push_back(thev->getLLVM());
         }
       } else {
         auto thev = it == ast::val(op).begin() ? target : boost::apply_visitor(*this, *it);
 
         args.push_back(thev);
-        if (!thev->isLazy())
+        if (!thev->getType()->isLazy())
           args_llvm.push_back(thev->getLLVM());
       }
     }
 
-    if (!target->isStruct()) {
+    if (!target->getType()->isStruct()) {
       return apply_op(op, args);
     } else {
       args.push_back(target);

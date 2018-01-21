@@ -22,6 +22,7 @@
 #ifndef SCOPION_ASSEMBLY_VALUE_H_
 #define SCOPION_ASSEMBLY_VALUE_H_
 
+#include "scopion/assembly/type.hpp"
 #include "scopion/ast/expr.hpp"
 #include "scopion/ast/util.hpp"
 #include "scopion/ast/value.hpp"
@@ -47,29 +48,22 @@ using ret_table_t = std::pair<std::map<std::string, value*>, std::map<std::strin
 class value
 {
   llvm::Value* llvm_value_ = nullptr;
-  value* parent_           = nullptr;
+  type* type_;
+  value* parent_ = nullptr;
   ast::expr ast_value_;
   std::map<std::string, value*> symbols_;
   std::map<std::string, uint32_t> fields_;
   std::string name_;
   ret_table_t* ret_table_ = nullptr;
-  bool is_lazy_;
-  bool is_void_;
-
-  template <typename F>
-  static bool isType_if_impl(llvm::Type* t, F f)
-  {
-    if (t->isPointerTy())
-      return isType_if_impl(t->getPointerElementType(), f);
-    return f(t);
-  }
 
 public:
   value(llvm::Value* llvm_value, ast::expr ast_value, bool is_lazy = false)
-      : llvm_value_(llvm_value), ast_value_(ast_value), is_lazy_(is_lazy), is_void_(false)
+      : llvm_value_(llvm_value),
+        ast_value_(ast_value),
+        type_(new type{llvm_value_->getType(), is_lazy})
   {
   }
-  value() : is_void_(true) {}
+  value() : type_(new type{}) {}
 
   value(value const&) = delete;
   value& operator=(value const&) = delete;
@@ -86,30 +80,20 @@ public:
     newval->fields_    = fields_;
     newval->ret_table_ = ret_table_;
     newval->name_      = name_;
-    newval->is_lazy_   = is_lazy_;
-    newval->is_void_   = is_void_;
+    newval->type_      = type_;
     return newval;
   }
 
   value* copy() { return copyWithNewLLVMValue(llvm_value_); }
 
-  std::type_info const& type() const { return ast_value_.type(); }
-  bool isLazy() const { return is_lazy_; }
-  void isLazy(bool tf) { is_lazy_ = tf; }
-  bool isFundamental() const
+  std::type_info const& asttype() const { return ast_value_.type(); }
+
+  type* getType() const
   {
-    return !isType_if_impl(llvm_value_->getType(),
-                           [](auto tp) { return tp->isStructTy() || tp->isArrayTy(); });
+    assert(llvm_value_->getType() == type_->getLLVM() && "llvm type and scopion type mismatched");
+    return type_;
   }
-  bool isStruct() const
-  {
-    return isType_if_impl(llvm_value_->getType(), [](auto tp) { return tp->isStructTy(); });
-  }
-  bool isArray() const
-  {
-    return isType_if_impl(llvm_value_->getType(), [](auto tp) { return tp->isArrayTy(); });
-  }
-  bool isVoid() const { return llvm_value_ ? llvm_value_->getType()->isVoidTy() : is_void_; }
+
   value* getParent() const { return parent_; }
   void setParent(value* parent) { parent_ = parent; }
   void setRetTable(ret_table_t* table) { ret_table_ = table; }
