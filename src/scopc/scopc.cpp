@@ -61,7 +61,8 @@ int main(int argc, char* argv[])
                                            {'o', "output"}, "./a.out");
   args::ValueFlag<std::string> arch(parser, "triple", "Specify the target triple", {'a', "arch"},
                                     "native");
-  args::ValueFlag<int> optimize(parser, "level", "Enable optimization (1-3)", {'O', "optimize"}, 1);
+  args::ValueFlag<int> optimize(parser, "level", "Set optimization level (0-3)", {'O', "optimize"},
+                                3);
   args::Flag version(parser, "version", "Print version", {'V', "version"});
   args::Positional<std::string> input_path(parser, "path", "File to compile");
 
@@ -161,9 +162,8 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  if (optimize) {
-    auto opt = static_cast<uint8_t>(args::get(optimize));
-    mod->optimize(opt, opt);
+  if (uint8_t optlevel = args::get(optimize)) {
+    mod->optimize(optlevel, optlevel);
   }
 
   auto irpath = outtype == OutputType::IR ? outpath : getTmpFilePath() + ".ll";
