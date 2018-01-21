@@ -57,19 +57,23 @@ translator::translator()
 {
 }
 
-translator::translator(boost::filesystem::path const& name)
+translator::translator(boost::filesystem::path const& name, std::vector<std::string> const& flags)
     : boost::static_visitor<value*>(),
       module_(std::make_unique<module>(name.filename().string())),
       builder_(module_->getContext()),
-      thisScope_(new value())
+      thisScope_(new value()),
+      flags_(flags)
 {
 }
 
-translator::translator(std::unique_ptr<module>&& module, llvm::IRBuilder<>& builder)
+translator::translator(std::unique_ptr<module>&& module,
+                       llvm::IRBuilder<>& builder,
+                       std::vector<std::string> const& flags)
     : boost::static_visitor<value*>(),
       module_(std::move(module)),
       builder_(builder),
-      thisScope_(new value())
+      thisScope_(new value()),
+      flags_(flags)
 {
 }
 

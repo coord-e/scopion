@@ -54,13 +54,17 @@ class translator : public boost::static_visitor<value*>
   llvm::IRBuilder<> builder_;
   std::map<std::string, std::unique_ptr<llvm::Module>> loaded_map_;
   value* thisScope_;
+  std::vector<std::string> flags_;
 
   friend struct evaluator;
 
 public:
   translator();
-  translator(boost::filesystem::path const&);
-  translator(std::unique_ptr<module>&& module, llvm::IRBuilder<>& builder);
+  translator(boost::filesystem::path const&,
+             std::vector<std::string> const& = std::vector<std::string>{});
+  translator(std::unique_ptr<module>&& module,
+             llvm::IRBuilder<>& builder,
+             std::vector<std::string> const& = std::vector<std::string>{});
 
   value* operator()(ast::value);
   value* operator()(ast::operators);
