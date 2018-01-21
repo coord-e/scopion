@@ -44,16 +44,20 @@ endif()
 if(NOT CONFIG)
   set(CONFIG RELEASE)
 endif()
-message(STATUS "Build type: ${CONFIG}")
 
-add_compile_options(
-      "$<$<CXX_COMPILER_ID:Clang>:-std=c++14 -pedantic-errors -Wall -Werror -Weverything -Wno-float-equal -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-global-constructors -Wno-exit-time-destructors>"
-      "$<$<CXX_COMPILER_ID:GCC>:-std=c++14 -pedantic-errors -Wall -Wextra -Werror -Wno-float-equal -Wno-padded -Wno-unused-parameter -Wno-global-constructors -Wno-exit-time-destructors -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5
-      -Wswitch-default -Wundef -Wno-unused>"
-      "$<$<CXX_COMPILER_ID:MSVC>:/W4>"
-      "$<$<CONFIG:RELEASE>:-O3 -march=native>"
-      "$<$<CONFIG:DEBUG>:-O0>"
-      )
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  add_compile_options(-std=c++14 -pedantic-errors -Wall -Werror -Weverything -Wno-float-equal -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unused-parameter -Wno-global-constructors -Wno-exit-time-destructors)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options(-std=c++14 -pedantic-errors -Wall -Wextra -Werror -Wno-float-equal -Wno-padded -Wno-unused-parameter -Wno-global-constructors -Wno-exit-time-destructors -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Wno-unused)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  add_compile_options(/W4)
+endif()
+
+if(CONFIG STREQUAL "DEBUG")
+  add_compile_options(-O0 -g3)
+elseif(CONFIG STREQUAL "RELEASE")
+  add_compile_options(-O3 -march=native)
+endif()
 
 option(ENABLE_CLANG_TIDY
   "Enable clang-tidy's diagnosis. This sometimes makes building slow."
