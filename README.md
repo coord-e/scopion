@@ -8,6 +8,7 @@ a statically-typed functional programming language with powerful objective synta
 Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
 
 ###### Example:
+
 ```
 (argc, argv){
   io = @import#c:stdio.h; // Import C header directly!
@@ -32,6 +33,7 @@ Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
 ```
 
 ###### Output:
+
 ```
 v1.real => 11
 (v1+v2).real => 21
@@ -73,6 +75,7 @@ Only x86_64 is currently supported.
 ## Installation
 
 If you are in Ubuntu 17.04~, Debian stretch~, or macOS Sierra~, just paste this at a terminal prompt:
+
 ```shell
 curl -fsSL https://scopion.coord-e.com/get | bash
 ```
@@ -83,6 +86,7 @@ curl -fsSL https://scopion.coord-e.com/get | bash
 - [Darwin (macOS)](https://github.com/coord-e/scopion/releases/download/v0.0.3.1/scopion_0.0.3.1-Darwin_x86_64.zip)
 
 ### Docker Image
+
 ```shell
 docker pull coorde/scopion
 docker run -it coorde/scopion /bin/bash
@@ -90,19 +94,27 @@ docker run -it coorde/scopion /bin/bash
 
 ## Enjoy
 Now you can compile your scopion source
+
 ```shell
 scopc prog.scc -o prog
 ```
+
 ### Usage
+
 ```shell
 usage: scopc [options] ... filename ...
-options:
-  -t, --type        Specify the type of output (ir, ast, asm, obj) (string [=obj])
-  -o, --output      Specify the output path (string [=./a.out])
-  -a, --arch        Specify the target triple (string [=native])
-  -O, --optimize    Enable optimization (1-3) (int [=1])
-  -h, --help        Print this help
-  -V, --version     Print version
+
+      -h, --help                        Print this help
+      -t[type], --type=[type]           Specify the type of output
+                                        One of: asm, ast, ir, obj
+      -o[path], --output=[path]         Specify the output path
+                                        Default: ./a.out
+      -a[triple], --arch=[triple]       Specify the target triple
+                                        Default: native
+      -O[level], --optimize=[level]     Set optimization level (0-3)
+                                        Default: 3
+      -V, --version                     Print version
+      filename                          File to compile
 ```
 
 ## Build from source
