@@ -62,7 +62,7 @@ public:
   std::string generateLinkerFlags();
 };
 
-};  // namespace assembly
-};  // namespace scopion
+}  // namespace assembly
+}  // namespace scopion
 
 #endif

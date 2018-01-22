@@ -83,7 +83,7 @@ using value = boost::variant<integer,
                              boost::recursive_wrapper<scope>,
                              boost::recursive_wrapper<attribute_val>>;
 
-};  // namespace ast
-};  // namespace scopion
+}  // namespace ast
+}  // namespace scopion
 
 #endif

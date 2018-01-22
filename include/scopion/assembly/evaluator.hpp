@@ -66,7 +66,7 @@ struct evaluator : boost::static_visitor<value*> {
 };
 
 value* evaluate(value* v, std::vector<value*> const& args, translator& tr);
-};
-};
+}
+}
 
 #endif

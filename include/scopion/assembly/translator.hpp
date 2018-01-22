@@ -201,7 +201,7 @@ private:
   value* apply_op(ast::ternary_op<ast::cond> const&, std::vector<value*> const&);
 };
 
-};  // namespace assembly
-};  // namespace scopion
+}  // namespace assembly
+}  // namespace scopion
 
 #endif

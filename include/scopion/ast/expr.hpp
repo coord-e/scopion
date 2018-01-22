@@ -102,7 +102,7 @@ public:
 template <class Op, size_t N>
 bool operator==(op_base<Op, N> const& lhs, op_base<Op, N> const& rhs);
 
-};  // namespace ast
-};  // namespace scopion
+}  // namespace ast
+}  // namespace scopion
 
 #endif

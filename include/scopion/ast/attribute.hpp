@@ -42,7 +42,7 @@ struct attribute {
 };
 bool operator==(attribute const& lhs, attribute const& rhs);
 
-};  // namespace ast
-};  // namespace scopion
+}  // namespace ast
+}  // namespace scopion
 
 #endif

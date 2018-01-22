@@ -54,6 +54,8 @@ static std::string getErrorTypeString(errorType et)
       return "Bug";
     case errorType::None:
       return "No Error";
+    default:
+      return "Unimplemented Error";
   }
 }
 
@@ -140,6 +142,6 @@ std::basic_ostream<Char, Traits>& operator<<(std::basic_ostream<Char, Traits>& o
 
   return os;
 }
-};  // namespace scopion
+}  // namespace scopion
 
 #endif  // SCOPION_EXCEPTIONS_H_

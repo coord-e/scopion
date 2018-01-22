@@ -47,28 +47,28 @@ public:
     return true;
   }
 
-  bool operator()(ast::value value) const
+  bool operator()(ast::value val) const
   {
-    if (with.type() != typeid(value))
+    if (with.type() != typeid(val))
       return false;
     compare_expr<ast::value> n(boost::get<ast::value>(with));
-    return boost::apply_visitor(n, value);
+    return boost::apply_visitor(n, val);
   }
 
-  bool operator()(ast::operators value) const
+  bool operator()(ast::operators val) const
   {
-    if (with.type() != typeid(value))
+    if (with.type() != typeid(val))
       return false;
     compare_expr<ast::operators> n(boost::get<ast::operators>(with));
-    return boost::apply_visitor(n, value);
+    return boost::apply_visitor(n, val);
   }
 
   template <typename T>
-  bool operator()(T value) const
+  bool operator()(T val) const
   {
-    if (with.type() != typeid(value))
+    if (with.type() != typeid(val))
       return false;
-    return value == boost::get<T>(with);
+    return val == boost::get<T>(with);
   }
 };
 

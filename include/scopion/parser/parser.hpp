@@ -36,8 +36,8 @@ boost::optional<ast::expr> parse(
     error& err,
     boost::optional<boost::filesystem::path> const& path = boost::none);
 
-};  // namespace parser
+}  // namespace parser
 
-};  // namespace scopion
+}  // namespace scopion
 
 #endif  // SCOPION_PARSER_H_

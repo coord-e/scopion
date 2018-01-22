@@ -52,7 +52,7 @@ bool operator<(value_wrapper<T> const& lhs, value_wrapper<T> const& rhs)
   return lhs.value < rhs.value;
 }
 
-};  // namespace ast
-};  // namespace scopion
+}  // namespace ast
+}  // namespace scopion
 
 #endif

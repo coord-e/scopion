@@ -133,7 +133,7 @@ public:
   }
 };
 
-};  // namespace visitors_
+}  // namespace visitors_
 
 template <typename T>
 expr set_lval(T t, bool val)
@@ -195,7 +195,7 @@ decltype(auto) apply(F f, expr t)
   return boost::apply_visitor(visitors_::applier_visitor<decltype(f), Dest>(f), t);
 }
 
-};  // namespace ast
-};  // namespace scopion
+}  // namespace ast
+}  // namespace scopion
 
 #endif

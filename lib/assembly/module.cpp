@@ -131,5 +131,5 @@ std::string module::generateLinkerFlags()
   ;
 }
 
-};  // namespace assembly
-};  // namespace scopion
+}  // namespace assembly
+}  // namespace scopion

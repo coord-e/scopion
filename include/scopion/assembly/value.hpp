@@ -139,7 +139,7 @@ public:
   std::map<std::string, uint32_t> const& fields() const { return fields_; }
 };
 
-};  // namespace assembly
-};  // namespace scopion
+}  // namespace assembly
+}  // namespace scopion
 
 #endif

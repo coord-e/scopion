@@ -693,5 +693,5 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
   }
 }
 
-};  // namespace assembly
-};  // namespace scopion
+}  // namespace assembly
+}  // namespace scopion

@@ -203,7 +203,7 @@ using operators = boost::variant<boost::recursive_wrapper<binary_op<add>>,
                                  boost::recursive_wrapper<single_op<inc>>,
                                  boost::recursive_wrapper<single_op<dec>>,
                                  boost::recursive_wrapper<ternary_op<cond>>>;
-};  // namespace ast
-};  // namespace scopion
+}  // namespace ast
+}  // namespace scopion
 
 #endif

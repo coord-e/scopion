@@ -574,5 +574,5 @@ value* translator::operator()(ast::scope const& scv)
   return destv;
 }
 
-};  // namespace assembly
-};  // namespace scopion
+}  // namespace assembly
+}  // namespace scopion

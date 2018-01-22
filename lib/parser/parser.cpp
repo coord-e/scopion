@@ -234,7 +234,7 @@ static auto const assign_attr = [](auto&& ctx) {
   x3::_val(ctx)      = ast::set_attr(x3::_val(ctx), keystr, valstr);
 };
 
-};  // namespace detail
+}  // namespace detail
 
 struct variable;
 struct pre_variable;
@@ -452,7 +452,7 @@ BOOST_SPIRIT_DEFINE(pre_variable,
                     cond_expr,
                     assign_expr,
                     ret_expr,
-                    expression);
+                    expression)
 
 struct expression {
   template <typename Iterator, typename Exception, typename Context>
@@ -471,7 +471,7 @@ struct expression {
   }
 };
 
-};  // namespace grammar
+}  // namespace grammar
 
 boost::optional<ast::expr> parse(std::string const& code,
                                  error& err,
@@ -504,5 +504,5 @@ boost::optional<ast::expr> parse(std::string const& code,
   return tree;
 }
 
-};  // namespace parser
-};  // namespace scopion
+}  // namespace parser
+}  // namespace scopion

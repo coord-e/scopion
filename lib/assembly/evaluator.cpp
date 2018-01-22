@@ -49,7 +49,7 @@ namespace assembly
 std::pair<bool, value*> apply_bb(ast::scope const& sc, translator& tr)
 {
   auto insts = ast::val(sc);
-  value* ll;
+  value* ll  = nullptr;
   for (auto it = insts.begin(); it != insts.end(); it++) {
     ll = boost::apply_visitor(tr, *it);
   }
@@ -311,5 +311,5 @@ value* evaluate(value* v, std::vector<value*> const& args, translator& tr)
   auto evor = evaluator{v, args, tr};
   return v->isLazy() ? boost::apply_visitor(evor, v->getAst()) : v->copy();
 }
-};
-};
+}
+}
