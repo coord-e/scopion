@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  if (uint8_t optlevel = args::get(optimize)) {
+  if (auto optlevel = static_cast<uint8_t>(args::get(optimize))) {
     mod->optimize(optlevel, optlevel);
   }
 
