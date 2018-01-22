@@ -494,85 +494,34 @@ value* translator::operator()(ast::function const& fcv)
           ? ast::attr(fcv).attributes.at("export")
           : "";
 
-  auto& args = ast::val(fcv).first;
+  auto& args                    = ast::val(fcv).first;
+  llvm::FunctionType* func_type = llvm::FunctionType::get(
+      builder_.getVoidTy(), std::vector<llvm::Type*>(args.size(), builder_.getInt32Ty()), false);
+  llvm::Function* func =
+      llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, func_name, nullptr);
+
+  auto destv = new value(func, fcv, true);  // is_lazy = true
+
   if (std::all_of(args.begin(), args.end(),
                   [](auto& x) {
                     return ast::attr(x).attributes.find("type") != ast::attr(x).attributes.end();
                   }) &&
-      ast::attr(fcv).attributes.find("rettype") != ast::attr(fcv).attributes.end() &&
       ast::attr(fcv).attributes.find("lazy") == ast::attr(fcv).attributes.end()) {
-    std::vector<llvm::Type*> arg_types;
-
-    auto parse = [this](auto& x, std::string const& key = "type") {
+    std::vector<value*> arg_values;
+    for (auto const& a : args) {
       llvm::SMDiagnostic err;
-      auto type_name = ast::attr(x).attributes.at(key);
+      auto type_name = ast::attr(a).attributes.at("type");
       auto t         = llvm::parseType(type_name, err, *(module_->getLLVMModule()));
       if (!t) {
         llvm::raw_os_ostream stream(std::cerr);
         err.print("", stream);
-        throw error("Failed to parse type name \"" + type_name + "\"", ast::attr(x).where,
+        throw error("Failed to parse type name \"" + type_name + "\"", ast::attr(a).where,
                     errorType::Translate);
       }
-      return t;
-    };
-    std::transform(args.begin(), args.end(), std::back_inserter(arg_types), parse);
-
-    auto ret_type = parse(fcv, "rettype");
-
-    llvm::FunctionType* func_type =
-        llvm::FunctionType::get(ret_type, std::vector<llvm::Type*>(arg_types), false);
-    llvm::Function* func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
-                                                  func_name, module_->getLLVMModule());
-
-    llvm::BasicBlock* newentry = llvm::BasicBlock::Create(module_->getContext(), "entry", func);
-
-    auto prevScope = thisScope_;
-
-    auto pb = builder_.GetInsertBlock();
-    auto pp = builder_.GetInsertPoint();
-
-    thisScope_ = new value(newentry, fcv);
-    builder_.SetInsertPoint(newentry);
-
-    auto selfptr                    = builder_.CreateAlloca(func->getType(), nullptr, "__self");
-    thisScope_->symbols()["__self"] = new value(selfptr, fcv);
-    builder_.CreateStore(func, selfptr);
-
-    auto it = func->arg_begin();
-    for (auto const arg_name : ast::val(fcv).first | boost::adaptors::indexed()) {
-      auto name = ast::val(arg_name.value());
-      auto aptr =
-          builder_.CreateAlloca(arg_types[static_cast<unsigned long>(arg_name.index())], nullptr,
-                                name);  // declare arguments
-      thisScope_->symbols()[name] = new value(aptr, arg_name.value());
-      auto tmpval                 = new value(&(*it), arg_name.value());
-      builder_.CreateStore(tmpval->getType()->isFundamental() ? static_cast<llvm::Value*>(&(*it))
-                                                              : builder_.CreateLoad(&(*it)),
-                           aptr);
-      delete tmpval;
-      it++;
+      arg_values.push_back(new value(builder_.CreateLoad(builder_.CreateAlloca(t)), a));
     }
-
-    for (auto const& line : ast::val(fcv).second) {
-      boost::apply_visitor(*this, line);
-    }
-
-    if (ret_type->isVoidTy()) {
-      builder_.CreateRetVoid();
-    }
-
-    thisScope_ = prevScope;
-    builder_.SetInsertPoint(pb, pp);
-
-    return new value(func, fcv);
+    return evaluate(destv, arg_values, *this);
   } else {  // lazy evaluation route
-    llvm::FunctionType* func_type = llvm::FunctionType::get(
-        builder_.getVoidTy(), std::vector<llvm::Type*>(args.size(), builder_.getInt32Ty()), false);
-    llvm::Function* func =
-        llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, func_name, nullptr);
-
-    auto destv = new value(func, fcv, true);  // is_lazy = true
-
     return destv;
   }
 }
