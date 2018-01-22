@@ -77,11 +77,11 @@ bool translator::copyFull(value* src,
   auto lval   = newv ? newv : dest->getLLVM();
   auto rval   = src->getLLVM();
 
-  if (!src->isLazy()) {
+  if (!src->getType()->isLazy()) {
     if (lval->getType()->isPointerTy()) {
-      if ((src->isFundamental() ? lval->getType()->getPointerElementType() : lval->getType()) ==
-          rval->getType()) {
-        if (src->isFundamental()) {
+      if ((src->getType()->isFundamental() ? lval->getType()->getPointerElementType()
+                                           : lval->getType()) == rval->getType()) {
+        if (src->getType()->isFundamental()) {
           builder_.CreateStore(rval, lval);
         } else {
           std::vector<llvm::Type*> list;
@@ -109,7 +109,7 @@ bool translator::copyFull(value* src,
 
   if (name != "") {
     (parent ? parent : (defp ? defp : thisScope_))->symbols()[name] =
-        src->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
+        src->getType()->isLazy() ? src->copy() : src->copyWithNewLLVMValue(lval);
   }
   return true;
 }
@@ -128,7 +128,7 @@ llvm::Value* translator::sizeofType(llvm::Type* ptrT)
 value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<value*> const& args)
 {
   if (std::none_of(args.begin(), args.end(),
-                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+                   [](auto const& x) { return x->getType()->getLLVM()->isDoubleTy(); }))
     return new value(builder_.CreateAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
   else
     return new value(builder_.CreateFAdd(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -137,7 +137,7 @@ value* translator::apply_op(ast::binary_op<ast::add> const& op, std::vector<valu
 value* translator::apply_op(ast::binary_op<ast::sub> const& op, std::vector<value*> const& args)
 {
   if (std::none_of(args.begin(), args.end(),
-                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+                   [](auto const& x) { return x->getType()->getLLVM()->isDoubleTy(); }))
     return new value(builder_.CreateSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
   else
     return new value(builder_.CreateFSub(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -148,7 +148,7 @@ value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<valu
   module_->link_libraries_.push_back("m");
   std::vector<llvm::Type*> list;
   llvm::Value* lv;
-  if (args[0]->getLLVM()->getType()->isDoubleTy())
+  if (args[0]->getType()->getLLVM()->isDoubleTy())
     lv = args[0]->getLLVM();
   else
     lv = builder_.CreateSIToFP(args[0]->getLLVM(), builder_.getDoubleTy());
@@ -156,15 +156,15 @@ value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<valu
   list.push_back(lv->getType());
   llvm::Function* fpow = llvm::Intrinsic::getDeclaration(
       module_->getLLVMModule(),
-      args[1]->getLLVM()->getType()->isIntegerTy() ? llvm::Intrinsic::powi : llvm::Intrinsic::pow,
+      args[1]->getType()->getLLVM()->isIntegerTy() ? llvm::Intrinsic::powi : llvm::Intrinsic::pow,
       list);
 
   std::vector<llvm::Value*> arg_values;
   arg_values.push_back(lv);
   arg_values.push_back(args[1]->getLLVM());
   auto* res = builder_.CreateCall(fpow, llvm::ArrayRef<llvm::Value*>(arg_values));
-  return new value(args[1]->getLLVM()->getType()->isIntegerTy()
-                       ? builder_.CreateFPToSI(res, args[1]->getLLVM()->getType())
+  return new value(args[1]->getType()->getLLVM()->isIntegerTy()
+                       ? builder_.CreateFPToSI(res, args[1]->getType()->getLLVM())
                        : res,
                    op);
 }
@@ -172,7 +172,7 @@ value* translator::apply_op(ast::binary_op<ast::pow> const& op, std::vector<valu
 value* translator::apply_op(ast::binary_op<ast::mul> const& op, std::vector<value*> const& args)
 {
   if (std::none_of(args.begin(), args.end(),
-                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+                   [](auto const& x) { return x->getType()->getLLVM()->isDoubleTy(); }))
     return new value(builder_.CreateMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
   else
     return new value(builder_.CreateFMul(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -181,7 +181,7 @@ value* translator::apply_op(ast::binary_op<ast::mul> const& op, std::vector<valu
 value* translator::apply_op(ast::binary_op<ast::div> const& op, std::vector<value*> const& args)
 {
   if (std::none_of(args.begin(), args.end(),
-                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+                   [](auto const& x) { return x->getType()->getLLVM()->isDoubleTy(); }))
     return new value(builder_.CreateSDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
   else
     return new value(builder_.CreateFDiv(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -190,7 +190,7 @@ value* translator::apply_op(ast::binary_op<ast::div> const& op, std::vector<valu
 value* translator::apply_op(ast::binary_op<ast::rem> const& op, std::vector<value*> const& args)
 {
   if (std::none_of(args.begin(), args.end(),
-                   [](auto const& x) { return x->getLLVM()->getType()->isDoubleTy(); }))
+                   [](auto const& x) { return x->getType()->getLLVM()->isDoubleTy(); }))
     return new value(builder_.CreateSRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
   else
     return new value(builder_.CreateFRem(args[0]->getLLVM(), args[1]->getLLVM()), op);
@@ -284,12 +284,12 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
 
   if (!lval) {  // first appear in the block (variable declaration)
     if (parent) {
-      if (parent->getLLVM()->getType()->isStructTy()) {  // structure
+      if (parent->getType()->getLLVM()->isStructTy()) {  // structure
         // [feature/var-struct-array] Add a member to the structure, store it to
         // lval, and add args[1] to fields
         throw error("Variadic structure: This feature is not supported yet", ast::attr(op).where,
                     errorType::Translate);
-      } else if (parent->getLLVM()->getType()->isArrayTy()) {  // array
+      } else if (parent->getType()->getLLVM()->isArrayTy()) {  // array
         // [feature/var-struct-array] Add an element to the array, store it to
         // lval, and add args[1] to fields
         throw error("Variadic array: This feature is not supported yet", ast::attr(op).where,
@@ -300,9 +300,9 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
     } else {  // not a member of array or structure
       assert(ast::isa<ast::variable>(ast::val(op)[0]) &&
              "Assigning to non-variable expression with no parent");
-      auto va = ast::unpack<ast::variable>(ast::val(op)[0]);
-      auto thety =
-          args[1]->isFundamental() ? rval->getType() : rval->getType()->getPointerElementType();
+      auto va    = ast::unpack<ast::variable>(ast::val(op)[0]);
+      auto thety = args[1]->getType()->isFundamental() ? rval->getType()
+                                                       : rval->getType()->getPointerElementType();
       if (ast::attr(va).attributes.count("heap"))
         lval = createGCMalloc(thety, nullptr, n);
       else
@@ -329,9 +329,9 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
                          : ast::val(ast::unpack<ast::binary_op<ast::odot>>(ast::val(op)[0]))[0];
   }
 
-  assert(args[1]->isVoid());  // args[1] should be arglist
+  assert(args[1]->getType()->isVoid());  // args[1] should be arglist
 
-  if (args[0]->getLLVM()->getType()->isLabelTy()) {
+  if (args[0]->getType()->getLLVM()->isLabelTy()) {
     if (isodot) {
       throw error("Calling scope with odot operator is not allowed", ast::attr(op).where,
                   errorType::Translate);
@@ -348,7 +348,7 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
 
     auto arglist = ast::unpack<ast::arglist>(ast::val(op)[1]);
 
-    if (!args[0]->isLazy()) {
+    if (!args[0]->getType()->isLazy()) {
       tocall = args[0]->getLLVM();
       if (!tocall->getType()->isPointerTy()) {
         throw error(
@@ -369,17 +369,17 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
         }
         for (auto const arg : ast::val(arglist) | boost::adaptors::indexed()) {
           auto rv = boost::apply_visitor(*this, arg.value());
-          if (rv->isLazy()) {
+          if (rv->getType()->isLazy()) {
             throw error("Cannot pass a lazy value to c-style functions", ast::attr(op).where,
                         errorType::Translate);
           } else if (functy->getFunctionParamType(static_cast<unsigned>(arg.index())) !=
-                         rv->getLLVM()->getType() &&
+                         rv->getType()->getLLVM() &&
                      !functy->isFunctionVarArg()) {
             throw error("Type mismatch on argument No." + std::to_string(arg.index()) +
                             ": expected \"" +
                             getNameString(
                                 functy->getFunctionParamType(static_cast<unsigned>(arg.index()))) +
-                            "\" but supplied \"" + getNameString(rv->getLLVM()->getType()) + "\"",
+                            "\" but supplied \"" + getNameString(rv->getType()->getLLVM()) + "\"",
                         ast::attr(op).where, errorType::Translate);
           } else {
             arg_values.push_back(rv->getLLVM());
@@ -393,7 +393,7 @@ value* translator::apply_op(ast::binary_op<ast::call> const& op, std::vector<val
       for (auto const& argast : ast::val(arglist)) {
         auto rv = boost::apply_visitor(*this, argast);
         vary.push_back(rv);
-        if (!rv->isLazy())
+        if (!rv->getType()->isLazy())
           arg_values.push_back(rv->getLLVM());
       }
       if (isodot) {
@@ -454,7 +454,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     }
     auto ep = it->second;
 
-    if (!ep->isLazy()) {
+    if (!ep->getType()->isLazy()) {
       std::vector<llvm::Value*> idxList = {builder_.getInt32(0), builder_.getInt32(aindex)};
       auto p = builder_.CreateInBoundsGEP(lval->getType()->getPointerElementType(), lval,
                                           llvm::ArrayRef<llvm::Value*>(idxList));
@@ -462,7 +462,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     }
     ep->setName(istr);
 
-    if (ast::attr(op).lval || ep->isLazy() || !ep->isFundamental())
+    if (ast::attr(op).lval || ep->getType()->isLazy() || !ep->getType()->isFundamental())
       return ep->copy();
     else
       return ep->copyWithNewLLVMValue(builder_.CreateLoad(ep->getLLVM()));
@@ -470,7 +470,7 @@ value* translator::apply_op(ast::binary_op<ast::at> const& op, std::vector<value
     llvm::Value* ep;
 
     if (lval->getType()->getPointerElementType()->isArrayTy()) {
-      if (args[0]->symbols().begin()->second->isLazy()) {
+      if (args[0]->symbols().begin()->second->getType()->isLazy()) {
         throw error(
             "Getting value from an array which contains lazy value with an index "
             "of non-constant value",
@@ -520,14 +520,15 @@ value* translator::apply_op(ast::binary_op<ast::dot> const& op, std::vector<valu
                 errorType::Translate);
   }
 
-  if (!elm->second->isLazy()) {
+  if (!elm->second->getType()->isLazy()) {
     auto ptr = builder_.CreateStructGEP(lval->getType()->getPointerElementType(), lval,
                                         args[0]->fields()[id]);
     elm->second->setLLVM(ptr);
   }
   elm->second->setName(id);
 
-  if (ast::attr(op).lval || elm->second->isLazy() || !elm->second->isFundamental())
+  if (ast::attr(op).lval || elm->second->getType()->isLazy() ||
+      !elm->second->getType()->isFundamental())
     return elm->second->copy();
   else
     return elm->second->copyWithNewLLVMValue(builder_.CreateLoad(elm->second->getLLVM()));
@@ -587,17 +588,17 @@ value* translator::apply_op(ast::single_op<ast::dec> const& op, std::vector<valu
 
 value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<value*> const& args)
 {
-  if (args[0]->isLazy())
+  if (args[0]->getType()->isLazy())
     throw error("Conditional operator with lazy value is not supported", ast::attr(op).where,
                 errorType::Translate);
 
-  if (args[1]->getLLVM()->getType() != args[2]->getLLVM()->getType())
+  if (args[1]->getType()->getLLVM() != args[2]->getType()->getLLVM())
     throw error("Conditional operator with incompatible value types (lhs: " +
-                    getNameString(args[1]->getLLVM()->getType()) +
-                    ", rhs: " + getNameString(args[2]->getLLVM()->getType()) + ")",
+                    getNameString(args[1]->getType()->getLLVM()) +
+                    ", rhs: " + getNameString(args[2]->getType()->getLLVM()) + ")",
                 ast::attr(op).where, errorType::Translate);
 
-  if (args[1]->getLLVM()->getType()->isLabelTy()) {
+  if (args[1]->getType()->getLLVM()->isLabelTy()) {
     llvm::BasicBlock* thenbb =
         llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());
     llvm::BasicBlock* elsebb =
@@ -646,7 +647,7 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
 
     return new value();  // Void
   } else {
-    if (args[1]->isLazy() || args[2]->isLazy())
+    if (args[1]->getType()->isLazy() || args[2]->getType()->isLazy())
       throw error("Conditional operator with lazy value is currently not supported",
                   ast::attr(op).where, errorType::Translate);
 
@@ -660,8 +661,8 @@ value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<va
     auto pp = builder_.GetInsertPoint();
 
     auto destlv =
-        builder_.CreateAlloca(ast::attr(op).lval ? args[1]->getLLVM()->getType()->getPointerTo()
-                                                 : args[1]->getLLVM()->getType());
+        builder_.CreateAlloca(ast::attr(op).lval ? args[1]->getType()->getLLVM()->getPointerTo()
+                                                 : args[1]->getType()->getLLVM());
 
     llvm::BasicBlock* thenbb =
         llvm::BasicBlock::Create(module_->getContext(), "", builder_.GetInsertBlock()->getParent());

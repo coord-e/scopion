@@ -355,7 +355,7 @@ value* translator::operator()(ast::variable const& astv)
   } else {
     auto vp = it->second;
     vp->setName(ast::val(astv));
-    if (ast::attr(astv).lval || vp->isLazy() || !vp->isFundamental())
+    if (ast::attr(astv).lval || vp->getType()->isLazy() || !vp->getType()->isFundamental())
       return vp->copy();
     else
       return vp->copyWithNewLLVMValue(builder_.CreateLoad(vp->getLLVM()));
@@ -383,8 +383,8 @@ value* translator::operator()(ast::array const& astv)
                 errorType::Translate);
 
   auto firstelem = boost::apply_visitor(*this, ast::val(astv)[0]);
-  auto t         = ast::val(astv).empty() ? builder_.getVoidTy() : firstelem->getLLVM()->getType();
-  t              = firstelem->isFundamental() ? t : t->getPointerElementType();
+  auto t         = ast::val(astv).empty() ? builder_.getVoidTy() : firstelem->getType()->getLLVM();
+  t              = firstelem->getType()->isFundamental() ? t : t->getPointerElementType();
   auto aryType   = llvm::ArrayType::get(t, ast::val(astv).size());
   auto aryPtr    = builder_.CreateAlloca(aryType);  // Allocate necessary memory
   auto destv     = new value(aryPtr, astv);
@@ -392,14 +392,14 @@ value* translator::operator()(ast::array const& astv)
   std::vector<value*> values;
   for (auto const x : ast::val(astv) | boost::adaptors::indexed()) {
     auto v = x.index() == 0 ? firstelem : boost::apply_visitor(*this, x.value());
-    if (v->getLLVM()->getType() != t) {
+    if (v->getType()->getLLVM() != t) {
       throw error("all elements of array must have the same type", ast::attr(astv).where,
                   errorType::Translate);
     }
     v->setParent(destv);
     destv->symbols()[std::to_string(x.index())] = v;
     // store value into fields list so that we can get this value later
-    if (!v->isLazy())
+    if (!v->getType()->isLazy())
       values.push_back(v);
   }
 
@@ -431,9 +431,10 @@ value* translator::operator()(ast::structure const& astv)
     auto vp                                     = boost::apply_visitor(*this, m.value().second);
     destv->symbols()[ast::val(m.value().first)] = vp;
     vp->setParent(destv);
-    if (!vp->isLazy()) {
-      fields.push_back(vp->isFundamental() ? vp->getLLVM()->getType()
-                                           : vp->getLLVM()->getType()->getPointerElementType());
+    if (!vp->getType()->isLazy()) {
+      fields.push_back(vp->getType()->isFundamental()
+                           ? vp->getType()->getLLVM()
+                           : vp->getType()->getLLVM()->getPointerElementType());
     }
   }
 
@@ -453,7 +454,7 @@ value* translator::operator()(ast::structure const& astv)
 
   uint32_t i = 0;
   for (auto const& v : destv->symbols()) {
-    if (!v.second->isLazy()) {
+    if (!v.second->getType()->isLazy()) {
       destv->fields()[v.first] = i;
       auto p                   = builder_.CreateStructGEP(structTy, ptr, i);
       if (!copyFull(v.second, new value(p, v.second->getAst()), v.first, p, destv)) {
@@ -529,9 +530,9 @@ value* translator::operator()(ast::function const& fcv)
                                 name);  // declare arguments
       thisScope_->symbols()[name] = new value(aptr, arg_name.value());
       auto tmpval                 = new value(&(*it), arg_name.value());
-      builder_.CreateStore(
-          tmpval->isFundamental() ? static_cast<llvm::Value*>(&(*it)) : builder_.CreateLoad(&(*it)),
-          aptr);
+      builder_.CreateStore(tmpval->getType()->isFundamental() ? static_cast<llvm::Value*>(&(*it))
+                                                              : builder_.CreateLoad(&(*it)),
+                           aptr);
       delete tmpval;
       it++;
     }

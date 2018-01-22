@@ -79,11 +79,11 @@ value* evaluator::operator()(ast::operators const& astv)
 
 value* evaluator::operator()(ast::function const& fcv)
 {
-  if (v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams() !=
+  if (v_->getType()->getLLVM()->getPointerElementType()->getFunctionNumParams() !=
       arguments_.size())
     throw error("The number of arguments doesn't match: required " +
                     std::to_string(
-                        v_->getLLVM()->getType()->getPointerElementType()->getFunctionNumParams()) +
+                        v_->getType()->getLLVM()->getPointerElementType()->getFunctionNumParams()) +
                     " but supplied " + std::to_string(arguments_.size()),
                 ast::attr(fcv).where, errorType::Translate);
 
@@ -106,7 +106,7 @@ value* evaluator::operator()(ast::function const& fcv)
           }
         } else if (ito != ast::attr(x).attributes.end()) {
           auto var = translator_(ast::set_where(ast::variable(ito->second), ast::attr(x).where));
-          t        = var->getLLVM()->getType();
+          t        = var->getType()->getLLVM();
           assert(t && "Type got from #typeof was nullptr!");
         }
         arg_types_from_attr.push_back(t);
@@ -129,7 +129,7 @@ value* evaluator::operator()(ast::function const& fcv)
       }
     } else if (ito != ast::attr(fcv).attributes.end()) {
       auto var = translator_(ast::set_where(ast::variable(ito->second), ast::attr(fcv).where));
-      retst    = var->getLLVM()->getType();
+      retst    = var->getType()->getLLVM();
     }
   };
 
@@ -137,15 +137,16 @@ value* evaluator::operator()(ast::function const& fcv)
   std::vector<llvm::Type*> arg_types_for_func;
 
   for (auto const v : arguments_ | boost::adaptors::indexed()) {
-    auto type = v.value()->getLLVM()->getType();
+    auto type = v.value()->getType()->getLLVM();
     auto expt = arg_types_from_attr[static_cast<unsigned long>(v.index())];
     if (expt && expt != type)
       throw error("Type mismatch on argument No." + std::to_string(v.index()) + ": expected \"" +
                       getNameString(expt) + "\" but supplied \"" + getNameString(type) + "\"",
                   ast::attr(fcv).where, errorType::Translate);
-    if (!v.value()->isLazy())
+    if (!v.value()->getType()->isLazy())
       arg_types_for_func.push_back(type);
-    arg_types.push_back(v.value()->isFundamental() ? type : type->getPointerElementType());
+    arg_types.push_back(v.value()->getType()->isFundamental() ? type
+                                                              : type->getPointerElementType());
   }
 
   llvm::FunctionType* func_type =
@@ -169,7 +170,7 @@ value* evaluator::operator()(ast::function const& fcv)
   for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
     auto ulindex = static_cast<unsigned long>(arg_name.index());
     auto vp      = arguments_[ulindex];
-    if (!vp->isLazy()) {
+    if (!vp->getType()->isLazy()) {
       translator_.getScope()->symbols()[arg_name.value()] =
           vp->copyWithNewLLVMValue(builder_.CreateAlloca(arg_types[ulindex], nullptr,
                                                          arg_name.value()));  // declare arguments
@@ -240,12 +241,12 @@ value* evaluator::operator()(ast::function const& fcv)
     for (auto const arg_name : arg_names | boost::adaptors::indexed()) {
       auto ulindex = static_cast<unsigned long>(arg_name.index());
       auto argv    = arguments_[ulindex];
-      if (!argv->isLazy()) {
+      if (!argv->getType()->isLazy()) {
         auto aptr = builder_.CreateAlloca(arg_types[ulindex], nullptr,
                                           arg_name.value());  // declare arguments
         translator_.getScope()->symbols()[arg_name.value()] = argv->copyWithNewLLVMValue(aptr);
-        builder_.CreateStore(argv->isFundamental() ? static_cast<llvm::Value*>(&(*ait))
-                                                   : builder_.CreateLoad(&(*ait)),
+        builder_.CreateStore(argv->getType()->isFundamental() ? static_cast<llvm::Value*>(&(*ait))
+                                                              : builder_.CreateLoad(&(*ait)),
                              aptr);
         ait++;
       } else {
@@ -309,7 +310,7 @@ value* evaluator::operator()(ast::scope const& sc)
 value* evaluate(value* v, std::vector<value*> const& args, translator& tr)
 {
   auto evor = evaluator{v, args, tr};
-  return v->isLazy() ? boost::apply_visitor(evor, v->getAst()) : v->copy();
+  return v->getType()->isLazy() ? boost::apply_visitor(evor, v->getAst()) : v->copy();
 }
 }
 }
