@@ -48,9 +48,9 @@ using ret_table_t = std::pair<std::map<std::string, value*>, std::map<std::strin
 class value
 {
   llvm::Value* llvm_value_ = nullptr;
-  type* type_;
-  value* parent_ = nullptr;
+  value* parent_           = nullptr;
   ast::expr ast_value_;
+  type* type_;
   std::map<std::string, value*> symbols_;
   std::map<std::string, uint32_t> fields_;
   std::string name_;
@@ -60,7 +60,7 @@ public:
   value(llvm::Value* llvm_value, ast::expr ast_value, bool is_lazy = false)
       : llvm_value_(llvm_value),
         ast_value_(ast_value),
-        type_(new type{llvm_value_->getType(), is_lazy})
+        type_(new type{llvm_value_ ? llvm_value_->getType() : nullptr, is_lazy})
   {
   }
   value() : type_(new type{}) {}
@@ -80,7 +80,7 @@ public:
     newval->fields_    = fields_;
     newval->ret_table_ = ret_table_;
     newval->name_      = name_;
-    newval->type_      = type_;
+    newval->type_      = type_->copy();
     return newval;
   }
 
@@ -90,7 +90,8 @@ public:
 
   type* getType() const
   {
-    assert(llvm_value_->getType() == type_->getLLVM() && "llvm type and scopion type mismatched");
+    if (llvm_value_)
+      type_->setLLVM(llvm_value_->getType());
     return type_;
   }
 
@@ -115,7 +116,12 @@ public:
   ast::expr& getAst() { return ast_value_; }
   ast::expr const& getAst() const { return ast_value_; }
   llvm::Value* getLLVM() const { return llvm_value_; }
-  void setLLVM(llvm::Value* const val) { llvm_value_ = val; }
+  void setLLVM(llvm::Value* const val)
+  {
+    if (val)
+      type_->setLLVM(val->getType());
+    llvm_value_ = val;
+  }
 
   std::map<std::string, value*>& symbols() { return symbols_; }
   std::map<std::string, value*> const& symbols() const { return symbols_; }
