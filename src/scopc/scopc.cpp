@@ -62,8 +62,8 @@ int main(int argc, char* argv[])
   args::ValueFlag<std::string> arch(parser, "triple", "Specify the target triple", {'a', "arch"},
                                     "native");
   args::ValueFlagList<std::string> flags(parser, "flags", "Supply flags to translator", {'f'}, {});
-  args::ValueFlag<std::string> topfuncname(parser, "symbol", "Name of top function",
-                                           {'T', "top-func"}, "main");
+  args::ValueFlag<std::string> entryfuncname(parser, "symbol", "Name of entry function",
+                                             {'e', "entry-func"}, "main");
   args::ValueFlag<int> optimize(parser, "level", "Set optimization level (0-3)", {'O', "optimize"},
                                 3);
   args::Flag version(parser, "version", "Print version", {'V', "version"});
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  scopion::assembly::translator tr(inpath, args::get(flags), args::get(topfuncname));
+  scopion::assembly::translator tr(inpath, args::get(flags), args::get(entryfuncname));
   tr.createMain();
 
   auto* tlv = tr.translateAST(*ast, err);

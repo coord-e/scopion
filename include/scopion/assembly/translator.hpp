@@ -62,11 +62,10 @@ public:
   translator();
   translator(boost::filesystem::path const&,
              std::vector<std::string> const& = std::vector<std::string>{},
-             std::string const& tlfname      = "main");
+             std::string const& efname       = "main");
   translator(std::unique_ptr<module>&& module,
              llvm::IRBuilder<>& builder,
-             std::vector<std::string> const& = std::vector<std::string>{},
-             std::string const& tlfname      = "main");
+             std::vector<std::string> const& = std::vector<std::string>{});
 
   value* operator()(ast::value);
   value* operator()(ast::operators);

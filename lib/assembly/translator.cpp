@@ -59,9 +59,9 @@ translator::translator()
 
 translator::translator(boost::filesystem::path const& name,
                        std::vector<std::string> const& flags,
-                       std::string const& tlfname)
+                       std::string const& efname)
     : boost::static_visitor<value*>(),
-      module_(std::make_unique<module>(name.filename().string(), tlfname)),
+      module_(std::make_unique<module>(name.filename().string(), efname)),
       builder_(module_->getContext()),
       thisScope_(new value()),
       flags_(flags)
@@ -70,8 +70,7 @@ translator::translator(boost::filesystem::path const& name,
 
 translator::translator(std::unique_ptr<module>&& module,
                        llvm::IRBuilder<>& builder,
-                       std::vector<std::string> const& flags,
-                       std::string const& tlfname)
+                       std::vector<std::string> const& flags)
     : boost::static_visitor<value*>(),
       module_(std::move(module)),
       builder_(builder),
@@ -86,7 +85,7 @@ void translator::createMain()
                                         builder_.getInt8PtrTy()->getPointerTo()};
   auto mainf                         = llvm::Function::Create(
       llvm::FunctionType::get(builder_.getInt32Ty(), args_type, false),
-      llvm::Function::ExternalLinkage, module_->getTopFunctionName(), module_->getLLVMModule());
+      llvm::Function::ExternalLinkage, module_->getEntryFunctionName(), module_->getLLVMModule());
   auto mainbb = llvm::BasicBlock::Create(module_->getContext(), "entry", mainf);
   builder_.SetInsertPoint(mainbb);
 }
@@ -103,7 +102,7 @@ value* translator::translateAST(ast::expr const& ast, error& err)
 
 llvm::Value* translator::createMainRet(value* val, error& err)
 {
-  auto* mainf = module_->getLLVMModule()->getFunction(module_->getTopFunctionName());
+  auto* mainf = module_->getLLVMModule()->getFunction(module_->getEntryFunctionName());
   assert(mainf && "main cannot be found in the module");
 
   auto where = ast::apply<locationInfo>([](auto& x) -> locationInfo { return ast::attr(x).where; },
@@ -150,7 +149,7 @@ void translator::insertGCInitInMain()
   auto ib = builder_.GetInsertBlock();
   auto ip = builder_.GetInsertPoint();
   builder_.SetInsertPoint(
-      &(module_->getLLVMModule()->getFunction(module_->getTopFunctionName())->getEntryBlock()));
+      &(module_->getLLVMModule()->getFunction(module_->getEntryFunctionName())->getEntryBlock()));
   builder_.CreateCall(module_->getLLVMModule()->getFunction("GC_init"),
                       llvm::ArrayRef<llvm::Value*>{});
   builder_.SetInsertPoint(ib, ip);

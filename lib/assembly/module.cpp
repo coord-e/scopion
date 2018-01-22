@@ -50,10 +50,10 @@ namespace scopion
 {
 namespace assembly
 {
-module::module(std::string const& name, std::string const& top_function_name)
+module::module(std::string const& name, std::string const& entry_function_name)
     : context_(new llvm::LLVMContext()),
       llvm_module_(new llvm::Module(name, *context_)),
-      top_function_name_(top_function_name)
+      entry_function_name_(entry_function_name)
 {
 }
 
@@ -78,9 +78,9 @@ std::string module::getPrintedIR() const
   return result;
 }
 
-std::string module::getTopFunctionName() const
+std::string module::getEntryFunctionName() const
 {
-  return top_function_name_;
+  return entry_function_name_;
 }
 
 void module::optimize(uint8_t optLevel, uint8_t sizeLevel)
