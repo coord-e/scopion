@@ -106,35 +106,34 @@ llvm::Value* translator::createMainRet(value* val, error& err)
   auto* mainf = module_->getLLVMModule()->getFunction(module_->getTopFunctionName());
   assert(mainf && "main cannot be found in the module");
 
-  std::vector<llvm::Value*> arg_llvm_values;
-  std::vector<value*> arg_values;
-
-  value* llval;
-
   if (!llvm::isa<llvm::Function>(val->getLLVM())) {
     auto where = ast::apply<locationInfo>(
         [](auto& x) -> locationInfo { return ast::attr(x).where; }, val->getAst());
     err = error("Top-level value must be function", where, errorType::Translate);
     return nullptr;
   }
+
+  llvm::Value* llval;
+  std::vector<llvm::Value*> arg_llvm_values;
+
   try {
+    std::vector<value*> arg_values;
     if (!llvm::cast<llvm::Function>(val->getLLVM())->arg_empty()) {
       for (auto it = mainf->arg_begin(); it != mainf->arg_end(); it++) {
         arg_llvm_values.push_back(it);
         arg_values.push_back(new value(it, ast::expr{}));
       }
     }
-    llval = evaluate(val, arg_values, *this);
+    llval = evaluate(val, arg_values, *this)->getLLVM();
   } catch (error& e) {
     err = e;
     return nullptr;
   }
 
-  llvm::Value* ret =
-      builder_.CreateCall(llval->getLLVM(), llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
+  llvm::Value* ret = builder_.CreateCall(llval, llvm::ArrayRef<llvm::Value*>(arg_llvm_values));
 
   builder_.CreateRet(ret->getType()->isVoidTy() ? builder_.getInt32(0) : ret);
-  return llval->getLLVM();
+  return llval;
 }
 
 void translator::insertGCInitInMain()
