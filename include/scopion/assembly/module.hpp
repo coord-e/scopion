@@ -44,9 +44,10 @@ class module
   llvm::LLVMContext* context_;
   llvm::Module* llvm_module_;
   std::vector<std::string> link_libraries_;
+  std::string top_function_name_;
 
 public:
-  module(std::string const& name = "");
+  module(std::string const& name = "", std::string const& top_function_name = "main");
   ~module();
 
   module(const module&) = delete;
@@ -54,6 +55,7 @@ public:
 
   void printIR(std::ostream& os) const;
   std::string getPrintedIR() const;
+  std::string getTopFunctionName() const;
   void optimize(uint8_t optLevel = 3, uint8_t sizeLevel = 0);
 
   bool verify(error& err) const;
