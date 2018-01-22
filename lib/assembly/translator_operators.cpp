@@ -579,11 +579,13 @@ value* translator::apply_op(ast::single_op<ast::inot> const& op, std::vector<val
 value* translator::apply_op(ast::single_op<ast::inc> const& op, std::vector<value*> const& args)
 {
   assert(false);  // unreachable
+  return nullptr;
 }
 
 value* translator::apply_op(ast::single_op<ast::dec> const& op, std::vector<value*> const& args)
 {
   assert(false);  // unreachable
+  return nullptr;
 }
 
 value* translator::apply_op(ast::ternary_op<ast::cond> const& op, std::vector<value*> const& args)
