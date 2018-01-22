@@ -49,7 +49,8 @@ public:
   type(type const&) = delete;
   type& operator=(type const&) = delete;
 
-  type* copy() const { return new type{llvm_type_, is_lazy_}; }
+  type* copyWithNewLLVMType(llvm::Type* ty) const { return new type{ty, is_lazy_}; }
+  type* copy() const { return copyWithNewLLVMType(llvm_type_); }
 
   bool isLazy() const { return is_lazy_; }
   llvm::Type* getLLVM() const { return llvm_type_; }

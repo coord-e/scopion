@@ -80,7 +80,7 @@ public:
     newval->fields_    = fields_;
     newval->ret_table_ = ret_table_;
     newval->name_      = name_;
-    newval->type_      = type_->copy();
+    newval->type_      = type_->copyWithNewLLVMType(v->getType());
     return newval;
   }
 
@@ -90,6 +90,10 @@ public:
 
   type* getType() const
   {
+    if (llvm_value_)
+      assert(llvm_value_->getType() == type_->getLLVM() &&
+             "Type mismatch between llvm::Type* and assembly::type*");
+
     if (llvm_value_)
       type_->setLLVM(llvm_value_->getType());
     return type_;
