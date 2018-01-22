@@ -234,8 +234,10 @@ value* translator::importIR(std::string const& path, ast::pre_variable const& as
 
 value* translator::importCHeader(std::string const& path, ast::pre_variable const& astv)
 {
-  auto h2irpath = std::string(std::getenv("HOME")) + "/" SCOPION_CACHE_DIR "/h2ir/";
-  system((std::string("bash " SCOPION_ETC_DIR "/h2ir/scopion-h2ir ") + path).c_str());
+  auto const h2irpath = std::string(std::getenv("HOME")) + "/" SCOPION_CACHE_DIR "/h2ir/";
+  auto const cwd      = boost::filesystem::current_path();
+  system((std::string("bash " SCOPION_ETC_DIR "/h2ir/scopion-h2ir ") + path + ' ' + cwd.string())
+             .c_str());
   return importIR(h2irpath + path, astv);
 }
 

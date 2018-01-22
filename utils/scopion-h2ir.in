@@ -20,6 +20,7 @@
 # along with scopion.  If not, see <http://www.gnu.org/licenses/>.
 
 INFILE=$1
+INCDIR=$2
 BASEPATH="$HOME/@SCOPION_CACHE_DIR@/h2ir/"
 CACHEPATH=$BASEPATH`basename $INFILE`
 
@@ -32,15 +33,15 @@ if [ ! -e $CACHEPATH ]; then
 TMPFILE0=$(mktemp)".c"
 TMPFILE1=$(mktemp)".h"
 TMPFILE2=$(mktemp)".c"
-echo '#include <'$INFILE'>' >> $TMPFILE0
+echo '#include "'$INFILE'"' >> $TMPFILE0
 
-clang -E $TMPFILE0 -o $TMPFILE1
+clang -I $INCDIR -E $TMPFILE0 -o $TMPFILE1
 
-echo '#include <'$INFILE'>' >> $TMPFILE2
+echo '#include "'$INFILE'"' >> $TMPFILE2
 echo 'int main() {' >> $TMPFILE2
 ctags -x --c-kinds=fp $TMPFILE1 | awk '{ print $1 }' | grep -v -E "`cat @SCOPION_ETC_DIR@/h2ir/blacklist`" | awk '{ print "auto v"NR" = &"$0";" }' >> $TMPFILE2
 echo '}' >> $TMPFILE2
 
-clang $TMPFILE2 -c -S -emit-llvm -o- 2> /dev/null | grep -e 'declare' -e 'type' > $CACHEPATH
+clang -I $INCDIR $TMPFILE2 -c -S -emit-llvm -o- 2> /dev/null | grep -e 'declare' -e 'type' > $CACHEPATH
 
 fi
