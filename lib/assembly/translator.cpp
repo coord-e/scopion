@@ -147,6 +147,11 @@ void translator::insertGCInitInMain()
   builder_.SetInsertPoint(ib, ip);
 }
 
+bool translator::hasFlag(std::string const& key)
+{
+  return std::find(flags_.cbegin(), flags_.cend(), key) != flags_.cend();
+}
+
 value* translator::import(std::string const& path, ast::pre_variable const& astv)
 {
   auto thisp   = ast::attr(astv).where.getPath();

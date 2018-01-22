@@ -144,6 +144,8 @@ public:
   void setScope(value* v) { thisScope_ = v; }
   value* getScope() const { return thisScope_; }
 
+  bool hasFlag(std::string const& key);
+
   llvm::IRBuilder<>& getBuilder() { return builder_; }
   llvm::IRBuilder<> const& getBuilder() const { return builder_; }
   std::unique_ptr<module>&& takeModule() { return std::move(module_); }
