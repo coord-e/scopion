@@ -150,7 +150,7 @@ value* evaluator::operator()(ast::function const& fcv)
   }
 
   llvm::FunctionType* func_type =
-      llvm::FunctionType::get(builder_.getVoidTy(), arg_types_for_func, false);
+      llvm::FunctionType::get(retst ? retst : builder_.getVoidTy(), arg_types_for_func, false);
   llvm::Function* func =
       llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, v_->getLLVM()->getName(),
                              translator_.module_->getLLVMModule());
