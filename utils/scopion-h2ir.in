@@ -28,8 +28,6 @@ if [ ! -e $BASEPATH ]; then
   mkdir -p $BASEPATH
 fi
 
-if [ ! -e $CACHEPATH ]; then
-
 TMPFILE0=$(mktemp)".c"
 TMPFILE1=$(mktemp)".h"
 TMPFILE2=$(mktemp)".c"
@@ -43,5 +41,3 @@ ctags -x --c-kinds=fp $TMPFILE1 | awk '{ print $1 }' | grep -v -E "`cat @SCOPION
 echo '}' >> $TMPFILE2
 
 clang -I $INCDIR $TMPFILE2 -c -S -emit-llvm -o- 2> /dev/null | grep -e 'declare' -e 'type' > $CACHEPATH
-
-fi
