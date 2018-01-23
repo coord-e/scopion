@@ -13,7 +13,7 @@ Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
 (argc, argv){
   io = @import#c:stdio.h; // Import C header directly!
 
-  v1 = v2 = [
+  v1#mut = v2 = [
     real: 10,
     add: (val, self){
       newv = self;

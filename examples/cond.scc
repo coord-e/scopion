@@ -3,7 +3,7 @@
 a = 20;
 b = 25;
 
-result = 0;
+result#mut = 0;
 
 a > b ? { result = 1; } : { result = 2; };
 

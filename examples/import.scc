@@ -1,7 +1,7 @@
 (argc, argv){
   io = @import#c:stdio.h;
   io.printf("%d\n", 10);
-  mod = @import#m:mod.scc;
+  mod#mut = @import#m:mod.scc;
   io.printf("%d\n", (mod.=func()).value);
   io.printf("%d\n", (mod.=func()).value);
 }

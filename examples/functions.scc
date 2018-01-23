@@ -6,7 +6,7 @@ io.printf("%d\n", a(10, "nice", io));
 io.puts(a("cool", "nice", io));
 
 get = (v, ary){ |>ary[v]; };
-get2 = get;
+get2#mut = get;
 io.puts(get(1, ["ko", "go", "jo"]));
 io.printf("%d\n", get2(2, [1, 2, 3]));
 get2 = (v, ary){ |>ary[v-1]; };
