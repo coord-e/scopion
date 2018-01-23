@@ -217,6 +217,14 @@ value* translator::importIR(std::string const& path, ast::pre_variable const& as
 
   llvm::StructType* structTy = llvm::StructType::create(module_->getContext());
   structTy->setBody(fields);
+  structTy->setName("cheader_type");
+
+  for (auto t : module_->getLLVMModule()->getIdentifiedStructTypes()) {
+    if (structTy->isLayoutIdentical(t)) {
+      structTy = t;
+      break;
+    }
+  }
 
   auto ptr = builder_.CreateAlloca(structTy);
   destv->setLLVM(ptr);
