@@ -1,7 +1,7 @@
 (argc, argv){
   io = @import#c:stdio.h;
 
-   v0 = true ? "gogogo" : "jojojo";
+  v0 = true ? "gogogo" : "jojojo";
   io.printf("%s\n", v0); /* gogogo */
 
   v1 = false ? 1 : 2;

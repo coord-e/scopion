@@ -33,6 +33,7 @@ class type
 {
   llvm::Type* llvm_type_ = nullptr;
   bool is_lazy_          = false;
+  bool is_const_         = false;
 
   template <typename F>
   static bool isType_if_impl(llvm::Type* t, F f)
@@ -43,16 +44,21 @@ class type
   }
 
 public:
-  type(llvm::Type* llvm_type, bool is_lazy = false) : llvm_type_(llvm_type), is_lazy_(is_lazy) {}
+  type(llvm::Type* llvm_type, bool is_lazy = false, bool is_const = false)
+      : llvm_type_(llvm_type), is_lazy_(is_lazy), is_const_(is_const)
+  {
+  }
   type() {}
 
   type(type const&) = delete;
   type& operator=(type const&) = delete;
 
-  type* copyWithNewLLVMType(llvm::Type* ty) const { return new type{ty, is_lazy_}; }
+  type* copyWithNewLLVMType(llvm::Type* ty) const { return new type{ty, is_lazy_, is_const_}; }
   type* copy() const { return copyWithNewLLVMType(llvm_type_); }
 
   bool isLazy() const { return is_lazy_; }
+  bool isConst() const { return is_const_; }
+  void isConst(bool c) { is_const_ = c; }
   llvm::Type* getLLVM() const { return llvm_type_; }
   void setLLVM(llvm::Type* ty) { llvm_type_ = ty; }
 

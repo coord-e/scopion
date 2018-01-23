@@ -1,7 +1,7 @@
 (argc, argv){
   io = @import#c:stdio.h;
 
-  fs = [
+  fs#mut = [
     value: 10,
     values: ["ko", "jo", "myo"],
     +: (rhs, this){
@@ -25,7 +25,7 @@
   io.printf("%d\n", fs.value); /* 11 */
   fs.=add(10);
   io.printf("%d\n", fs.value); /* 21 */
-  fs2 = fs;
+  fs2#mut = fs;
   fs2.=add(20);
   io.printf("%d\n", (fs + fs2).value); /* 62 */
   io.printf("%d\n", fs.value); /* 21 */

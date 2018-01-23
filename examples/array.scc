@@ -1,5 +1,5 @@
 (argc, argv){
-index=1;
+index#mut=1;
 index=index+1;
 func=(arg){
 io = @import#c:stdio.h;

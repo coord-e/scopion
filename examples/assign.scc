@@ -5,7 +5,7 @@
       self.io.printf("%d\n", int);
     },
   ];
-  a = 0;
+  a#mut = 0;
   p.:printn(a); /* 0 */
   a = 10;
   p.:printn(a); /* 10 */
@@ -27,7 +27,7 @@
   p.:printn(s.a); /* 10 */
   p.:printn(s.child.a); /* 20 */
 
-  ns = s;
+  ns#mut = s;
   s.a = 20;
   s.child.a = 30;
   p.:printn(ns.a); /* 10 */
@@ -55,12 +55,12 @@
   p.:printn(arr[0]); /* 10 */
   p.:printn(arr[1]); /* 20 */
 
-  i = 0;
+  i#mut = 0;
   p.:printn(ar[i]); /* 20 */
   i = i + 1;
   p.:printn(ar[i]); /* 30 */
 
-  fary = [(io){io.printf("v1\n");}, (io){io.printf("v1\n");}];
+  fary = [(io){io.printf("v1\n");}, (io){io.printf("v2\n");}];
   fary[0](p.io); /* v1 */
   fary[0 + 1](p.io); /* v2 */
   /* fary[i](p.io); error! */
