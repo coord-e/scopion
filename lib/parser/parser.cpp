@@ -402,7 +402,7 @@ auto const mul_expr_def = pow_expr[detail::assign] >>
 
 auto const add_expr_def = mul_expr[detail::assign] >>
                           *(("+" > mul_expr)[detail::assign_op<ast::add, 2>] |
-                            ("-" > mul_expr)[detail::assign_op<ast::sub, 2>] |
+                            ("-" >> mul_expr)[detail::assign_op<ast::sub, 2>] |
                             ("%" > mul_expr)[detail::assign_op<ast::rem, 2>]);
 
 auto const shift_expr_def = add_expr[detail::assign] >>
