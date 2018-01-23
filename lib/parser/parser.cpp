@@ -164,6 +164,11 @@ static auto const assign_short_func = [](auto&& ctx) {
   x3::_val(ctx) = set_where_r(ast::function({result, {line}}), x3::_where(ctx));
 };
 
+static auto const assign_pipe = [](auto&& ctx) {
+  x3::_val(ctx) = set_where_r(
+      ast::binary_op<ast::call>({x3::_attr(ctx), ast::arglist({x3::_val(ctx)})}), x3::_where(ctx));
+};
+
 static auto const assign_func = [](auto&& ctx) {
   auto&& args  = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
   auto&& lines = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
@@ -277,6 +282,7 @@ struct lor_expr;
 struct cond_expr;
 struct dot_expr;
 struct assign_expr;
+struct pipe_expr;
 struct ret_expr;
 struct expression;
 
@@ -314,6 +320,7 @@ x3::rule<lor_expr, ast::expr> const lor_expr("expression");
 x3::rule<cond_expr, ast::expr> const cond_expr("expression");
 x3::rule<dot_expr, ast::expr> const dot_expr("expression");
 x3::rule<assign_expr, ast::expr> const assign_expr("expression");
+x3::rule<pipe_expr, ast::expr> const pipe_expr("expression");
 x3::rule<ret_expr, ast::expr> const ret_expr("expression");
 x3::rule<expression, ast::expr> const expression("expression");
 
@@ -395,7 +402,7 @@ auto const mul_expr_def = pow_expr[detail::assign] >>
 
 auto const add_expr_def = mul_expr[detail::assign] >>
                           *(("+" > mul_expr)[detail::assign_op<ast::add, 2>] |
-                            ("-" > mul_expr)[detail::assign_op<ast::sub, 2>] |
+                            ("-" >> mul_expr)[detail::assign_op<ast::sub, 2>] |
                             ("%" > mul_expr)[detail::assign_op<ast::rem, 2>]);
 
 auto const shift_expr_def = add_expr[detail::assign] >>
@@ -432,8 +439,11 @@ auto const assign_expr_def =
     cond_expr[detail::assign] >> "=" >> assign_expr[detail::assign_op<ast::assign, 2>] |
     cond_expr[detail::assign];
 
+auto const pipe_expr_def = assign_expr[detail::assign] >>
+                           *(("->" > assign_expr)[detail::assign_pipe]);
+
 auto const ret_expr_def =
-    assign_expr[detail::assign] | ("|>" > assign_expr)[detail::assign_op<ast::ret, 1>];
+    pipe_expr[detail::assign] | ("|>" > pipe_expr)[detail::assign_op<ast::ret, 1>];
 
 auto const expression_def = ret_expr[detail::assign];
 
@@ -467,6 +477,7 @@ BOOST_SPIRIT_DEFINE(pre_variable,
                     lor_expr,
                     cond_expr,
                     assign_expr,
+                    pipe_expr,
                     ret_expr,
                     expression)
 

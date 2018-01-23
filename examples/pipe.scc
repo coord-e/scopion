@@ -1,0 +1,10 @@
+(argv, argc){
+
+  add1 = (a) |> a + 1;
+  print = (num) {
+    io = @import#c:stdio.h;
+    io.printf("%d\n", num);
+  };
+
+  2 -> add1 -> add1 -> print; // 4
+}
