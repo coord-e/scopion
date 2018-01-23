@@ -155,6 +155,15 @@ template <typename T>
 static auto const assign_as =
     [](auto&& ctx) { x3::_val(ctx) = set_where_r(T(x3::_attr(ctx)), x3::_where(ctx)); };
 
+static auto const assign_short_func = [](auto&& ctx) {
+  auto&& args = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
+  auto&& line = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
+  std::vector<ast::identifier> result;
+  std::transform(args.begin(), args.end(), std::back_inserter(result),
+                 [](auto&& x) { return ast::unpack<ast::identifier>(x); });
+  x3::_val(ctx) = set_where_r(ast::function({result, {line}}), x3::_where(ctx));
+};
+
 static auto const assign_func = [](auto&& ctx) {
   auto&& args  = boost::fusion::at<boost::mpl::int_<0>>(x3::_attr(ctx));
   auto&& lines = boost::fusion::at<boost::mpl::int_<1>>(x3::_attr(ctx));
@@ -244,6 +253,7 @@ struct string;
 struct raw_string;
 struct array;
 struct structure;
+struct short_function;
 struct function;
 struct scope;
 
@@ -280,6 +290,7 @@ x3::rule<string, ast::expr> const string("string");
 x3::rule<raw_string, ast::expr> const raw_string("raw string");
 x3::rule<array, ast::expr> const array("array");
 x3::rule<structure, ast::expr> const structure("structure");
+x3::rule<short_function, ast::expr> const short_function("function");
 x3::rule<function, ast::expr> const function("function");
 x3::rule<scope, ast::expr> const scope("scope");
 
@@ -336,6 +347,9 @@ auto const structure_def =
 auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> ")" >> "{") >
                            *(expression >> ";") > "}")[detail::assign_func];
 
+auto const short_function_def =
+    (("(" > *(identifier >> -x3::lit(",")) > ")") > expression)[detail::assign_short_func];
+
 auto const scope_def = ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
 
 auto const attribute_val_def = x3::raw[x3::lexeme[*(x3::alnum | x3::char_("-_./*[]{}"))]]
@@ -346,7 +360,8 @@ auto const primary_def =
     x3::bool_[detail::assign_as<ast::boolean>] | string[detail::assign] |
     raw_string[detail::assign] | variable[detail::assign] | pre_variable[detail::assign] |
     structure[detail::assign] | array[detail::assign] | function[detail::assign] |
-    scope[detail::assign] | ("(" >> expression >> ")")[detail::assign];
+    short_function[detail::assign] | scope[detail::assign] |
+    ("(" >> expression >> ")")[detail::assign];
 
 auto const dot_expr_def = primary[detail::assign] >>
                           *((".:" > struct_key)[detail::assign_op<ast::odot, 2>] |
@@ -431,6 +446,7 @@ BOOST_SPIRIT_DEFINE(pre_variable,
                     array,
                     structure,
                     function,
+                    short_function,
                     scope,
                     attribute_val,
                     primary,

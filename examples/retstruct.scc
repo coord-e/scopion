@@ -1,0 +1,11 @@
+(argc, argv){
+    class = (init, num) |>
+            [
+              init: init * num,
+              num: num,
+            ];
+
+    object = class(10, 3);
+    io = @import#c:stdio.h;
+    io.printf("%d\n", object.init);
+}
