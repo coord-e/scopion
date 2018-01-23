@@ -307,6 +307,11 @@ value* translator::apply_op(ast::binary_op<ast::assign> const& op, std::vector<v
         lval = createGCMalloc(thety, nullptr, n);
       else
         lval = builder_.CreateAlloca(thety, nullptr, n);
+      args[1]->getType()->isConst(true);
+    }
+  } else {
+    if (args[0]->getType()->isConst()) {
+      throw error("Assignment of read-only variable", ast::attr(op).where, errorType::Translate);
     }
   }
 

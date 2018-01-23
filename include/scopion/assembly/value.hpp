@@ -57,10 +57,10 @@ class value
   ret_table_t* ret_table_ = nullptr;
 
 public:
-  value(llvm::Value* llvm_value, ast::expr ast_value, bool is_lazy = false)
+  value(llvm::Value* llvm_value, ast::expr ast_value, bool is_lazy = false, bool is_const = false)
       : llvm_value_(llvm_value),
         ast_value_(ast_value),
-        type_(new type{llvm_value_ ? llvm_value_->getType() : nullptr, is_lazy})
+        type_(new type{llvm_value_ ? llvm_value_->getType() : nullptr, is_lazy, is_const})
   {
   }
   value() : type_(new type{}) {}
