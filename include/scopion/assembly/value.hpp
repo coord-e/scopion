@@ -110,8 +110,10 @@ public:
   }
   ret_table_t* generateRetTable()
   {
-    auto ret_table    = new ret_table_t();
-    ret_table->first  = symbols_;
+    auto ret_table = new ret_table_t();
+    for (auto const& s : symbols_) {
+      ret_table->first[s.first] = s.second->copy();
+    }
     ret_table->second = fields_;
     return ret_table;
   }
