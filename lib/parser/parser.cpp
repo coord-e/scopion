@@ -517,8 +517,11 @@ boost::optional<ast::expr> parse(std::string const& code,
       "//" > *(x3::char_ - '\n') > '\n' | "/*" > *(x3::char_ - "*/") > "*/" | x3::space;
 
   try {
-    if (!x3::phrase_parse(code.begin(), code.end(), grammar::expression, space_comment, tree))
+    auto it = code.cbegin();
+    if (!x3::phrase_parse(it, code.cend(), grammar::expression, space_comment, tree))
       throw error("Unknown error has detected", locationInfo{}, errorType::Parse);
+    if (it != code.cend())
+      throw error("Parser couldn't reach at the end of file", locationInfo{}, errorType::Parse);
   } catch (error& e) {
     err = e;
     holder.setRange(cr);
