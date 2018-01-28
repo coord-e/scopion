@@ -355,7 +355,7 @@ auto const function_def = ((("(" > *(identifier >> -x3::lit(","))) >> ")" >> "{"
                            *(expression >> ";") > "}")[detail::assign_func];
 
 auto const short_function_def =
-    (("(" > *(identifier >> -x3::lit(",")) > ")") > expression)[detail::assign_short_func];
+    ((("(" > *(identifier >> -x3::lit(","))) >> ")") > expression)[detail::assign_short_func];
 
 auto const scope_def = ("{" > *(expression >> ";") > "}")[detail::assign_as<ast::scope>];
 
