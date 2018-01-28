@@ -1,0 +1,13 @@
+//
+// This is test program for homebrew's test method
+//	created by: Cj-bc (Cj-bc@y-modify.org)
+//	data: 2018/01/27
+//
+// 	Note:   This program is pulled from scopion website(https://scopion.coord-e.com)
+//
+
+(argc, argv){
+  io = @import#c:stdio.h;
+  io.printf("Hello, World!\n");
+  |> 0;
+}
