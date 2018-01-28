@@ -16,7 +16,7 @@ RUN apt-get update \
     && update-alternatives --install /usr/local/bin/clang-tidy clang-tidy `which clang-tidy-5.0` 10 \
     && mkdir -p scopion/build \
     && cd scopion/build \
-    && cmake .. -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF \
+    && cmake .. -DCMAKE_CXX_COMPILER=clang++ -DCONFIG=RELEASE -DFORMAT_BEFORE_BUILD=OFF \
     && make -j"$(nproc)" \
     && make test \
     && make install \
