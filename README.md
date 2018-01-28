@@ -63,14 +63,13 @@ All features are listed in [docs/Feature.md](docs/Feature.md)
 # Getting started
 ## Prerequirements
 - llvm, clang (v5.0.0~)
-- Boost.Filesystem (v1.62~)
 - libgc
 - ctags
 ## Supported Platforms
 - macOS
 - GNU/Linux
 
-Only x86_64 is currently supported.
+Only 64bit system is currently supported.
 
 ## Installation
 
@@ -127,9 +126,10 @@ if there is no suitable prebuilt binary for your environment, you can build scop
 ```shell
 git clone https://github.com/coord-e/scopion
 cd scopion
+git submodule update --init --recursive
 mkdir build && cd $_
-cmake .. -DCMAKE_BUILD_TYPE=Release -DFORMAT_BEFORE_BUILD=OFF
-make -j"$(nproc)" # build
+cmake .. -DCONFIG=RELEASE -DFORMAT_BEFORE_BUILD=OFF
+make # build
 sudo make install # install
 ```
 
