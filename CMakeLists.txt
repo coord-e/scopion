@@ -46,7 +46,7 @@ if(NOT CONFIG)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  add_compile_options(-std=c++14 -pedantic-errors -Wall -Werror -Weverything -Wno-float-equal -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-error=unused-parameter -Wno-error=global-constructors -Wno-error=exit-time-destructors -Wno-error=zero-as-null-pointer-constant -Wno-error=covered-switch-default)
+  add_compile_options(-std=c++14 -pedantic-errors -Wall -Werror -Weverything -Wno-float-equal -Wno-padded -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-error=unused-parameter -Wno-error=global-constructors -Wno-error=exit-time-destructors -Wno-error=zero-as-null-pointer-constant -Wno-error=covered-switch-default -Wno-return-std-move-in-c++11)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-std=c++14 -pedantic-errors -Wall -Wextra -Werror -Wno-float-equal -Wno-padded -Wno-unused-parameter -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Wno-error=unused -Wno-error=zero-as-null-pointer-constant -Wno-error=switch-default -Wno-error=parentheses -Wno-error=strict-overflow)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
