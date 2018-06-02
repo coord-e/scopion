@@ -23,7 +23,7 @@ add_subdirectory(assembly)
 add_subdirectory(ast)
 add_subdirectory(parser)
 
-add_library(scopion SHARED)
+add_library(scopion SHARED scopion.cpp)
 
 target_link_libraries(scopion assembly ast parser ${Boost_LIBRARIES} ${LLVM_LIBRARIES})
 
