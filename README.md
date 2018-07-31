@@ -3,7 +3,7 @@
 [![Travis](https://img.shields.io/travis/coord-e/scopion.svg?style=flat-square)](https://travis-ci.org/coord-e/scopion) [![Docker Automated buil](https://img.shields.io/docker/automated/coorde/scopion.svg?style=flat-square)](https://hub.docker.com/r/coorde/scopion/) [![Docker Build Statu](https://img.shields.io/docker/build/coorde/scopion.svg?style=flat-square)](https://hub.docker.com/r/coorde/scopion/)
 [![license](https://img.shields.io/github/license/coord-e/scopion.svg?style=flat-square)](COPYING) [![GitHub release](https://img.shields.io/github/release/coord-e/scopion.svg?style=flat-square)](https://github.com/coord-e/scopion/releases) [![C++ Standard](https://img.shields.io/badge/C%2B%2B-14-yellow.svg?style=flat-square)](https://isocpp.org/wiki/faq/cpp14)
 
-a statically-typed functional programming language with powerful objective syntax
+a statically-typed programming language with powerful objective syntax
 
 Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
 
