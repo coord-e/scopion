@@ -9,6 +9,23 @@ compilers:
 description: "a statically-typed programming language with powerful objective syntax"
 owners:
   - "coord.e <me@coord-e.com"
+deps:
+  boostorg/boost:
+    src: github
+    tag: boost-1.62.0
+  ivmai/bdwgc:
+    src: github
+    tag: v8.0.0
+    build: 
+      system: manual
+      steps:
+        - cd ${HOME}/.poac/cache/bdwgc8_tmp
+        - git clone git://github.com/ivmai/libatomic_ops.git
+        - ./autogen.sh
+        - ./configure --prefix=${HOME}/.poac/cache/bdwgc-8.0.0
+        - make -j"${nproc}"
+        - make check
+        - make install
 build:
   system: poac
   bin: true
