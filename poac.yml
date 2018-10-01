@@ -29,3 +29,22 @@ deps:
 build:
   system: poac
   bin: true
+  compile_args:
+    - "-std=c++14"
+    - "-pedantic-errors"
+    - "-Wall"
+    - "-Werror"
+    - "-Weverything"
+    - "-Wno-float-equal"
+    - "-Wno-padded"
+    - "-Wno-c++98-compat"
+    - "-Wno-c++98-compat-pedantic"
+    - "-Wno-error=unused-parameter"
+    - "-Wno-error=global-constructors"
+    - "-Wno-error=exit-time-destructors"
+    - "-Wno-error=zero-as-null-pointer-constant"
+    - "-Wno-error=covered-switch-default"
+    - "-Iinclude"
+    - "-isystem extsrc/args"
+    - "-isystem extsrc/rang/include"
+  link_args: []
