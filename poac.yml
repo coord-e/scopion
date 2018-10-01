@@ -1,6 +1,12 @@
 name: scopion
 version: 0.0.3.1
-cpp_version: 17
+cpp_version: 14
+license: GPL-3.0
+links:
+  github: https://github.com/coord-e/scopion
+compilers:
+  clang: "5 <= v"
+description: "a statically-typed programming language with powerful objective syntax"
 owners:
   - "coord.e <me@coord-e.com"
 build:
