@@ -5,7 +5,7 @@
 
 a statically-typed programming language with powerful objective syntax
 
-Try now: [scopion.coord-e.com/try](https://scopion.coord-e.com/try)
+(stopped its development)
 
 ###### Example:
 
